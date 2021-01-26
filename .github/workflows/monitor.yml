@@ -5,11 +5,10 @@ name: monitor
 
 on:
   schedule:
-    - cron: "0 6 * * *"
-  push:
+    - cron: "0 14 * * *"
 
 jobs:
-  reject:
+  monitor:
 
     runs-on: ubuntu-latest
 
@@ -35,4 +34,4 @@ jobs:
         git clone --branch develop https://github.com/Sage-Bionetworks/synapseMonitor.git
         cd synapseMonitor
         pip install -e .
-        synapsemonitor  project_or_view syn24189490 --days 40 --userid 3334658
+        synapsemonitor  project_or_view syn24189490 --days 1 --userid 3334658
