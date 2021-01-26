@@ -1,0 +1,37 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: monitor
+
+on:
+  schedule:
+    - cron: "0 14 * * *"
+
+jobs:
+  monitor:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - name: Set Synapse credentials
+      run: |
+        OUTPUT_FILE=~/.synapseConfig
+        cat > "$OUTPUT_FILE" << EOM
+        [authentication]
+        username = "${{secrets.SYNAPSE_USERNAME }}"
+        apikey = "${{secrets.SYNAPSE_API_KEY }}"
+        EOM
+        chmod +x "$OUTPUT_FILE"
+
+    - name: Monitor project
+      run: |
+        git clone --branch develop https://github.com/Sage-Bionetworks/synapseMonitor.git
+        cd synapseMonitor
+        pip install -e .
+        synapsemonitor  project_or_view syn24189490 --days 1 --userid 3334658
