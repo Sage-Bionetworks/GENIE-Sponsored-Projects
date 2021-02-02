@@ -31,7 +31,5 @@ jobs:
 
     - name: Monitor project
       run: |
-        git clone --branch develop https://github.com/Sage-Bionetworks/synapseMonitor.git
-        cd synapseMonitor
-        pip install -e .
+        pip install synapsemonitor
         synapsemonitor view syn24189490 --days 1 --users 3334658 3324230 3412498
