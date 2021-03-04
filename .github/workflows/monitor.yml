@@ -32,4 +32,4 @@ jobs:
     - name: Monitor project
       run: |
         pip install synapsemonitor
-        synapsemonitor view syn24189490 --days 1 --users 3334658 3324230 3412498 3407424 3352815 3347406 3343187 3407401
+        synapsemonitor view syn24189490 --days 1 --users 3334658 3324230 3412498 3407424 3352815 3347406 3343187 3407401 3397659 3405444 3397854
