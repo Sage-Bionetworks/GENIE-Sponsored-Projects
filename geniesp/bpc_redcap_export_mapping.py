@@ -379,6 +379,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             clin_file.write("#{}\n".format("\t".join(labels)))
             clin_file.write("#{}\n".format("\t".join(descriptions)))
             clin_file.write("#{}\n".format("\t".join(coltype)))
+            if filetype == "supp_survival":
+                clin_file.write(
+                    "#{}\n".format("\t".join(['PATIENT']*len(labels)))
+                )
             clin_file.write("#{}\n".format("\t".join(['1']*len(labels))))
             clin_file.write(process_functions.removeStringFloat(
                 clinicaldf.to_csv(index=False, sep="\t"))
