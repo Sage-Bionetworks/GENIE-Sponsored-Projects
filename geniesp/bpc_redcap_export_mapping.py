@@ -198,9 +198,11 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     regimendf = regimendf[~regimendf['regimen_drugs'].isin(regimens_to_exclude)]
     # Exclude all regimens with "Other"
     regimendf = regimendf[~regimendf['regimen_drugs'].str.contains("Other")]
-    # Remove any duplicated regimens
-    regimendf.drop_duplicates(["record_id", "regimen_drugs"], inplace=True,
-                              keep=False)
+    # sort file by regimen_number and drop rest of duplicates
+    # (not all duplicates), if duplicated keep the first regimen
+    regimendf.sort_values('regimen_number', inplace=True)
+    regimendf.drop_duplicates(["record_id", "regimen_drugs"], inplace=True)
+
     count_of_regimens = regimendf['regimen_drugs'].value_counts()
     # Obtain top X number of regimens
     to_include_regimens = count_of_regimens[:top_x_regimens].index.tolist()
