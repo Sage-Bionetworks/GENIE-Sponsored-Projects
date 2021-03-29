@@ -15,18 +15,16 @@ import new_redcap_export_mapping
 import sp_redcap_export_mapping
 
 
-class Akt1(SP_redcap_export_mapping.SponsoredProjectRunner):
+class Akt1(sp_redcap_export_mapping.SponsoredProjectRunner):
     """
-    ########################################################################
-    # AKT1 PROCESSES
-    # - ONE TIMELINE FILE
-    # - CLINICAL FILE
-    #   OS_MONTHS = death_date_int - mets_disease_date_int
-    #   OS_MONTHS_PRIMARY = death_date_int - primary_dx_date_int 
-    #   All dates are converted from days to months (days/30.4)
-    #   Add headers
-    #   REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
-    ########################################################################
+    AKT1 PROCESSES
+    - ONE TIMELINE FILE
+    - CLINICAL FILE
+      OS_MONTHS = death_date_int - mets_disease_date_int
+      OS_MONTHS_PRIMARY = death_date_int - primary_dx_date_int 
+      All dates are converted from days to months (days/30.4)
+      Add headers
+      REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
     """
     _SPONSORED_PROJECT = "AKT1"
     _DATES = ["death_date_int","follow_up_date_int","primary_dx_date_int","lrr_date_int","mets_disease_date_int","sample_date_int_1",
@@ -203,7 +201,7 @@ class Akt1(SP_redcap_export_mapping.SponsoredProjectRunner):
         return(specimen)
 
 
-class Erbb2(SP_redcap_export_mapping.SponsoredProjectRunner):
+class Erbb2(sp_redcap_export_mapping.SponsoredProjectRunner):
 
     _SPONSORED_PROJECT = "ERBB2"
     _DATES = ['follow_up_date_int','date_death_int','primary_dx_date_int','lrr_date_int','date_first_met_int',
