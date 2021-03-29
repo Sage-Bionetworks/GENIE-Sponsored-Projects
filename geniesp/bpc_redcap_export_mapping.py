@@ -192,6 +192,8 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     regimendf = pd.read_csv(regimen_ent.path)
     # Get only NSCLC cohort
     regimendf = regimendf[regimendf['cohort'] == cohort]
+    # TODO: Use redcap_ca_index == Yes?
+    regimendf = regimendf[regimendf['redcap_ca_index'] == "Yes"]
     # Exclude regimens
     regimendf = regimendf[~regimendf['regimen_drugs'].isin(regimens_to_exclude)]
     # Exclude all regimens with "Other"
@@ -199,7 +201,6 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     # Remove any duplicated regimens
     regimendf.drop_duplicates(["record_id", "regimen_drugs"], inplace=True,
                               keep=False)
-
     count_of_regimens = regimendf['regimen_drugs'].value_counts()
     # Obtain top X number of regimens
     to_include_regimens = count_of_regimens[:top_x_regimens].index.tolist()
@@ -714,7 +715,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             data_tablesdf, on="dataset", how='left'
         )
         regimen_infodf.index = regimen_infodf['code']
-
         # Create timeline column mapping, merges _REDCAP_TO_CBIOMAPPING_SYNID
         # with _DATA_TABLE_IDS
         timeline_infodf = redcap_to_cbiomappingdf[

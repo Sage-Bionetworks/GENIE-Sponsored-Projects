@@ -38,7 +38,8 @@ class Crc(BpcProjectRunner):
     # TODO: Make versioned
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn23573098"
     # Mapping from Synapse Table to form (derived files)
-    _DATA_TABLE_IDS = "syn22296821.1"
+    # TODO: Make versioned
+    _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
     # Run `git rev-parse HEAD` in Genie_processing directory to
