@@ -192,7 +192,7 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     regimendf = pd.read_csv(regimen_ent.path)
     # Get only NSCLC cohort
     regimendf = regimendf[regimendf['cohort'] == cohort]
-    # TODO: Use redcap_ca_index == Yes?
+    # Use redcap_ca_index == Yes
     regimendf = regimendf[regimendf['redcap_ca_index'] == "Yes"]
     # Exclude regimens
     regimendf = regimendf[~regimendf['regimen_drugs'].isin(regimens_to_exclude)]
