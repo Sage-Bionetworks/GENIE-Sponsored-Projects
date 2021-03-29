@@ -3,10 +3,6 @@ BPC configuration classes
 >>> git clone https://github.com/cBioPortal/cbioportal.git
 >>> python run_bpc.py NSCLC ../../cbioportal 1.1-consortium --staging
 """
-import os
-
-import pandas as pd
-
 from bpc_redcap_export_mapping import BpcProjectRunner
 
 
