@@ -192,13 +192,16 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     regimendf = pd.read_csv(regimen_ent.path)
     # Get only NSCLC cohort
     regimendf = regimendf[regimendf['cohort'] == cohort]
+    # Use redcap_ca_index == Yes
+    regimendf = regimendf[regimendf['redcap_ca_index'] == "Yes"]
     # Exclude regimens
     regimendf = regimendf[~regimendf['regimen_drugs'].isin(regimens_to_exclude)]
     # Exclude all regimens with "Other"
     regimendf = regimendf[~regimendf['regimen_drugs'].str.contains("Other")]
-    # Remove any duplicated regimens
-    regimendf.drop_duplicates(["record_id", "regimen_drugs"], inplace=True,
-                              keep=False)
+    # sort file by regimen_number and drop rest of duplicates
+    # (not all duplicates), if duplicated keep the first regimen
+    regimendf.sort_values('regimen_number', inplace=True)
+    regimendf.drop_duplicates(["record_id", "regimen_drugs"], inplace=True)
 
     count_of_regimens = regimendf['regimen_drugs'].value_counts()
     # Obtain top X number of regimens
@@ -378,6 +381,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             clin_file.write("#{}\n".format("\t".join(labels)))
             clin_file.write("#{}\n".format("\t".join(descriptions)))
             clin_file.write("#{}\n".format("\t".join(coltype)))
+            if filetype == "supp_survival":
+                clin_file.write(
+                    "#{}\n".format("\t".join(['PATIENT']*len(labels)))
+                )
             clin_file.write("#{}\n".format("\t".join(['1']*len(labels))))
             clin_file.write(process_functions.removeStringFloat(
                 clinicaldf.to_csv(index=False, sep="\t"))
@@ -714,7 +721,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             data_tablesdf, on="dataset", how='left'
         )
         regimen_infodf.index = regimen_infodf['code']
-
         # Create timeline column mapping, merges _REDCAP_TO_CBIOMAPPING_SYNID
         # with _DATA_TABLE_IDS
         timeline_infodf = redcap_to_cbiomappingdf[
