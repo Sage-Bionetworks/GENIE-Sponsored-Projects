@@ -363,8 +363,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
                                      and cbioportal
             filetype: "patient" or "sample"
         """
-        if filetype not in ["patient", "sample", "supp_survival"]:
-            raise ValueError("sample type must be patient, sample, or supp_survival")
+        if filetype not in ["patient", "sample", "supp_survival",
+                            "supp_survival_treatment"]:
+            raise ValueError(
+                "sample type must be patient, sample, supp_survival or "
+                "supp_survival_treatment"
+            )
 
         redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf['cbio']
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
@@ -381,7 +385,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             clin_file.write("#{}\n".format("\t".join(labels)))
             clin_file.write("#{}\n".format("\t".join(descriptions)))
             clin_file.write("#{}\n".format("\t".join(coltype)))
-            if filetype == "supp_survival":
+            if filetype.startswith("supp_survival"):
                 clin_file.write(
                     "#{}\n".format("\t".join(['PATIENT']*len(labels)))
                 )
@@ -923,12 +927,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
             final_survivaldf['PATIENT_ID'].isin(genie_clinicaldf['PATIENT_ID'])
         ]
         del subset_survivaldf['SP']
-        # TODO: merge regimen data
-        subset_survivaldf = subset_survivaldf.merge(
-            regimens_data['df'], on="PATIENT_ID", how="left"
-        )
+        # subset_survivaldf = subset_survivaldf.merge(
+        #     regimens_data['df'], on="PATIENT_ID", how="left"
+        # )
         # Must change the values in OS and PFS columns from
         # integer to (status:label)
+        # TODO: put remapping of os values in helper function
         os_pfs_cols = [col for col in subset_survivaldf.columns
                        if col.startswith(('OS', 'PFS')) and
                        col.endswith("STATUS")]
@@ -942,7 +946,22 @@ class BpcProjectRunner(metaclass=ABCMeta):
         survival_path = self.write_clinical_file(
             subset_survivaldf[cols_to_order], survival_info, "supp_survival"
         )
-
+        # survival treatment
+        survival_treatmentdf = regimens_data['df']
+        os_pfs_cols = [col for col in survival_treatmentdf.columns
+                       if col.startswith(('OS', 'PFS')) and
+                       col.endswith("STATUS")]
+        remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"}
+                           for col in os_pfs_cols}
+        survival_treatmentdf.replace(remap_os_values, inplace=True)
+        cols_to_order = ['PATIENT_ID']
+        cols_to_order.extend(
+            survival_treatmentdf.columns.drop(cols_to_order).tolist()
+        )
+        surv_treatment_path = self.write_clinical_file(
+            survival_treatmentdf[cols_to_order], survival_info,
+            "supp_survival_treatment"
+        )
         # Fill in ONCOTREE_CODE
         final_sampledf['ONCOTREE_CODE'] = [
             genie_clinicaldf['ONCOTREE_CODE'][
@@ -1059,6 +1078,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
             survival_ent = self.syn.store(survival_fileent, used=used,
                                           executed=self._GITHUB_REPO)
 
+            survival_treatment_fileent = File(
+                surv_treatment_path, parent=self._SP_SYN_ID
+            )
+            used = survival_data['used']
+            used.append(regimens_data['used'])
+            survival_treatment_fileent = self.syn.store(
+                survival_treatment_fileent, used=used,
+                executed=self._GITHUB_REPO
+            )
         self.create_maf(subset_sampledf['SAMPLE_ID'])
 
         cna_samples = self.create_cna(subset_sampledf['SAMPLE_ID'])
