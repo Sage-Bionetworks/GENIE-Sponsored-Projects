@@ -914,8 +914,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Fix patient duplicated values due to cancer index DOB
         # Take the larger DX_LASTALIVE_INT_MOS value for all records
-        subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
-                                     ascending=False)
+        # TODO: check if its fine to drop this column
+        # subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
+        #                              ascending=False)
         subset_patientdf.drop_duplicates("PATIENT_ID", inplace=True)
 
         duplicated = subset_patientdf.PATIENT_ID.duplicated()
