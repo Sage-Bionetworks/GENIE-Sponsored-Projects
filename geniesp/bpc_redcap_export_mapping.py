@@ -103,6 +103,19 @@ def get_file_data(syn, mappingdf, sampletype, cohort='NSCLC'):
             "used": used_entities}
 
 
+# def _remap_os_pfs_values(clinicaldf):
+#     """Remap numerical values to string values
+#     0 -> 0:LIVING
+#     1 -> 1:DECEASED
+#     """
+#     os_pfs_cols = [col for col in clinicaldf.columns
+#                    if col.startswith(('OS', 'PFS')) and
+#                    col.endswith("STATUS")]
+#     remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"}
+#                        for col in os_pfs_cols}
+#     return clinicaldf.replace(remap_os_values)
+
+
 def fill_cancer_dx_start_date(finaldf):
     """Fills in cancer dx start date for those missing pathology dates
 
@@ -381,6 +394,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         clin_path = os.path.join(self._SPONSORED_PROJECT,
                                  f"data_clinical_{filetype}.txt")
+        # Must columns should be shown on cBioPortal will have a 1
+        # but survival columns should all be 0
+        show_col = '1'
         with open(clin_path, "w+") as clin_file:
             clin_file.write("#{}\n".format("\t".join(labels)))
             clin_file.write("#{}\n".format("\t".join(descriptions)))
@@ -389,7 +405,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 clin_file.write(
                     "#{}\n".format("\t".join(['PATIENT']*len(labels)))
                 )
-            clin_file.write("#{}\n".format("\t".join(['1']*len(labels))))
+                show_col = '0'
+            clin_file.write("#{}\n".format("\t".join([show_col]*len(labels))))
             clin_file.write(process_functions.removeStringFloat(
                 clinicaldf.to_csv(index=False, sep="\t"))
             )
