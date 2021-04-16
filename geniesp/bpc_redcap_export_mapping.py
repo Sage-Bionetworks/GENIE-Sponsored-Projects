@@ -856,13 +856,28 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # supplemental clinical file
         print("SURVIVAL")
+        # This is important because tt_first_index_ca is needed
+        # For filtering
+        infodf = infodf.append(
+            pd.DataFrame({"code": 'tt_first_index_ca',
+                          'sampleType': 'SURVIVAL',
+                          'dataset': 'Cancer-level index dataset',
+                          'cbio': 'CANCER_INDEX'},
+                         index=['tt_first_index_ca'])
+        )
         survival_infodf = infodf[infodf['sampleType'] == "SURVIVAL"]
+
         survival_data = get_file_data(self.syn, survival_infodf, "SURVIVAL",
                                       cohort=self._SPONSORED_PROJECT)
         survivaldf = survival_data['df']
         final_survivaldf = self.configure_clinicaldf(survivaldf,
                                                      survival_infodf)
-
+        # Only take rows where cancer index is null
+        final_survivaldf = final_survivaldf[
+            final_survivaldf['CANCER_INDEX'].isnull()
+        ]
+        # Remove cancer index column
+        del final_survivaldf['CANCER_INDEX']
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf['sampleType'] == "PATIENT"]
@@ -961,6 +976,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(
             subset_survivaldf.columns.drop(cols_to_order).tolist()
         )
+        # Order is maintained in the derived variables file so just drop
+        # Duplicates
+        # subset_survivaldf.drop_duplicates("PATIENT_ID", inplace=True)
         survival_path = self.write_clinical_file(
             subset_survivaldf[cols_to_order], survival_info, "supp_survival"
         )
@@ -976,6 +994,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(
             survival_treatmentdf.columns.drop(cols_to_order).tolist()
         )
+
+        # Order is maintained in the derived variables file so just drop
+        # Duplicates
+        # survival_treatmentdf.drop_duplicates("PATIENT_ID", inplace=True)
         surv_treatment_path = self.write_clinical_file(
             survival_treatmentdf[cols_to_order], survival_info,
             "supp_survival_treatment"
