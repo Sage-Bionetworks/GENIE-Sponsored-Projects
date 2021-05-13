@@ -132,21 +132,21 @@ def fill_cancer_dx_start_date(finaldf):
     finaldf['START_DATE'][time0_dates_idx] = 0
     finaldf['START_DATE'][~time0_dates_idx] = 1
 
-    records = finaldf['PATIENT_ID'].unique()
-    for record in records:
-        df = finaldf[finaldf['PATIENT_ID'] == record]
-        # Grab the time 0 START_DATE and calculate the other start times
-        time0_idx = df['START_DATE'] == 0
-        values = df['CA_DOB_DX_INT'][time0_idx].unique()
-        # Sometimes there are more than one index cancers, so must take
-        # the first value which is the minimum value
-        time0 = min(values)
-        time0 = df['CA_DOB_DX_INT'][time0_idx].values[0]
-        finaldf.loc[df.index[~time0_idx],
-                    'START_DATE'] = df['CA_DOB_DX_INT'][~time0_idx]-time0
-        missing_idx = df['CA_DOB_DX_INT'].isnull()
-        finaldf.loc[df.index[missing_idx],
-                    'START_DATE'] = df['diagnosis_int'][missing_idx]-time0
+    # records = finaldf['PATIENT_ID'].unique()
+    # for record in records:
+    #     df = finaldf[finaldf['PATIENT_ID'] == record]
+    #     # Grab the time 0 START_DATE and calculate the other start times
+    #     time0_idx = df['START_DATE'] == 0
+    #     values = df['CA_DOB_DX_INT'][time0_idx].unique()
+    #     # Sometimes there are more than one index cancers, so must take
+    #     # the first value which is the minimum value
+    #     time0 = min(values)
+    #     # time0 = df['CA_DOB_DX_INT'][time0_idx].values[0]
+    #     finaldf.loc[df.index[~time0_idx],
+    #                 'START_DATE'] = df['CA_DOB_DX_INT'][~time0_idx]-time0
+    #     missing_idx = df['CA_DOB_DX_INT'].isnull()
+    #     finaldf.loc[df.index[missing_idx],
+    #                 'START_DATE'] = df['diagnosis_int'][missing_idx]-time0
     # Remove unused variable
     del finaldf['diagnosis_int']
     return finaldf
@@ -719,7 +719,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
             f"code in ('{data_elements_str}') or "
             "cbio = 'EVENT_TYPE' or sampleType = 'TIMELINE-TREATMENT' and "
-            "data_type <> 'heme'"
+            f"data_type <> 'heme' and {self._SPONSORED_PROJECT} is true"
         )
         redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
         data_tables = self.syn.tableQuery(

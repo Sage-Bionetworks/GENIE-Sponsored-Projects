@@ -53,7 +53,7 @@ class Nsclc(BpcProjectRunner):
     _SPONSORED_PROJECT = 'NSCLC'
     # Redcap codes to cbioportal mapping synid and form key is in
     # TODO: version this later
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn21459963"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Mapping from Synapse Table to form (derived files)
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
