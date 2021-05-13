@@ -12,7 +12,7 @@ class Brca(BpcProjectRunner):
     _SPONSORED_PROJECT = 'BrCa'
     # Redcap codes to cbioportal mapping synid and form key is in
     # TODO: Make versioned
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn24981836"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Mapping from Synapse Table to form (derived files)
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
@@ -32,7 +32,7 @@ class Crc(BpcProjectRunner):
     _SPONSORED_PROJECT = 'CRC'
     # Redcap codes to cbioportal mapping synid and form key is in
     # TODO: Make versioned
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn23573098"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Mapping from Synapse Table to form (derived files)
     # TODO: Make versioned
     _DATA_TABLE_IDS = "syn22296821"
