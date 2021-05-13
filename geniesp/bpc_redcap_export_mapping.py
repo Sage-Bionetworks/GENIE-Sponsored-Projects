@@ -130,7 +130,7 @@ def fill_cancer_dx_start_date(finaldf):
     # Make all time0 points 0
     finaldf['diagnosis_int'] = finaldf['START_DATE']
     finaldf['START_DATE'][time0_dates_idx] = 0
-    finaldf['START_DATE'][~time0_dates_idx] = 1
+    # finaldf['START_DATE'][~time0_dates_idx] = 1
 
     # records = finaldf['PATIENT_ID'].unique()
     # for record in records:
