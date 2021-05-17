@@ -1057,7 +1057,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             # subset_sampledf = subset_sampledf[~duplicated]
         sample_path = self.write_clinical_file(subset_sampledf, infodf,
                                                "sample")
-        raise ValueError("test")
+
         # Remove oncotree code here, because no longer need it
         merged_clinicaldf = subset_sampledf.merge(subset_patientdf,
                                                   on="PATIENT_ID",
