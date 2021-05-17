@@ -1040,14 +1040,24 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"},
                                inplace=True)
-        duplicated = subset_sampledf.SAMPLE_ID.duplicated()
-        if duplicated.any():
-            # TODO: Add in duplicated ids
-            print("DUPLICATED SAMPLE_IDs")
-            subset_sampledf = subset_sampledf[~duplicated]
+        # Remove duplicated samples due to PDL1
+        # Keep only one sample in this priority
+        # PDL1_POSITIVE_ANY: Yes
+        # PDL1_POSITIVE_ANY: No
+        # PDL1_POSITIVE_ANY: <blank>
+        subset_sampledf.sort_values(
+            "PDL1_POSITIVE_ANY", ascending=False, inplace=True
+        )
+        subset_sampledf.drop_duplicates("SAMPLE_ID", inplace=True)
+        # duplicated = subset_sampledf.SAMPLE_ID.duplicated()
+        # if duplicated.any():
+        #     # TODO: Add in duplicated ids
+        #     print("DUPLICATED SAMPLE_IDs")
+            # There are duplicated samples
+            # subset_sampledf = subset_sampledf[~duplicated]
         sample_path = self.write_clinical_file(subset_sampledf, infodf,
                                                "sample")
-
+        raise ValueError("test")
         # Remove oncotree code here, because no longer need it
         merged_clinicaldf = subset_sampledf.merge(subset_patientdf,
                                                   on="PATIENT_ID",
