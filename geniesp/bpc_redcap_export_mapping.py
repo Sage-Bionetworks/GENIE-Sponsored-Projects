@@ -81,6 +81,9 @@ def get_file_data(syn, mappingdf, sampletype, cohort='NSCLC'):
         cols = cols.tolist()
         if "record_id" not in cols:
             cols.append("record_id")
+        # Must add path_rep_number for sample and sample acquisition file
+        if sampletype in ["SAMPLE", "TIMELINE-SAMPLE"]:
+            cols.append("path_rep_number")
         # Only get specific cohort and subset cols
         tabledf = pd.read_csv(table.path)
         tabledf = tabledf[tabledf['cohort'] == cohort]
@@ -89,15 +92,28 @@ def get_file_data(syn, mappingdf, sampletype, cohort='NSCLC'):
         if finaldf.empty:
             finaldf = finaldf.append(tabledf)
         else:
-            finaldf = finaldf.merge(tabledf, on="record_id")
-    # This is to map values (sample acquisition)
-    duplicated_codes_idx = mappingdf['code'].duplicated()
-    if duplicated_codes_idx.any():
-        duplicated = mappingdf['code'][duplicated_codes_idx].values[0]
-        finaldf = finaldf[finaldf[f'{duplicated}_x'] == finaldf[f'{duplicated}_y']]
-        del finaldf[f'{duplicated}_x']
-        finaldf[duplicated] = finaldf[f'{duplicated}_y']
-        del finaldf[f'{duplicated}_y']
+            # Records missing pathology reports still have to be present
+            # So a left merge has to happen.  This logic also assumes that
+            # The pathology report dataset mapping info isn't first.
+            # This also assumes that the TIMELINE-PATHOLOGY file only
+            # uses columns from the pathology-report dataset
+            if df['dataset'][0] == "Pathology-report level dataset":
+                finaldf = finaldf.merge(
+                    tabledf,
+                    on=["record_id", "path_proc_number", "path_rep_number"],
+                    how="left"
+                )
+                del finaldf['path_rep_number']
+            else:
+                finaldf = finaldf.merge(tabledf, on="record_id")
+    # This is to map values (sample acquisition, samples)
+    # duplicated_codes_idx = mappingdf['code'].duplicated()
+    # if duplicated_codes_idx.any():
+    #     duplicated = mappingdf['code'][duplicated_codes_idx].values[0]
+    #     finaldf = finaldf[finaldf[f'{duplicated}_x'] == finaldf[f'{duplicated}_y']]
+    #     del finaldf[f'{duplicated}_x']
+    #     finaldf[duplicated] = finaldf[f'{duplicated}_y']
+    #     del finaldf[f'{duplicated}_y']
 
     return {"df": finaldf,
             "used": used_entities}
@@ -903,6 +919,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         sample_data = get_file_data(self.syn, sample_infodf, "SAMPLE",
                                     cohort=self._SPONSORED_PROJECT)
         sampledf = sample_data['df']
+        del sampledf['path_proc_number']
         # SAMPLE FILE
         final_sampledf = self.configure_clinicaldf(sampledf, infodf)
 
