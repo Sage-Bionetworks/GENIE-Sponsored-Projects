@@ -84,6 +84,9 @@ def get_file_data(syn, mappingdf, sampletype, cohort='NSCLC'):
         # Must add path_rep_number for sample and sample acquisition file
         if sampletype in ["SAMPLE", "TIMELINE-SAMPLE"]:
             cols.append("path_rep_number")
+        # Must add path_proc_number to sample file
+        if sampletype == "SAMPLE":
+            cols.append("path_proc_number")
         # Only get specific cohort and subset cols
         tabledf = pd.read_csv(table.path)
         tabledf = tabledf[tabledf['cohort'] == cohort]
@@ -765,6 +768,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ].merge(data_tablesdf, on="dataset", how='left')
         timeline_infodf.index = timeline_infodf['code']
 
+        # TODO: Must add sample retraction here, also check against main
+        # GENIE samples for timeline files...
         print("TREATMENT")
         # Create timeline treatment
         treatment_data = self.make_timeline_treatmentdf(
@@ -811,7 +816,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         #                   'cbio': 'TEMP'},
         #                  index=['path_num_spec'])
         # )
-        print("SAMPLE")
+        print("SAMPLE-ACQUISITION")
         acquisition_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SAMPLE"
         )
@@ -822,7 +827,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # keep_idx = acquisitiondf['TEMP'] == acquisitiondf['PATH_PROC_NUMBER']
         # acquisitiondf.drop(columns="TEMP", inplace=True)
         # acquisition_data['df'] = acquisitiondf[keep_idx]
-        self.write_and_storedf(acquisition_data['df'], acquisition_path,
+
+        # TODO: Can add getting of samples with NULL start dates in
+        # self.create_fixed_timeline_files
+        null_dates_idx = acquisition_data['df']['START_DATE'].isnull()
+        if null_dates_idx.any():
+            print("timeline sample with null START_DATE: {}".format(
+                ", ".join(acquisition_data['df']['SAMPLE_ID'][null_dates_idx])
+            ))
+        self.write_and_storedf(acquisition_data['df'][~null_dates_idx],
+                               acquisition_path,
                                used_entities=acquisition_data['used'])
 
         # Medonc
