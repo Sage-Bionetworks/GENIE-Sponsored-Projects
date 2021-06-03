@@ -30,8 +30,7 @@ class Crc(BpcProjectRunner):
     # Sponsorted project name
     _SPONSORED_PROJECT = 'CRC'
     # Redcap codes to cbioportal mapping synid and form key is in
-    # TODO: Make versioned
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.3"
     # Mapping from Synapse Table to form (derived files)
     # TODO: Make versioned
     _DATA_TABLE_IDS = "syn22296821"

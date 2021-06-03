@@ -317,6 +317,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def download_metadata_files(self):
         """Downloads all the metadata files"""
+        # TODO: need to edit the study file
         all_files = self.syn.getChildren(self._SP_SYN_ID)
         for genie_file in all_files:
             if 'meta' in genie_file['name']:
@@ -736,9 +737,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         data_elements_str = "','".join(data_elementsdf['variable'])
         redcap_to_cbiomapping = self.syn.tableQuery(
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
-            f"code in ('{data_elements_str}') or "
+            f"(code in ('{data_elements_str}') or "
             "cbio = 'EVENT_TYPE' or sampleType = 'TIMELINE-TREATMENT' and "
-            f"data_type <> 'heme' and {self._SPONSORED_PROJECT} is true"
+            f"data_type <> 'heme') and {self._SPONSORED_PROJECT} is true"
         )
         redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
         data_tables = self.syn.tableQuery(
