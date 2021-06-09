@@ -320,6 +320,31 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self._SP_SYN_ID = syn.store(Folder("cBioPortal_files", parent=release_folder))
         self._CASE_LIST_SYN_ID = syn.store(Folder("case_lists",
                                                   parent=self._SP_SYN_ID))
+        self.genie_clinicaldf = self.get_main_genie_clinicaldf()
+
+    def get_main_genie_clinicaldf(self) -> dict:
+        """Get main GENIE clinical dataframe and perform retraction along
+        the way
+        """
+        # Get all the samples/patients that should be uploaded to SP projects
+        # Hard coded clinical database
+        # need to use clinical database because SEQ_YEAR is not released in
+        # public data
+        genie_clinicaldb = self.syn.tableQuery(
+            'select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, '
+            'SAMPLE_TYPE, SEQ_YEAR from syn7517674'
+        )
+        genie_clinicaldf = genie_clinicaldb.asDataFrame()
+        # BPC retraction database
+        bpc_retraction_db = self.syn.tableQuery(
+            'select SAMPLE_ID from syn25779833 where '
+            f'{self._SPONSORED_PROJECT} is true'
+        )
+        bpc_retractiondf = bpc_retraction_db.asDataFrame()
+        keep_clinicaldf = genie_clinicaldf[
+            ~genie_clinicaldf['SAMPLE_ID'].isin(bpc_retractiondf['SAMPLE_ID'])
+        ]
+        return keep_clinicaldf
 
     def download_metadata_files(self):
         """Downloads all the metadata files"""
@@ -513,6 +538,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(
             final_timelinedf.columns.drop(cols_to_order).tolist()
         )
+        # Retract samples or patients
+        if final_timelinedf.get("SAMPLE_ID") is not None:
+            to_keep_samples_idx = final_timelinedf['SAMPLE_ID'].isin(
+                self.genie_clinicaldf['SAMPLE_ID']
+            )
+            final_timelinedf = final_timelinedf[to_keep_samples_idx]
+        elif final_timelinedf.get("PATIENT_ID") is not None:
+            to_keep_patient_idx = final_timelinedf['PATIENT_ID'].isin(
+                self.genie_clinicaldf['PATIENT_ID']
+            )
+            final_timelinedf = final_timelinedf[to_keep_patient_idx]
+
         return {'df': final_timelinedf[cols_to_order].drop_duplicates(),
                 'used': [used_entity]}
 
@@ -943,26 +980,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # SAMPLE FILE
         final_sampledf = self.configure_clinicaldf(sampledf, infodf)
 
-        # Get all the samples/patients that should be uploaded to SP projects
-        # Hard coded clinical database
-        # need to use clinical database because SEQ_YEAR is not released in
-        # public data
-        genie_clinicaldb = self.syn.tableQuery(
-            'select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, '
-            'SAMPLE_TYPE, SEQ_YEAR from syn7517674'
-        )
-        genie_clinicaldf = genie_clinicaldb.asDataFrame()
-
-        # 8.0 sample ent
-        # sample_ent = self.syn.get("syn22228695")
-        # genie_clinicaldf = pd.read_csv(sample_ent.path, sep="\t", comment="#")
 
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
 
-        subset_patientdf = final_patientdf[
-            final_patientdf['PATIENT_ID'].isin(genie_clinicaldf['PATIENT_ID'])
-        ]
+        to_keep_patient_idx = final_patientdf['PATIENT_ID'].isin(
+            self.genie_clinicaldf['PATIENT_ID']
+        )
+        subset_patientdf = final_patientdf[final_patientdf['PATIENT_ID'].isin(
+            self.genie_clinicaldf['PATIENT_ID']
+        )]
 
         # Fix patient duplicated values due to cancer index DOB
         # Take the larger DX_LASTALIVE_INT_MOS value for all records
@@ -994,7 +1021,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Create survival data
         subset_survivaldf = final_survivaldf[
-            final_survivaldf['PATIENT_ID'].isin(genie_clinicaldf['PATIENT_ID'])
+            final_survivaldf['PATIENT_ID'].isin(
+                self.genie_clinicaldf['PATIENT_ID']
+            )
         ]
         del subset_survivaldf['SP']
         # subset_survivaldf = subset_survivaldf.merge(
@@ -1041,20 +1070,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         # Fill in ONCOTREE_CODE
         final_sampledf['ONCOTREE_CODE'] = [
-            genie_clinicaldf['ONCOTREE_CODE'][
-                genie_clinicaldf['SAMPLE_ID'] == sample].values[0]
-            if sum(genie_clinicaldf['SAMPLE_ID'] == sample) > 0
+            self.genie_clinicaldf['ONCOTREE_CODE'][
+                self.genie_clinicaldf['SAMPLE_ID'] == sample].values[0]
+            if sum(self.genie_clinicaldf['SAMPLE_ID'] == sample) > 0
             else float('nan') for sample in final_sampledf['SAMPLE_ID']]
         # Fill in SEQ_ASSAY_ID
         final_sampledf['SEQ_ASSAY_ID'] = [
-            genie_clinicaldf['SEQ_ASSAY_ID'][
-                genie_clinicaldf['SAMPLE_ID'] == sample].values[0]
-            if sum(genie_clinicaldf['SAMPLE_ID'] == sample) > 0
+            self.genie_clinicaldf['SEQ_ASSAY_ID'][
+                self.genie_clinicaldf['SAMPLE_ID'] == sample].values[0]
+            if sum(self.genie_clinicaldf['SAMPLE_ID'] == sample) > 0
             else float('nan') for sample in final_sampledf['SAMPLE_ID']]
 
-        subset_sampledf = final_sampledf[
-            final_sampledf['SAMPLE_ID'].isin(genie_clinicaldf['SAMPLE_ID'])
-        ]
+        subset_sampledf = final_sampledf[final_sampledf['SAMPLE_ID'].isin(
+            self.genie_clinicaldf['SAMPLE_ID']
+        )]
         del subset_sampledf['SP']
         # TODO: add YEARS
         # days_to_years_col = ['AGE_AT_SEQ_REPORT_YEARS',
@@ -1072,7 +1101,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del subset_sampledf['CPT_SEQ_DATE']
         # Obtain this information from the main GENIE cohort
         subset_sampledf = subset_sampledf.merge(
-            genie_clinicaldf[['SAMPLE_ID', 'SAMPLE_TYPE', 'SEQ_YEAR']],
+            self.genie_clinicaldf[['SAMPLE_ID', 'SAMPLE_TYPE', 'SEQ_YEAR']],
             on="SAMPLE_ID", how="left"
         )
         subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"},
@@ -1112,14 +1141,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
             print("Samples not in GENIE clinical databases (SP and normal)")
             not_found_samples = merged_clinicaldf[
                 'SAMPLE_ID'][~merged_clinicaldf['SAMPLE_ID'].isin(
-                    genie_clinicaldf['SAMPLE_ID'])]
+                    self.genie_clinicaldf['SAMPLE_ID']
+                )
+            ]
             if not not_found_samples.empty:
                 print(not_found_samples[~not_found_samples.isnull()])
                 not_found_samples.to_csv("notfoundsamples.csv")
                 if not self.staging:
                     self.syn.store(synapseclient.File(
                         "notfoundsamples.csv",
-                        parent=self._SP_REDCAP_EXPORTS_SYNID))
+                        parent=self._SP_REDCAP_EXPORTS_SYNID
+                    ))
 
         # Hard coded most up to date oncotree version
         oncotreelink = self.syn.get("syn13890902").externalURL
@@ -1130,19 +1162,23 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # This is to create case list files
         merged_clinicaldf['CANCER_TYPE'] = [
             oncotree_dict[code.upper()].get("CANCER_TYPE", float('nan'))
-            for code in merged_clinicaldf['ONCOTREE_CODE']]
+            for code in merged_clinicaldf['ONCOTREE_CODE']
+        ]
         merged_clinicaldf['CANCER_TYPE_DETAILED'] = [
             oncotree_dict[code.upper()].get("CANCER_TYPE_DETAILED",
                                             float('nan'))
-            for code in merged_clinicaldf['ONCOTREE_CODE']]
+            for code in merged_clinicaldf['ONCOTREE_CODE']
+        ]
         merged_clinicaldf['ONCOTREE_PRIMARY_NODE'] = [
             oncotree_dict[code.upper()].get("ONCOTREE_PRIMARY_NODE",
                                             float('nan'))
-            for code in merged_clinicaldf['ONCOTREE_CODE']]
+            for code in merged_clinicaldf['ONCOTREE_CODE']
+        ]
         merged_clinicaldf['ONCOTREE_SECONDARY_NODE'] = [
             oncotree_dict[code.upper()].get("ONCOTREE_SECONDARY_NODE",
                                             float('nan'))
-            for code in merged_clinicaldf['ONCOTREE_CODE']]
+            for code in merged_clinicaldf['ONCOTREE_CODE']
+        ]
         # Remove duplicated sample ids (there shouldn't be any)
         merged_clinicaldf = merged_clinicaldf.drop_duplicates("SAMPLE_ID")
         merged_clinicaldf.to_csv(os.path.join(self._SPONSORED_PROJECT,
@@ -1202,7 +1238,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
                                          separator="\t")
         create_case_lists.main(
             os.path.join(self._SPONSORED_PROJECT, "data_clinical.txt"),
-            # os.path.join(self._SPONSORED_PROJECT, "data_gene_matrix.txt"),
             assay_info.filepath,
             case_list_path,
             f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
