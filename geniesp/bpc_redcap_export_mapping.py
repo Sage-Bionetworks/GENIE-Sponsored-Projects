@@ -538,20 +538,27 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(
             final_timelinedf.columns.drop(cols_to_order).tolist()
         )
-        # Retract samples or patients
-        if final_timelinedf.get("SAMPLE_ID") is not None:
-            to_keep_samples_idx = final_timelinedf['SAMPLE_ID'].isin(
-                self.genie_clinicaldf['SAMPLE_ID']
-            )
-            final_timelinedf = final_timelinedf[to_keep_samples_idx]
-        elif final_timelinedf.get("PATIENT_ID") is not None:
-            to_keep_patient_idx = final_timelinedf['PATIENT_ID'].isin(
-                self.genie_clinicaldf['PATIENT_ID']
-            )
-            final_timelinedf = final_timelinedf[to_keep_patient_idx]
+        final_timelinedf = self.filter_df(final_timelinedf)
 
         return {'df': final_timelinedf[cols_to_order].drop_duplicates(),
                 'used': [used_entity]}
+
+    def filter_df(self, df):
+        """Make sure samples and patients exist in the main genie
+        clinical samples with the exception of the removal of
+        retraction database samples
+        """
+        if df.get("SAMPLE_ID") is not None:
+            to_keep_samples_idx = df['SAMPLE_ID'].isin(
+                self.genie_clinicaldf['SAMPLE_ID']
+            )
+            df = df[to_keep_samples_idx]
+        elif df.get("PATIENT_ID") is not None:
+            to_keep_patient_idx = df['PATIENT_ID'].isin(
+                self.genie_clinicaldf['PATIENT_ID']
+            )
+            df = df[to_keep_patient_idx]
+        return df
 
     def write_and_storedf(self, df, filepath, used_entities=[]):
         """Write and store dataframe
@@ -610,7 +617,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(
             timelinedf.columns.drop(cols_to_order).tolist()
         )
-
+        timelinedf = self.filter_df(timelinedf)
         return {'df': timelinedf[cols_to_order].drop_duplicates(),
                 'used': used_entities}
 
