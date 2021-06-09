@@ -81,6 +81,12 @@ def get_file_data(syn, mappingdf, sampletype, cohort='NSCLC'):
         cols = cols.tolist()
         if "record_id" not in cols:
             cols.append("record_id")
+        # Must add path_rep_number for sample and sample acquisition file
+        if sampletype in ["SAMPLE", "TIMELINE-SAMPLE"]:
+            cols.append("path_rep_number")
+        # Must add path_proc_number to sample file
+        if sampletype == "SAMPLE":
+            cols.append("path_proc_number")
         # Only get specific cohort and subset cols
         tabledf = pd.read_csv(table.path)
         tabledf = tabledf[tabledf['cohort'] == cohort]
@@ -89,15 +95,28 @@ def get_file_data(syn, mappingdf, sampletype, cohort='NSCLC'):
         if finaldf.empty:
             finaldf = finaldf.append(tabledf)
         else:
-            finaldf = finaldf.merge(tabledf, on="record_id")
-    # This is to map values (sample acquisition)
-    duplicated_codes_idx = mappingdf['code'].duplicated()
-    if duplicated_codes_idx.any():
-        duplicated = mappingdf['code'][duplicated_codes_idx].values[0]
-        finaldf = finaldf[finaldf[f'{duplicated}_x'] == finaldf[f'{duplicated}_y']]
-        del finaldf[f'{duplicated}_x']
-        finaldf[duplicated] = finaldf[f'{duplicated}_y']
-        del finaldf[f'{duplicated}_y']
+            # Records missing pathology reports still have to be present
+            # So a left merge has to happen.  This logic also assumes that
+            # The pathology report dataset mapping info isn't first.
+            # This also assumes that the TIMELINE-PATHOLOGY file only
+            # uses columns from the pathology-report dataset
+            if df['dataset'][0] == "Pathology-report level dataset":
+                finaldf = finaldf.merge(
+                    tabledf,
+                    on=["record_id", "path_proc_number", "path_rep_number"],
+                    how="left"
+                )
+                del finaldf['path_rep_number']
+            else:
+                finaldf = finaldf.merge(tabledf, on="record_id")
+    # This is to map values (sample acquisition, samples)
+    # duplicated_codes_idx = mappingdf['code'].duplicated()
+    # if duplicated_codes_idx.any():
+    #     duplicated = mappingdf['code'][duplicated_codes_idx].values[0]
+    #     finaldf = finaldf[finaldf[f'{duplicated}_x'] == finaldf[f'{duplicated}_y']]
+    #     del finaldf[f'{duplicated}_x']
+    #     finaldf[duplicated] = finaldf[f'{duplicated}_y']
+    #     del finaldf[f'{duplicated}_y']
 
     return {"df": finaldf,
             "used": used_entities}
@@ -130,23 +149,23 @@ def fill_cancer_dx_start_date(finaldf):
     # Make all time0 points 0
     finaldf['diagnosis_int'] = finaldf['START_DATE']
     finaldf['START_DATE'][time0_dates_idx] = 0
-    finaldf['START_DATE'][~time0_dates_idx] = 1
+    # finaldf['START_DATE'][~time0_dates_idx] = 1
 
-    records = finaldf['PATIENT_ID'].unique()
-    for record in records:
-        df = finaldf[finaldf['PATIENT_ID'] == record]
-        # Grab the time 0 START_DATE and calculate the other start times
-        time0_idx = df['START_DATE'] == 0
-        values = df['CA_DOB_DX_INT'][time0_idx].unique()
-        # Sometimes there are more than one index cancers, so must take
-        # the first value which is the minimum value
-        time0 = min(values)
-        time0 = df['CA_DOB_DX_INT'][time0_idx].values[0]
-        finaldf.loc[df.index[~time0_idx],
-                    'START_DATE'] = df['CA_DOB_DX_INT'][~time0_idx]-time0
-        missing_idx = df['CA_DOB_DX_INT'].isnull()
-        finaldf.loc[df.index[missing_idx],
-                    'START_DATE'] = df['diagnosis_int'][missing_idx]-time0
+    # records = finaldf['PATIENT_ID'].unique()
+    # for record in records:
+    #     df = finaldf[finaldf['PATIENT_ID'] == record]
+    #     # Grab the time 0 START_DATE and calculate the other start times
+    #     time0_idx = df['START_DATE'] == 0
+    #     values = df['CA_DOB_DX_INT'][time0_idx].unique()
+    #     # Sometimes there are more than one index cancers, so must take
+    #     # the first value which is the minimum value
+    #     time0 = min(values)
+    #     # time0 = df['CA_DOB_DX_INT'][time0_idx].values[0]
+    #     finaldf.loc[df.index[~time0_idx],
+    #                 'START_DATE'] = df['CA_DOB_DX_INT'][~time0_idx]-time0
+    #     missing_idx = df['CA_DOB_DX_INT'].isnull()
+    #     finaldf.loc[df.index[missing_idx],
+    #                 'START_DATE'] = df['diagnosis_int'][missing_idx]-time0
     # Remove unused variable
     del finaldf['diagnosis_int']
     return finaldf
@@ -298,6 +317,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def download_metadata_files(self):
         """Downloads all the metadata files"""
+        # TODO: need to edit the study file
         all_files = self.syn.getChildren(self._SP_SYN_ID)
         for genie_file in all_files:
             if 'meta' in genie_file['name']:
@@ -717,9 +737,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         data_elements_str = "','".join(data_elementsdf['variable'])
         redcap_to_cbiomapping = self.syn.tableQuery(
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
-            f"code in ('{data_elements_str}') or "
+            f"(code in ('{data_elements_str}') or "
             "cbio = 'EVENT_TYPE' or sampleType = 'TIMELINE-TREATMENT' and "
-            "data_type <> 'heme'"
+            f"data_type <> 'heme') and {self._SPONSORED_PROJECT} is true"
         )
         redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
         data_tables = self.syn.tableQuery(
@@ -749,6 +769,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ].merge(data_tablesdf, on="dataset", how='left')
         timeline_infodf.index = timeline_infodf['code']
 
+        # TODO: Must add sample retraction here, also check against main
+        # GENIE samples for timeline files...
         print("TREATMENT")
         # Create timeline treatment
         treatment_data = self.make_timeline_treatmentdf(
@@ -795,7 +817,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         #                   'cbio': 'TEMP'},
         #                  index=['path_num_spec'])
         # )
-        print("SAMPLE")
+        print("SAMPLE-ACQUISITION")
         acquisition_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SAMPLE"
         )
@@ -806,7 +828,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # keep_idx = acquisitiondf['TEMP'] == acquisitiondf['PATH_PROC_NUMBER']
         # acquisitiondf.drop(columns="TEMP", inplace=True)
         # acquisition_data['df'] = acquisitiondf[keep_idx]
-        self.write_and_storedf(acquisition_data['df'], acquisition_path,
+
+        # TODO: Can add getting of samples with NULL start dates in
+        # self.create_fixed_timeline_files
+        null_dates_idx = acquisition_data['df']['START_DATE'].isnull()
+        if null_dates_idx.any():
+            print("timeline sample with null START_DATE: {}".format(
+                ", ".join(acquisition_data['df']['SAMPLE_ID'][null_dates_idx])
+            ))
+        self.write_and_storedf(acquisition_data['df'][~null_dates_idx],
+                               acquisition_path,
                                used_entities=acquisition_data['used'])
 
         # Medonc
@@ -903,6 +934,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         sample_data = get_file_data(self.syn, sample_infodf, "SAMPLE",
                                     cohort=self._SPONSORED_PROJECT)
         sampledf = sample_data['df']
+        del sampledf['path_proc_number']
         # SAMPLE FILE
         final_sampledf = self.configure_clinicaldf(sampledf, infodf)
 
@@ -1040,11 +1072,21 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"},
                                inplace=True)
-        duplicated = subset_sampledf.SAMPLE_ID.duplicated()
-        if duplicated.any():
-            # TODO: Add in duplicated ids
-            print("DUPLICATED SAMPLE_IDs")
-            subset_sampledf = subset_sampledf[~duplicated]
+        # Remove duplicated samples due to PDL1
+        # Keep only one sample in this priority
+        # PDL1_POSITIVE_ANY: Yes
+        # PDL1_POSITIVE_ANY: No
+        # PDL1_POSITIVE_ANY: <blank>
+        subset_sampledf.sort_values(
+            "PDL1_POSITIVE_ANY", ascending=False, inplace=True
+        )
+        subset_sampledf.drop_duplicates("SAMPLE_ID", inplace=True)
+        # duplicated = subset_sampledf.SAMPLE_ID.duplicated()
+        # if duplicated.any():
+        #     # TODO: Add in duplicated ids
+        #     print("DUPLICATED SAMPLE_IDs")
+            # There are duplicated samples
+            # subset_sampledf = subset_sampledf[~duplicated]
         sample_path = self.write_clinical_file(subset_sampledf, infodf,
                                                "sample")
 
