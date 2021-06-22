@@ -430,6 +430,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
             clin_file.write("#{}\n".format("\t".join(labels)))
             clin_file.write("#{}\n".format("\t".join(descriptions)))
             clin_file.write("#{}\n".format("\t".join(coltype)))
+            # attributes in the supp file are PATIENT, so must
+            # specify that.
+            if filetype.startswith("supp_survival"):
+                clin_file.write(
+                    "#{}\n".format("\t".join(['PATIENT']*len(labels)))
+                )
             clin_file.write("#{}\n".format("\t".join(priority)))
 
             clin_file.write(process_functions.removeStringFloat(
