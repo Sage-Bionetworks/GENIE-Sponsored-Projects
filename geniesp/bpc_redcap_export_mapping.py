@@ -268,6 +268,9 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
             value.format(regimen=regimen)
             for value in regimen_infodf['description']
         ]
+        regimen_drug_info['priority'] = [
+            int(value) for value in regimen_infodf['priority']
+        ]
         new_regimen_info = new_regimen_info.append(regimen_drug_info)
 
         col_map = regimen_drug_info['cbio'].to_dict()
@@ -410,26 +413,31 @@ class BpcProjectRunner(metaclass=ABCMeta):
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
         description_map = redcap_to_cbiomappingdf['description'].to_dict()
         coltype_map = redcap_to_cbiomappingdf['colType'].to_dict()
+        # Priority column will determine which columns are shown on cBioPortal
+        # Must columns should be shown on cBioPortal will have a 1
+        # but survival columns should all be 0
+        priority_map = redcap_to_cbiomappingdf['priority'].to_dict()
 
         labels = [str(label_map[col]) for col in clinicaldf]
         descriptions = [str(description_map[col]) for col in clinicaldf]
         coltype = [str(coltype_map[col]) for col in clinicaldf]
+        priority = [str(int(priority_map[col])) for col in clinicaldf]
 
         clin_path = os.path.join(self._SPONSORED_PROJECT,
                                  f"data_clinical_{filetype}.txt")
-        # Must columns should be shown on cBioPortal will have a 1
-        # but survival columns should all be 0
-        show_col = '1'
+
         with open(clin_path, "w+") as clin_file:
             clin_file.write("#{}\n".format("\t".join(labels)))
             clin_file.write("#{}\n".format("\t".join(descriptions)))
             clin_file.write("#{}\n".format("\t".join(coltype)))
+            # attributes in the supp file are PATIENT, so must
+            # specify that.
             if filetype.startswith("supp_survival"):
                 clin_file.write(
                     "#{}\n".format("\t".join(['PATIENT']*len(labels)))
                 )
-                show_col = '0'
-            clin_file.write("#{}\n".format("\t".join([show_col]*len(labels))))
+            clin_file.write("#{}\n".format("\t".join(priority)))
+
             clin_file.write(process_functions.removeStringFloat(
                 clinicaldf.to_csv(index=False, sep="\t"))
             )
