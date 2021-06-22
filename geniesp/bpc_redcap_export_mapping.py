@@ -228,6 +228,9 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     regimendf = regimendf[regimendf['redcap_ca_index'] == "Yes"]
     # Exclude regimens
     regimendf = regimendf[~regimendf['regimen_drugs'].isin(regimens_to_exclude)]
+    regimendf = regimendf[
+        ~regimendf['regimen_drugs'].str.contains("Investigational Drug")
+    ]
     # Exclude all regimens with "Other"
     regimendf = regimendf[~regimendf['regimen_drugs'].str.contains("Other")]
     # sort file by regimen_number and drop rest of duplicates
