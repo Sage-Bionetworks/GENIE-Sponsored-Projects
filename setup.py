@@ -12,7 +12,7 @@ from setuptools import setup, find_packages
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-setup(name='aacrgenie',
+setup(name='geniesp',
       version="0.0.1",
       description='Export cBioPortal files for BPC',
       long_description=long_description,
@@ -25,5 +25,6 @@ setup(name='aacrgenie',
       zip_safe=False,
       python_requires='>=3.6',
       entry_points={'console_scripts': ['geniesp = geniesp.run_bpc:main']},
-      install_requires=['aacrgenie',
-                        'synapseclient>=2.3.0'])
+      install_requires=['aacrgenie>=12.5.0',
+                        'synapseclient>=2.3.0',
+                        'pandas'])

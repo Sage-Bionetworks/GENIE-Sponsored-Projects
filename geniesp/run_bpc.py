@@ -7,7 +7,7 @@ import os
 
 import synapseclient
 
-from bpc_config import Brca, Crc, Nsclc
+from .bpc_config import Brca, Crc, Nsclc
 
 BPC_MAPPING = {"NSCLC": Nsclc,
                'CRC': Crc,
