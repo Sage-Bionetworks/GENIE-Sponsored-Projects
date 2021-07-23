@@ -115,7 +115,7 @@ class SponsoredProjectRunner:
     _CASE_LIST_MAF_SAMPLES_TEMPLATE = None
     _CASE_LIST_SYN_ID = None
     _GITHUB_REPO = \
-        "https://github.com/Sage-Bionetworks/Genie_processing/tree/master"
+        "https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects"
 
     def __init__(self, syn, cbioPath, staging=False, export=False):
         assert os.path.exists(cbioPath)
