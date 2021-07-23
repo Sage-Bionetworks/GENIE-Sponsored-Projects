@@ -11,8 +11,8 @@ import string
 
 import pandas as pd
 
-import new_redcap_export_mapping
-import sp_redcap_export_mapping
+from . import new_redcap_export_mapping
+from . import sp_redcap_export_mapping
 
 
 class Akt1(sp_redcap_export_mapping.SponsoredProjectRunner):

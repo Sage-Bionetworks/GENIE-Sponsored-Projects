@@ -24,9 +24,9 @@ import synapseclient
 from synapseclient import File
 import synapseutils as synu
 
-from genie import process_functions, maf, create_case_lists
+from genie import create_case_lists, process_functions, process_mutation
 
-GENIE_PROCESSING_URL = "https://github.com/Sage-Bionetworks/Genie_processing"
+GENIE_PROCESSING_URL = "https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects"
 
 
 # remove decimal for integers due to pandas
@@ -609,8 +609,9 @@ class SponsoredProjectRunner(object):
             mutations_nonGENIEdbdf[fillna_cols].applymap(replacePeriod)
         mutations_nonGENIEdbdf['Validation_Status'] = ''
         # The "temp" is to specify the 'self'
-        mutations_nonGENIEdbdf = maf.maf.formatMAF("temp",
-                                                   mutations_nonGENIEdbdf)
+        mutations_nonGENIEdbdf = process_mutation.format_maf(
+            mutations_nonGENIEdbdf, "temp"
+        )
         sp_maf_path = "{}/data_mutations_extended.txt".format(
             self._SPONSORED_PROJECT)
         with open(sp_maf_path, 'a') as mutFile:

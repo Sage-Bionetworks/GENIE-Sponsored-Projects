@@ -24,7 +24,7 @@ setup(name='geniesp',
       packages=find_packages(),
       zip_safe=False,
       python_requires='>=3.6',
-      entry_points={'console_scripts': ['geniesp = geniesp.run_bpc:main']},
+      entry_points={'console_scripts': ['geniesp = geniesp.__main__:main']},
       install_requires=['aacrgenie>=12.5.0',
                         'synapseclient>=2.3.0',
                         'pandas'])
