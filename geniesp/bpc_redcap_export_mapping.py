@@ -801,7 +801,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         redcap_to_cbiomapping = self.syn.tableQuery(
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
             f"(code in ('{data_elements_str}') or "
-            "cbio = 'EVENT_TYPE' or sampleType = 'TIMELINE-TREATMENT' and "
+            "cbio = 'EVENT_TYPE' or "
+            "sampleType in ('TIMELINE-TREATMENT', 'TIMELINE-TREATMENT-RT') and "
             f"data_type <> 'heme') and {self._SPONSORED_PROJECT} is true"
         )
         redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
@@ -829,6 +830,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf = redcap_to_cbiomappingdf[
             ~patient_sample_idx & ~regimen_idx
         ].merge(data_tablesdf, on="dataset", how='left')
+        # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
+        timeline_infodf = timeline_infodf.append(
+            pd.DataFrame({"code": 'rt_rt_int',
+                          'sampleType': 'TIMELINE-TREATMENT-RT',
+                          'dataset': 'Cancer-Directed Radiation Therapy dataset',
+                          'cbio': 'TEMP'},
+                         index=['rt_rt_int'])
+        )
         timeline_infodf.index = timeline_infodf['code']
 
         # TODO: Must add sample retraction here, also check against main
@@ -840,9 +849,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         # timeline_infodf.to_csv("foo.csv")
         print("TREATMENT-RAD")
-        # treatment_rad_data = self.create_fixed_timeline_files(
-        #     timeline_infodf, "TIMELINE-TREATMENT-RAD"
-        # )
+        # TODO: Add rt_rt_int
+        treatment_rad_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-TREATMENT-RT"
+        )
+        rad_df = treatment_rad_data['df']
+        rad_df['STOP_DATE'] = rad_df['START_DATE'] + rad_df['TEMP']
+        rad_df = rad_df[rad_df['REDCAP_CA_INDEX'] == "Yes"]
+        del rad_df['REDCAP_CA_INDEX']
+        del rad_df['TEMP']
+        treatment_data['df'] = treatment_data['df'].append(
+            rad_df
+        )
         treatment_path = os.path.join(self._SPONSORED_PROJECT,
                                       "data_timeline_treatment.txt")
         self.write_and_storedf(treatment_data['df'], treatment_path,
