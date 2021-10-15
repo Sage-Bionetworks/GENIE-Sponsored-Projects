@@ -220,6 +220,11 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     regimen_synid = regimen_infodf['id'].unique()[0]
     # regimen_synid = "syn22296818"
     regimens_to_exclude = ["Investigational Drug"]
+    # HACK: exlude these regimens for test case
+    regimens_to_exclude.extend(
+        ["Fluorouracil, Irinotecan liposome, Leucovorin Calcium",
+         "Fluorouracil, Irinotecan Hydrochloride, Leucovorin Calcium"]
+    )
     regimen_ent = syn.get(regimen_synid)
     regimendf = pd.read_csv(regimen_ent.path)
     # Get only NSCLC cohort
@@ -392,7 +397,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             raise ValueError("All column names must be in mapping dataframe")
         mapping = redcap_to_cbiomappingdf['cbio'].to_dict()
         clinicaldf = clinicaldf.rename(columns=mapping)
-
         clinicaldf = clinicaldf.drop_duplicates()
         if sum(clinicaldf['PATIENT_ID'].isnull()) > 0:
             raise ValueError("Must have no null patient ids")
@@ -433,7 +437,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 "sample type must be patient, sample, supp_survival or "
                 "supp_survival_treatment"
             )
-
+        # Appending code resets the index, must reassign index
         redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf['cbio']
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
         description_map = redcap_to_cbiomappingdf['description'].to_dict()
@@ -475,6 +479,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_infodf = subset_infodf[
             ~subset_infodf['data_type'].isin(['portal_value', 'heme'])
         ]
+        subset_infodf.to_csv("info.csv")
+
         synid = subset_infodf['id'].unique()[0]
         ent = self.syn.get(synid)
         used_entity = f'{synid}.{ent.versionNumber}'
@@ -597,6 +603,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_infodf = timeline_infodf[
             timeline_infodf['sampleType'] == timeline_type
         ]
+        subset_infodf.to_csv("info.csv")
         # Obtain portal value (EVENT_TYPE)
         portal_value_idx = subset_infodf['data_type'] == 'portal_value'
         portal_value = subset_infodf['code'][portal_value_idx].values[0]
@@ -617,6 +624,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         mapping['record_id'] = 'PATIENT_ID'
         timelinedf = timelinedf.rename(columns=mapping)
         timelinedf['STOP_DATE'] = ''
+
         # timeline file must be in this order
         cols_to_order = ['PATIENT_ID', 'START_DATE', 'STOP_DATE',
                          'EVENT_TYPE']
@@ -809,7 +817,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         infodf = redcap_to_cbiomappingdf[patient_sample_idx].merge(
             data_tablesdf, on="dataset", how='left'
         )
-        infodf.index = infodf['code']
 
         # Regimen mapping values
         regimen_idx = redcap_to_cbiomappingdf['sampleType'].isin(['REGIMEN'])
@@ -831,6 +838,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.make_timeline_treatmentdf(
             timeline_infodf, "TIMELINE-TREATMENT"
         )
+        # timeline_infodf.to_csv("foo.csv")
+        print("TREATMENT-RAD")
+        # treatment_rad_data = self.create_fixed_timeline_files(
+        #     timeline_infodf, "TIMELINE-TREATMENT-RAD"
+        # )
         treatment_path = os.path.join(self._SPONSORED_PROJECT,
                                       "data_timeline_treatment.txt")
         self.write_and_storedf(treatment_data['df'], treatment_path,
@@ -931,6 +943,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         if self._SPONSORED_PROJECT in ["CRC", "BrCa"]:
             # Lab test
+            print("LABTEST")
             lab_data = self.create_fixed_timeline_files(
                 timeline_infodf, "TIMELINE-LAB"
             )
@@ -951,8 +964,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'CANCER_INDEX'},
                          index=['tt_first_index_ca'])
         )
+        # Appending the code above reset the index, must reassign index
+        infodf.index = infodf['code']
         survival_infodf = infodf[infodf['sampleType'] == "SURVIVAL"]
-
+        survival_infodf.index = survival_infodf['code']
         survival_data = get_file_data(self.syn, survival_infodf, "SURVIVAL",
                                       cohort=self._SPONSORED_PROJECT)
         survivaldf = survival_data['df']
@@ -973,7 +988,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
              'dataset': 'Cancer-level dataset'},
             ignore_index=True
         )
-
         patient_data = get_file_data(self.syn, patient_infodf, "PATIENT",
                                      cohort=self._SPONSORED_PROJECT)
 
@@ -992,7 +1006,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del sampledf['path_proc_number']
         # SAMPLE FILE
         final_sampledf = self.configure_clinicaldf(sampledf, infodf)
-
 
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
