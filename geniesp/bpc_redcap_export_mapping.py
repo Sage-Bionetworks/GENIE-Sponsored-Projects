@@ -479,8 +479,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_infodf = subset_infodf[
             ~subset_infodf['data_type'].isin(['portal_value', 'heme'])
         ]
-        subset_infodf.to_csv("info.csv")
-
         synid = subset_infodf['id'].unique()[0]
         ent = self.syn.get(synid)
         used_entity = f'{synid}.{ent.versionNumber}'
