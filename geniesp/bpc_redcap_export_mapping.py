@@ -818,6 +818,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         infodf = redcap_to_cbiomappingdf[patient_sample_idx].merge(
             data_tablesdf, on="dataset", how='left'
         )
+        infodf.index = infodf['code']
 
         # Regimen mapping values
         regimen_idx = redcap_to_cbiomappingdf['sampleType'].isin(['REGIMEN'])
