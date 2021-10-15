@@ -437,8 +437,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 "sample type must be patient, sample, supp_survival or "
                 "supp_survival_treatment"
             )
-        # Appending code resets the index, must reassign index
-        redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf['cbio']
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
         description_map = redcap_to_cbiomappingdf['description'].to_dict()
         coltype_map = redcap_to_cbiomappingdf['colType'].to_dict()
@@ -479,8 +477,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_infodf = subset_infodf[
             ~subset_infodf['data_type'].isin(['portal_value', 'heme'])
         ]
-        subset_infodf.to_csv("info.csv")
-
         synid = subset_infodf['id'].unique()[0]
         ent = self.syn.get(synid)
         used_entity = f'{synid}.{ent.versionNumber}'
@@ -603,7 +599,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_infodf = timeline_infodf[
             timeline_infodf['sampleType'] == timeline_type
         ]
-        subset_infodf.to_csv("info.csv")
         # Obtain portal value (EVENT_TYPE)
         portal_value_idx = subset_infodf['data_type'] == 'portal_value'
         portal_value = subset_infodf['code'][portal_value_idx].values[0]
@@ -624,7 +619,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         mapping['record_id'] = 'PATIENT_ID'
         timelinedf = timelinedf.rename(columns=mapping)
         timelinedf['STOP_DATE'] = ''
-
         # timeline file must be in this order
         cols_to_order = ['PATIENT_ID', 'START_DATE', 'STOP_DATE',
                          'EVENT_TYPE']
@@ -839,7 +833,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'TEMP'},
                          index=['rt_rt_int'])
         )
-        timeline_infodf.index = timeline_infodf['code']
 
         # TODO: Must add sample retraction here, also check against main
         # GENIE samples for timeline files...
@@ -983,10 +976,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'CANCER_INDEX'},
                          index=['tt_first_index_ca'])
         )
-        # Appending the code above reset the index, must reassign index
-        infodf.index = infodf['code']
         survival_infodf = infodf[infodf['sampleType'] == "SURVIVAL"]
-        survival_infodf.index = survival_infodf['code']
         survival_data = get_file_data(self.syn, survival_infodf, "SURVIVAL",
                                       cohort=self._SPONSORED_PROJECT)
         survivaldf = survival_data['df']
