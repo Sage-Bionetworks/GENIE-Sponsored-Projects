@@ -437,6 +437,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 "sample type must be patient, sample, supp_survival or "
                 "supp_survival_treatment"
             )
+        # Must have this for the dict mappings after
+        redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf['cbio']
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
         description_map = redcap_to_cbiomappingdf['description'].to_dict()
         coltype_map = redcap_to_cbiomappingdf['colType'].to_dict()
@@ -833,7 +835,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'TEMP'},
                          index=['rt_rt_int'])
         )
-
+        # Must do this, because index gets reset after appending
+        timeline_infodf.index = timeline_infodf['code']
         # TODO: Must add sample retraction here, also check against main
         # GENIE samples for timeline files...
         print("TREATMENT")
@@ -841,7 +844,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.make_timeline_treatmentdf(
             timeline_infodf, "TIMELINE-TREATMENT"
         )
-        # timeline_infodf.to_csv("foo.csv")
         print("TREATMENT-RAD")
         # TODO: Add rt_rt_int
         treatment_rad_data = self.create_fixed_timeline_files(
@@ -976,6 +978,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'CANCER_INDEX'},
                          index=['tt_first_index_ca'])
         )
+        # Must do this because index gets reset
+        infodf.index = infodf['code']
         survival_infodf = infodf[infodf['sampleType'] == "SURVIVAL"]
         survival_data = get_file_data(self.syn, survival_infodf, "SURVIVAL",
                                       cohort=self._SPONSORED_PROJECT)
@@ -997,6 +1001,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
              'dataset': 'Cancer-level dataset'},
             ignore_index=True
         )
+        patient_infodf.index = patient_infodf['code']
         patient_data = get_file_data(self.syn, patient_infodf, "PATIENT",
                                      cohort=self._SPONSORED_PROJECT)
 
