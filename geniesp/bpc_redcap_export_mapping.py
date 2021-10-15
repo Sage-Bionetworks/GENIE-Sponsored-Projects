@@ -601,7 +601,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_infodf = timeline_infodf[
             timeline_infodf['sampleType'] == timeline_type
         ]
-        subset_infodf.to_csv("info.csv")
         # Obtain portal value (EVENT_TYPE)
         portal_value_idx = subset_infodf['data_type'] == 'portal_value'
         portal_value = subset_infodf['code'][portal_value_idx].values[0]
@@ -622,7 +621,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         mapping['record_id'] = 'PATIENT_ID'
         timelinedf = timelinedf.rename(columns=mapping)
         timelinedf['STOP_DATE'] = ''
-
         # timeline file must be in this order
         cols_to_order = ['PATIENT_ID', 'START_DATE', 'STOP_DATE',
                          'EVENT_TYPE']
