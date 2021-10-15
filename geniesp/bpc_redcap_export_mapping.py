@@ -437,8 +437,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 "sample type must be patient, sample, supp_survival or "
                 "supp_survival_treatment"
             )
-        # Appending code resets the index, must reassign index
-        redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf['cbio']
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
         description_map = redcap_to_cbiomappingdf['description'].to_dict()
         coltype_map = redcap_to_cbiomappingdf['colType'].to_dict()
