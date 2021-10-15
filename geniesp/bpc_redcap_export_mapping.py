@@ -834,7 +834,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'TEMP'},
                          index=['rt_rt_int'])
         )
-        timeline_infodf.index = timeline_infodf['code']
 
         # TODO: Must add sample retraction here, also check against main
         # GENIE samples for timeline files...
@@ -978,10 +977,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'CANCER_INDEX'},
                          index=['tt_first_index_ca'])
         )
-        # Appending the code above reset the index, must reassign index
-        infodf.index = infodf['code']
         survival_infodf = infodf[infodf['sampleType'] == "SURVIVAL"]
-        survival_infodf.index = survival_infodf['code']
         survival_data = get_file_data(self.syn, survival_infodf, "SURVIVAL",
                                       cohort=self._SPONSORED_PROJECT)
         survivaldf = survival_data['df']
