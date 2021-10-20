@@ -253,8 +253,11 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
         regimen_drug_info = regimen_infodf.copy()
         regimen_list = regimen.split(",")
         # Create regimen drug abbreviations
-        regimen_abbr = "_".join([drug.strip().upper()[:4]
-                                 for drug in regimen_list])
+        regimen_words = [drug.split() for drug in regimen_list]
+        drug_abbr = []
+        for drug in regimen_words:
+            drug_abbr.append("-".join(word.strip().upper()[:4] for word in drug))
+        regimen_abbr = "_".join(drug_abbr)
         # Create correct column mappings for the clinical patient file
         regimen_drug_info['cbio'] = [
             value.format(regimen_abbr=regimen_abbr)
