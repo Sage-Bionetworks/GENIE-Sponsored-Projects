@@ -220,11 +220,6 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     regimen_synid = regimen_infodf['id'].unique()[0]
     # regimen_synid = "syn22296818"
     regimens_to_exclude = ["Investigational Drug"]
-    # HACK: exlude these regimens for test case
-    regimens_to_exclude.extend(
-        ["Fluorouracil, Irinotecan liposome, Leucovorin Calcium",
-         "Fluorouracil, Irinotecan Hydrochloride, Leucovorin Calcium"]
-    )
     regimen_ent = syn.get(regimen_synid)
     regimendf = pd.read_csv(regimen_ent.path)
     # Get only NSCLC cohort
