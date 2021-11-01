@@ -209,6 +209,76 @@ def change_days_to_years(days):
     else:
         return math.floor(days/365.25)
 
+def _get_synid_dd(syn, cohort, synid_table_prissmm = "syn22684834"):
+    """Get Synapse ID of the most current PRISSMM non-PHI data dictionary for the BPC cohort."""
+
+    query = 'SELECT id FROM ' + synid_table_prissmm + ' WHERE cohort = \'' + cohort + '\' ORDER BY name DESC LIMIT 1'
+    query_results = syn.tableQuery(query)
+    
+    synid_folder_prissmm = query_results.asDataFrame()['id'][0]
+    
+    synid_prissmm_children = syn.getChildren(synid_folder_prissmm)
+    
+    for child in synid_prissmm_children:
+        if child['name'] == "Data Dictionary non-PHI":
+            return child['id'] 
+    return None
+
+
+def get_drug_mapping(syn, cohort, synid_file_grs = 'syn24184523'):
+    """
+    Get a mapping between drug short names and NCIT code from BPC data dictionary
+    and BPC global response set for a given BPC cohort.
+    
+    Returns:
+      dictionary: map where keys are BPC drug short names and value is the 
+        corresponding NCIT drug code
+    """
+    
+    mapping = {}
+    var_names = []
+
+    synid_file_dd = _get_synid_dd(syn, cohort)
+
+    dd = pd.read_csv(syn.get(synid_file_dd).path, encoding = 'unicode_escape')
+    grs = pd.read_csv(syn.get(synid_file_grs).path, encoding = 'unicode_escape')
+    grs.columns = ['Variable / Field Name', 'Choices, Calculations, OR Slider Labels']
+
+    for i in ['1','2','3','4','5']:
+        var_names.append('drugs_drug_' + i)
+        var_names.append('drugs_drug_oth' + i)
+
+    for obj in dd, grs:
+
+        for var_name in var_names:
+            
+            if var_name in obj['Variable / Field Name'].unique():
+                choice_str = obj[obj['Variable / Field Name'] == var_name]['Choices, Calculations, OR Slider Labels'].values[0]
+                choice_str = choice_str.replace('"', '')
+            
+                for pair in choice_str.split('|'):
+                    if (pair.strip() != ""): 
+                        code = pair.split(',')[0].strip()
+                        value = pair.split(',')[1].strip()
+                        label = value.split('(')[0].strip()
+                        mapping[label] = code
+    return(mapping)
+
+
+def get_regimen_abbr(regimen, mapping):
+    """ 
+    Given a BPC regimen and mapping between drug names and NCIT codes,
+    return the regimen abbreviation consisting of NCIT codes
+    """
+    abbr = ''
+    drugs = regimen.split(',')
+    for drug in drugs:
+        if drug == drugs[0]:
+            abbr = mapping[drug.strip()]
+        else:
+            abbr = abbr + '_' + mapping[drug.strip()]
+    return(abbr)
+
 
 def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     """Create regimens to merge into the patient file
@@ -217,6 +287,8 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
         dataframe: Expanded regimen data in patient file format
         dataframe: New regimen mappings for clinical headers
     """
+    mapping = get_drug_mapping(syn, cohort)
+    # mapping of drug names to NCIT codes
     regimen_synid = regimen_infodf['id'].unique()[0]
     # regimen_synid = "syn22296818"
     regimens_to_exclude = ["Investigational Drug"]
@@ -251,10 +323,8 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     final_regimendf = pd.DataFrame()
     for regimen, df in regimen_groups:
         regimen_drug_info = regimen_infodf.copy()
-        regimen_list = regimen.split(",")
         # Create regimen drug abbreviations
-        regimen_abbr = "_".join([drug.strip().upper()[:4]
-                                 for drug in regimen_list])
+        regimen_abbr = get_regimen_abbr(regimen, mapping)
         # Create correct column mappings for the clinical patient file
         regimen_drug_info['cbio'] = [
             value.format(regimen_abbr=regimen_abbr)
