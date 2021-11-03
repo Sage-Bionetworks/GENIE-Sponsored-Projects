@@ -209,10 +209,10 @@ def change_days_to_years(days):
     else:
         return math.floor(days/365.25)
 
-def _get_synid_dd(syn, cohort, synid_table_prissmm = "syn22684834"):
+def _get_synid_dd(syn, cohort, synid_table_prissmm):
     """Get Synapse ID of the most current PRISSMM non-PHI data dictionary for the BPC cohort."""
 
-    query = 'SELECT id FROM ' + synid_table_prissmm + ' WHERE cohort = \'' + cohort + '\' ORDER BY name DESC LIMIT 1'
+    query = f'SELECT id FROM {synid_table_prissmm} WHERE cohort = \'{cohort}\' ORDER BY name DESC LIMIT 1'
     query_results = syn.tableQuery(query)
     
     synid_folder_prissmm = query_results.asDataFrame()['id'][0]
@@ -225,7 +225,7 @@ def _get_synid_dd(syn, cohort, synid_table_prissmm = "syn22684834"):
     return None
 
 
-def get_drug_mapping(syn, cohort, synid_file_grs = 'syn24184523'):
+def get_drug_mapping(syn, cohort, synid_file_grs, synid_table_prissmm):
     """
     Get a mapping between drug short names and NCIT code from BPC data dictionary
     and BPC global response set for a given BPC cohort.
@@ -238,7 +238,7 @@ def get_drug_mapping(syn, cohort, synid_file_grs = 'syn24184523'):
     mapping = {}
     var_names = []
 
-    synid_file_dd = _get_synid_dd(syn, cohort)
+    synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
 
     dd = pd.read_csv(syn.get(synid_file_dd).path, encoding = 'unicode_escape')
     grs = pd.read_csv(syn.get(synid_file_grs).path, encoding = 'unicode_escape')
@@ -280,15 +280,13 @@ def get_regimen_abbr(regimen, mapping):
     return(abbr)
 
 
-def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
+def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCLC"):
     """Create regimens to merge into the patient file
 
     Returns:
         dataframe: Expanded regimen data in patient file format
         dataframe: New regimen mappings for clinical headers
     """
-    mapping = get_drug_mapping(syn, cohort)
-    # mapping of drug names to NCIT codes
     regimen_synid = regimen_infodf['id'].unique()[0]
     # regimen_synid = "syn22296818"
     regimens_to_exclude = ["Investigational Drug"]
@@ -374,6 +372,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _SP_REDCAP_EXPORTS_SYNID = None
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
+    # PRISSMM documentation table
+    _PRISSMM_SYNID = 'syn22684834'
+    # REDCap global response set
+    _GRS_SYNID = 'syn24184523'
 
     def __init__(self, syn, cbiopath, release, staging=False):
         if not os.path.exists(cbiopath):
@@ -1139,7 +1141,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
             subset_patientdf[cols_to_order], infodf, "patient"
         )
         # Create regimens data for patient file
+        drug_mapping = get_drug_mapping(syn=self.syn, 
+                                          cohort=self._SPONSORED_PROJECT, 
+                                          synid_file_grs=self._GRS_SYNID, 
+                                          synid_table_prissmm=self._PRISSMM_SYNID)
         regimens_data = create_regimens(self.syn, regimen_infodf,
+                                        mapping = drug_mapping,
                                         top_x_regimens=20,
                                         cohort=self._SPONSORED_PROJECT)
 
