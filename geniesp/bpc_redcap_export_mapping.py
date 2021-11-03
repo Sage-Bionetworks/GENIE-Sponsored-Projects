@@ -325,6 +325,7 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
         regimen_drug_info = regimen_infodf.copy()
         # Create regimen drug abbreviations
         regimen_abbr = get_regimen_abbr(regimen, mapping)
+
         # Create correct column mappings for the clinical patient file
         regimen_drug_info['cbio'] = [
             value.format(regimen_abbr=regimen_abbr)
@@ -462,7 +463,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             raise ValueError("All column names must be in mapping dataframe")
         mapping = redcap_to_cbiomappingdf['cbio'].to_dict()
         clinicaldf = clinicaldf.rename(columns=mapping)
-
         clinicaldf = clinicaldf.drop_duplicates()
         if sum(clinicaldf['PATIENT_ID'].isnull()) > 0:
             raise ValueError("Must have no null patient ids")
@@ -503,7 +503,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 "sample type must be patient, sample, supp_survival or "
                 "supp_survival_treatment"
             )
-
+        # Must have this for the dict mappings after
         redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf['cbio']
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
         description_map = redcap_to_cbiomappingdf['description'].to_dict()
@@ -863,7 +863,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         redcap_to_cbiomapping = self.syn.tableQuery(
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
             f"(code in ('{data_elements_str}') or "
-            "cbio = 'EVENT_TYPE' or sampleType = 'TIMELINE-TREATMENT' and "
+            "cbio = 'EVENT_TYPE' or "
+            "sampleType in ('TIMELINE-TREATMENT', 'TIMELINE-TREATMENT-RT') and "
             f"data_type <> 'heme') and {self._SPONSORED_PROJECT} is true"
         )
         redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
@@ -892,14 +893,35 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf = redcap_to_cbiomappingdf[
             ~patient_sample_idx & ~regimen_idx
         ].merge(data_tablesdf, on="dataset", how='left')
+        # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
+        timeline_infodf = timeline_infodf.append(
+            pd.DataFrame({"code": 'rt_rt_int',
+                          'sampleType': 'TIMELINE-TREATMENT-RT',
+                          'dataset': 'Cancer-Directed Radiation Therapy dataset',
+                          'cbio': 'TEMP'},
+                         index=['rt_rt_int'])
+        )
+        # Must do this, because index gets reset after appending
         timeline_infodf.index = timeline_infodf['code']
-
         # TODO: Must add sample retraction here, also check against main
         # GENIE samples for timeline files...
         print("TREATMENT")
         # Create timeline treatment
         treatment_data = self.make_timeline_treatmentdf(
             timeline_infodf, "TIMELINE-TREATMENT"
+        )
+        print("TREATMENT-RAD")
+        # TODO: Add rt_rt_int
+        treatment_rad_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-TREATMENT-RT"
+        )
+        rad_df = treatment_rad_data['df']
+        rad_df['STOP_DATE'] = rad_df['START_DATE'] + rad_df['TEMP']
+        rad_df = rad_df[rad_df['REDCAP_CA_INDEX'] == "Yes"]
+        del rad_df['REDCAP_CA_INDEX']
+        del rad_df['TEMP']
+        treatment_data['df'] = treatment_data['df'].append(
+            rad_df
         )
         treatment_path = os.path.join(self._SPONSORED_PROJECT,
                                       "data_timeline_treatment.txt")
@@ -1001,6 +1023,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         if self._SPONSORED_PROJECT in ["CRC", "BrCa"]:
             # Lab test
+            print("LABTEST")
             lab_data = self.create_fixed_timeline_files(
                 timeline_infodf, "TIMELINE-LAB"
             )
@@ -1021,8 +1044,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'CANCER_INDEX'},
                          index=['tt_first_index_ca'])
         )
+        # Must do this because index gets reset
+        infodf.index = infodf['code']
         survival_infodf = infodf[infodf['sampleType'] == "SURVIVAL"]
-
         survival_data = get_file_data(self.syn, survival_infodf, "SURVIVAL",
                                       cohort=self._SPONSORED_PROJECT)
         survivaldf = survival_data['df']
@@ -1043,7 +1067,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
              'dataset': 'Cancer-level dataset'},
             ignore_index=True
         )
-
+        patient_infodf.index = patient_infodf['code']
         patient_data = get_file_data(self.syn, patient_infodf, "PATIENT",
                                      cohort=self._SPONSORED_PROJECT)
 
@@ -1062,7 +1086,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del sampledf['path_proc_number']
         # SAMPLE FILE
         final_sampledf = self.configure_clinicaldf(sampledf, infodf)
-
 
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
