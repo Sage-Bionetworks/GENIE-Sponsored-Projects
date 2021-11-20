@@ -185,12 +185,12 @@ def configure_mafdf(mafdf, keep_samples):
     keep_mafdf = mafdf[
         mafdf['Tumor_Sample_Barcode'].isin(keep_samples.tolist())
     ]
-    if not keep_mafdf.empty:
-        fillnas = ['t_depth', 't_ref_count', 't_alt_count',
-                   'n_depth', 'n_ref_count', 'n_alt_count']
-        for col in fillnas:
-            keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
-        keep_mafdf["Validation_Status"] = ''
+    # if not keep_mafdf.empty:
+    #     fillnas = ['t_depth', 't_ref_count', 't_alt_count',
+    #                'n_depth', 'n_ref_count', 'n_alt_count']
+    #     for col in fillnas:
+    #         keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
+    #     keep_mafdf["Validation_Status"] = ''
     return keep_mafdf
 
 
@@ -344,7 +344,7 @@ def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCL
 
         col_map = regimen_drug_info['cbio'].to_dict()
         col_map['record_id'] = "PATIENT_ID"
-        regimen_patientdf = df[col_map.keys()].rename(columns=col_map)
+        regimen_patientdf = df[list(col_map.keys())].rename(columns=col_map)
         # Merge final regimen dataframe
         if final_regimendf.empty:
             final_regimendf = regimen_patientdf
@@ -919,8 +919,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         rad_df = treatment_rad_data['df']
         rad_df['STOP_DATE'] = rad_df['START_DATE'] + rad_df['TEMP']
-        rad_df = rad_df[rad_df['REDCAP_CA_INDEX'] == "Yes"]
-        del rad_df['REDCAP_CA_INDEX']
+        rad_df = rad_df[rad_df['INDEX_CANCER'] == "Yes"]
+        del rad_df['INDEX_CANCER']
         del rad_df['TEMP']
         treatment_data['df'] = treatment_data['df'].append(
             rad_df
