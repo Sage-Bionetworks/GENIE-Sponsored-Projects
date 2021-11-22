@@ -185,12 +185,12 @@ def configure_mafdf(mafdf, keep_samples):
     keep_mafdf = mafdf[
         mafdf['Tumor_Sample_Barcode'].isin(keep_samples.tolist())
     ]
-    # if not keep_mafdf.empty:
+    if not keep_mafdf.empty:
     #     fillnas = ['t_depth', 't_ref_count', 't_alt_count',
     #                'n_depth', 'n_ref_count', 'n_alt_count']
     #     for col in fillnas:
     #         keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
-    #     keep_mafdf["Validation_Status"] = ''
+        keep_mafdf["Validation_Status"] = ''
     return keep_mafdf
 
 
@@ -582,7 +582,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             else:
                 final_timelinedf[row['cbio']] = melted_df[row['cbio']]
         final_timelinedf['EVENT_TYPE'] = "Treatment"
-        final_timelinedf['TREATMENT_TYPE'] = "Medical Type"
+        final_timelinedf['TREATMENT_TYPE'] = "Systemic Therapy"
         # Remove all START_DATE is NULL
         final_timelinedf = final_timelinedf[
             ~final_timelinedf['START_DATE'].isnull()
@@ -925,6 +925,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data['df'] = treatment_data['df'].append(
             rad_df
         )
+        cols_to_order = ['PATIENT_ID', 'START_DATE', 'STOP_DATE',
+                         'EVENT_TYPE', 'TREATMENT_TYPE', 'AGENT']
+        cols_to_order.extend(
+            treatment_data['df'].columns.drop(cols_to_order).tolist()
+        )
+        treatment_data['df'] = treatment_data['df'][cols_to_order].drop_duplicates()
         treatment_path = os.path.join(self._SPONSORED_PROJECT,
                                       "data_timeline_treatment.txt")
         self.write_and_storedf(treatment_data['df'], treatment_path,
@@ -1023,7 +1029,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.write_and_storedf(sequence_data['df'], sequence_path,
                                used_entities=sequence_data['used'])
 
-        if self._SPONSORED_PROJECT in ["CRC", "BrCa"]:
+        if self._SPONSORED_PROJECT != 'NSCLC':
             # Lab test
             print("LABTEST")
             lab_data = self.create_fixed_timeline_files(
