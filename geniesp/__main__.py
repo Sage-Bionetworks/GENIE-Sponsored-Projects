@@ -31,14 +31,11 @@ def main():
         help='Specify path to cbio: must do '
              '`git clone https://github.com/cBioPortal/cbioportal.git`'
     )
-    parser.add_argument('--synconfigpath', dest='synconfigpath', type=str, default = '~/.synapseConfig',
-        help='Specify path to .synapseConfig file'
-    )
     parser.add_argument("--staging", action='store_true',
                         help="If true, files aren't uploaded onto synapse")
     args = parser.parse_args()
 
-    syn = synapseclient.Synapse(configPath = args.synconfigpath)
+    syn = synapseclient.Synapse(configPath = '.synapseConfig')
     syn.login()
 
 
