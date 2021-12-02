@@ -8,4 +8,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-ENTRYPOINT [ "python", "-m", "geniesp" "--synconfigpath .synapseConfig"]
+ENTRYPOINT [ "python", "-m", "geniesp" "--synconfigpath /usr/src/app/.synapseConfig"]
