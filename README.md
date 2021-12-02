@@ -4,13 +4,27 @@ This repository will contain processing code for GENIE sponsored projects used t
 
 ## Installation
 
-Build Docker container to set up your python environment
+1. Clone this repository and navigate to the directory
+```
+git clone 
+cd GENIE-Sponsored-Projects
+```
+
+2. Once inside the directory, clone the cbioportal repository
+```
+git clone https://github.com/cBioPortal/cbioportal.git
+```
+
+3. and copy Synapse credentials from home directory
+```
+cp ~/.synapseConfig .
+```
+
+4. Build the Docker container to set up your python environment
 
 ```
 docker build -t geniesp .
 ```
-
-Note: depending on the environment in which you are running Docker, prefixing docker commands with 'sudo' may be necessary.  
 
 ## Usage
 ```
@@ -25,12 +39,8 @@ positional arguments:
   {NSCLC,CRC,BrCa,PANC,Prostate,AKT1,ERRB2,FGFR4}
                         Specify sponsored project to run
   release               Specify bpc release
-  cbiopath              Specify path to cbio: must do `git clone
-                        https://github.com/cBioPortal/cbioportal.git`
 
 optional arguments:
   -h, --help            show this help message and exit
-  --synconfigpath SYNCONFIGPATH
-                        Specify path to .synapseConfig file
   --staging             If true, files aren't uploaded onto synapse
   ```

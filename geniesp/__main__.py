@@ -27,10 +27,6 @@ def main():
     
     parser.add_argument('release', type=str,
                         help='Specify bpc release')
-    parser.add_argument('cbiopath', type=str,
-        help='Specify path to cbio: must do '
-             '`git clone https://github.com/cBioPortal/cbioportal.git`'
-    )
     parser.add_argument("--staging", action='store_true',
                         help="If true, files aren't uploaded onto synapse")
     args = parser.parse_args()
@@ -39,7 +35,7 @@ def main():
     syn.login()
 
 
-    BPC_MAPPING[args.sp](syn, args.cBioPath, release=args.release,
+    BPC_MAPPING[args.sp](syn, 'cbioportal', release=args.release,
                          staging=args.staging).run()
 
 
