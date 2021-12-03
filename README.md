@@ -58,7 +58,7 @@ optional arguments:
 
 Example command line for 'PANC' (pancreas) cohort and the '1.1-consortium' release without loading files to Synapse.  Only the output to the console will be accessible.
 ```
-docker run geniesp PANC 1.1-consortium --staging
+docker -rm run geniesp PANC 1.1-consortium --staging
 ```
 
 To load the files directly to Synapse, remove the --staging parameter
