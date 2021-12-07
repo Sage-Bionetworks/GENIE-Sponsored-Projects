@@ -186,10 +186,10 @@ def configure_mafdf(mafdf, keep_samples):
         mafdf['Tumor_Sample_Barcode'].isin(keep_samples.tolist())
     ]
     if not keep_mafdf.empty:
-        fillnas = ['t_depth', 't_ref_count', 't_alt_count',
-                   'n_depth', 'n_ref_count', 'n_alt_count']
-        for col in fillnas:
-            keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
+    #     fillnas = ['t_depth', 't_ref_count', 't_alt_count',
+    #                'n_depth', 'n_ref_count', 'n_alt_count']
+    #     for col in fillnas:
+    #         keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
         keep_mafdf["Validation_Status"] = ''
     return keep_mafdf
 
@@ -209,8 +209,78 @@ def change_days_to_years(days):
     else:
         return math.floor(days/365.25)
 
+def _get_synid_dd(syn, cohort, synid_table_prissmm):
+    """Get Synapse ID of the most current PRISSMM non-PHI data dictionary for the BPC cohort."""
 
-def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
+    query = f'SELECT id FROM {synid_table_prissmm} WHERE cohort = \'{cohort}\' ORDER BY name DESC LIMIT 1'
+    query_results = syn.tableQuery(query)
+    
+    synid_folder_prissmm = query_results.asDataFrame()['id'][0]
+    
+    synid_prissmm_children = syn.getChildren(synid_folder_prissmm)
+    
+    for child in synid_prissmm_children:
+        if child['name'] == "Data Dictionary non-PHI":
+            return child['id'] 
+    return None
+
+
+def get_drug_mapping(syn, cohort, synid_file_grs, synid_table_prissmm):
+    """
+    Get a mapping between drug short names and NCIT code from BPC data dictionary
+    and BPC global response set for a given BPC cohort.
+    
+    Returns:
+      dictionary: map where keys are BPC drug short names and value is the 
+        corresponding NCIT drug code
+    """
+    
+    mapping = {}
+    var_names = []
+
+    synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
+
+    dd = pd.read_csv(syn.get(synid_file_dd).path, encoding = 'unicode_escape')
+    grs = pd.read_csv(syn.get(synid_file_grs).path, encoding = 'unicode_escape')
+    grs.columns = ['Variable / Field Name', 'Choices, Calculations, OR Slider Labels']
+
+    for i in ['1','2','3','4','5']:
+        var_names.append('drugs_drug_' + i)
+        var_names.append('drugs_drug_oth' + i)
+
+    for obj in dd, grs:
+
+        for var_name in var_names:
+            
+            if var_name in obj['Variable / Field Name'].unique():
+                choice_str = obj[obj['Variable / Field Name'] == var_name]['Choices, Calculations, OR Slider Labels'].values[0]
+                choice_str = choice_str.replace('"', '')
+            
+                for pair in choice_str.split('|'):
+                    if (pair.strip() != ""): 
+                        code = pair.split(',')[0].strip()
+                        value = pair.split(',')[1].strip()
+                        label = value.split('(')[0].strip()
+                        mapping[label] = code
+    return(mapping)
+
+
+def get_regimen_abbr(regimen, mapping):
+    """ 
+    Given a BPC regimen and mapping between drug names and NCIT codes,
+    return the regimen abbreviation consisting of NCIT codes
+    """
+    abbr = ''
+    drugs = regimen.split(',')
+    for drug in drugs:
+        if drug == drugs[0]:
+            abbr = mapping[drug.strip()]
+        else:
+            abbr = abbr + '_' + mapping[drug.strip()]
+    return(abbr)
+
+
+def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCLC"):
     """Create regimens to merge into the patient file
 
     Returns:
@@ -251,10 +321,9 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
     final_regimendf = pd.DataFrame()
     for regimen, df in regimen_groups:
         regimen_drug_info = regimen_infodf.copy()
-        regimen_list = regimen.split(",")
         # Create regimen drug abbreviations
-        regimen_abbr = "_".join([drug.strip().upper()[:4]
-                                 for drug in regimen_list])
+        regimen_abbr = get_regimen_abbr(regimen, mapping)
+
         # Create correct column mappings for the clinical patient file
         regimen_drug_info['cbio'] = [
             value.format(regimen_abbr=regimen_abbr)
@@ -275,7 +344,7 @@ def create_regimens(syn, regimen_infodf, top_x_regimens=5, cohort="NSCLC"):
 
         col_map = regimen_drug_info['cbio'].to_dict()
         col_map['record_id'] = "PATIENT_ID"
-        regimen_patientdf = df[col_map.keys()].rename(columns=col_map)
+        regimen_patientdf = df[list(col_map.keys())].rename(columns=col_map)
         # Merge final regimen dataframe
         if final_regimendf.empty:
             final_regimendf = regimen_patientdf
@@ -303,6 +372,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _SP_REDCAP_EXPORTS_SYNID = None
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
+    # PRISSMM documentation table
+    _PRISSMM_SYNID = 'syn22684834'
+    # REDCap global response set
+    _GRS_SYNID = 'syn24184523'
 
     def __init__(self, syn, cbiopath, release, staging=False):
         if not os.path.exists(cbiopath):
@@ -392,7 +465,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             raise ValueError("All column names must be in mapping dataframe")
         mapping = redcap_to_cbiomappingdf['cbio'].to_dict()
         clinicaldf = clinicaldf.rename(columns=mapping)
-
         clinicaldf = clinicaldf.drop_duplicates()
         if sum(clinicaldf['PATIENT_ID'].isnull()) > 0:
             raise ValueError("Must have no null patient ids")
@@ -433,7 +505,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 "sample type must be patient, sample, supp_survival or "
                 "supp_survival_treatment"
             )
-
+        # Must have this for the dict mappings after
         redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf['cbio']
         label_map = redcap_to_cbiomappingdf['labels'].to_dict()
         description_map = redcap_to_cbiomappingdf['description'].to_dict()
@@ -510,7 +582,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             else:
                 final_timelinedf[row['cbio']] = melted_df[row['cbio']]
         final_timelinedf['EVENT_TYPE'] = "Treatment"
-        final_timelinedf['TREATMENT_TYPE'] = "Medical Type"
+        final_timelinedf['TREATMENT_TYPE'] = "Systemic Therapy"
         # Remove all START_DATE is NULL
         final_timelinedf = final_timelinedf[
             ~final_timelinedf['START_DATE'].isnull()
@@ -793,7 +865,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         redcap_to_cbiomapping = self.syn.tableQuery(
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
             f"(code in ('{data_elements_str}') or "
-            "cbio = 'EVENT_TYPE' or sampleType = 'TIMELINE-TREATMENT' and "
+            "cbio = 'EVENT_TYPE' or "
+            "sampleType in ('TIMELINE-TREATMENT', 'TIMELINE-TREATMENT-RT') and "
             f"data_type <> 'heme') and {self._SPONSORED_PROJECT} is true"
         )
         redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
@@ -822,8 +895,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf = redcap_to_cbiomappingdf[
             ~patient_sample_idx & ~regimen_idx
         ].merge(data_tablesdf, on="dataset", how='left')
+        # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
+        timeline_infodf = timeline_infodf.append(
+            pd.DataFrame({"code": 'rt_rt_int',
+                          'sampleType': 'TIMELINE-TREATMENT-RT',
+                          'dataset': 'Cancer-Directed Radiation Therapy dataset',
+                          'cbio': 'TEMP'},
+                         index=['rt_rt_int'])
+        )
+        # Must do this, because index gets reset after appending
         timeline_infodf.index = timeline_infodf['code']
-
         # TODO: Must add sample retraction here, also check against main
         # GENIE samples for timeline files...
         print("TREATMENT")
@@ -831,6 +912,25 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.make_timeline_treatmentdf(
             timeline_infodf, "TIMELINE-TREATMENT"
         )
+        print("TREATMENT-RAD")
+        # TODO: Add rt_rt_int
+        treatment_rad_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-TREATMENT-RT"
+        )
+        rad_df = treatment_rad_data['df']
+        rad_df['STOP_DATE'] = rad_df['START_DATE'] + rad_df['TEMP']
+        rad_df = rad_df[rad_df['INDEX_CANCER'] == "Yes"]
+        del rad_df['INDEX_CANCER']
+        del rad_df['TEMP']
+        treatment_data['df'] = treatment_data['df'].append(
+            rad_df
+        )
+        cols_to_order = ['PATIENT_ID', 'START_DATE', 'STOP_DATE',
+                         'EVENT_TYPE', 'TREATMENT_TYPE', 'AGENT']
+        cols_to_order.extend(
+            treatment_data['df'].columns.drop(cols_to_order).tolist()
+        )
+        treatment_data['df'] = treatment_data['df'][cols_to_order].drop_duplicates()
         treatment_path = os.path.join(self._SPONSORED_PROJECT,
                                       "data_timeline_treatment.txt")
         self.write_and_storedf(treatment_data['df'], treatment_path,
@@ -929,8 +1029,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.write_and_storedf(sequence_data['df'], sequence_path,
                                used_entities=sequence_data['used'])
 
-        if self._SPONSORED_PROJECT in ["CRC", "BrCa"]:
+        if self._SPONSORED_PROJECT != 'NSCLC':
             # Lab test
+            print("LABTEST")
             lab_data = self.create_fixed_timeline_files(
                 timeline_infodf, "TIMELINE-LAB"
             )
@@ -951,8 +1052,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
                           'cbio': 'CANCER_INDEX'},
                          index=['tt_first_index_ca'])
         )
+        # Must do this because index gets reset
+        infodf.index = infodf['code']
         survival_infodf = infodf[infodf['sampleType'] == "SURVIVAL"]
-
         survival_data = get_file_data(self.syn, survival_infodf, "SURVIVAL",
                                       cohort=self._SPONSORED_PROJECT)
         survivaldf = survival_data['df']
@@ -973,7 +1075,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
              'dataset': 'Cancer-level dataset'},
             ignore_index=True
         )
-
+        patient_infodf.index = patient_infodf['code']
         patient_data = get_file_data(self.syn, patient_infodf, "PATIENT",
                                      cohort=self._SPONSORED_PROJECT)
 
@@ -992,7 +1094,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del sampledf['path_proc_number']
         # SAMPLE FILE
         final_sampledf = self.configure_clinicaldf(sampledf, infodf)
-
 
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
@@ -1046,7 +1147,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
             subset_patientdf[cols_to_order], infodf, "patient"
         )
         # Create regimens data for patient file
+        drug_mapping = get_drug_mapping(syn=self.syn, 
+                                          cohort=self._SPONSORED_PROJECT, 
+                                          synid_file_grs=self._GRS_SYNID, 
+                                          synid_table_prissmm=self._PRISSMM_SYNID)
         regimens_data = create_regimens(self.syn, regimen_infodf,
+                                        mapping = drug_mapping,
                                         top_x_regimens=20,
                                         cohort=self._SPONSORED_PROJECT)
 
