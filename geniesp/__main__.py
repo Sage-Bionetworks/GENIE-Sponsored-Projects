@@ -31,11 +31,9 @@ def main():
                         help="If true, files aren't uploaded onto synapse")
     args = parser.parse_args()
 
-    syn = synapseclient.Synapse(configPath = '.synapseConfig')
-    syn.login()
+    syn = synapseclient.login()
 
-
-    BPC_MAPPING[args.sp](syn, 'cbioportal', release=args.release,
+    BPC_MAPPING[args.sp](syn, '../cbioportal', release=args.release,
                          staging=args.staging).run()
 
 
