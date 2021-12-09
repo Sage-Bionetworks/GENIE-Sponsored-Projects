@@ -27,8 +27,8 @@ docker run --rm geniesp -h
 Output will be as follows
 
 ```
-usage: __main__.py [-h] [--staging]
-                   {NSCLC,CRC,BrCa,PANC,Prostate,AKT1,ERRB2,FGFR4} release
+usage: geniesp [-h] [--staging]
+               {NSCLC,CRC,BrCa,PANC,Prostate,AKT1,ERRB2,FGFR4} release
 
 Run GENIE sponsored projects
 
