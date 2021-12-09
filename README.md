@@ -44,10 +44,10 @@ optional arguments:
 
 Example command line for 'PANC' (pancreas) cohort and the '1.1-consortium' release without loading files to Synapse.  Only the output to the console will be accessible.
 ```
-docker run -rm -e SYNAPSE_AUTH_TOKEN='<PAT>' geniesp PANC 1.1-consortium --staging
+docker run --rm -e SYNAPSE_AUTH_TOKEN='<PAT>' geniesp PANC 1.1-consortium --staging
 ```
 
 To load the files directly to Synapse, remove the --staging parameter
 ```
-docker run -rm -e SYNAPSE_AUTH_TOKEN='<PAT>' geniesp PANC 1.1-consortium
+docker run --rm -e SYNAPSE_AUTH_TOKEN='<PAT>' geniesp PANC 1.1-consortium
 ```
