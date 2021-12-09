@@ -186,10 +186,10 @@ def configure_mafdf(mafdf, keep_samples):
         mafdf['Tumor_Sample_Barcode'].isin(keep_samples.tolist())
     ]
     if not keep_mafdf.empty:
-    #     fillnas = ['t_depth', 't_ref_count', 't_alt_count',
-    #                'n_depth', 'n_ref_count', 'n_alt_count']
-    #     for col in fillnas:
-    #         keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
+        fillnas = ['t_depth', 't_ref_count', 't_alt_count',
+                   'n_depth', 'n_ref_count', 'n_alt_count']
+        for col in fillnas:
+            keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
         keep_mafdf["Validation_Status"] = ''
     return keep_mafdf
 
@@ -925,12 +925,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data['df'] = treatment_data['df'].append(
             rad_df
         )
-        cols_to_order = ['PATIENT_ID', 'START_DATE', 'STOP_DATE',
-                         'EVENT_TYPE', 'TREATMENT_TYPE', 'AGENT']
-        cols_to_order.extend(
-            treatment_data['df'].columns.drop(cols_to_order).tolist()
-        )
-        treatment_data['df'] = treatment_data['df'][cols_to_order].drop_duplicates()
         treatment_path = os.path.join(self._SPONSORED_PROJECT,
                                       "data_timeline_treatment.txt")
         self.write_and_storedf(treatment_data['df'], treatment_path,
