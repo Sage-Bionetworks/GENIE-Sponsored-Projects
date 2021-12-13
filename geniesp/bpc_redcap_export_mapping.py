@@ -582,7 +582,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             else:
                 final_timelinedf[row['cbio']] = melted_df[row['cbio']]
         final_timelinedf['EVENT_TYPE'] = "Treatment"
-        final_timelinedf['TREATMENT_TYPE'] = "Systemic Therapy"
+        final_timelinedf['TREATMENT_TYPE'] = "Medical Type"
         # Remove all START_DATE is NULL
         final_timelinedf = final_timelinedf[
             ~final_timelinedf['START_DATE'].isnull()
