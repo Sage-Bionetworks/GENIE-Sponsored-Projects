@@ -582,7 +582,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             else:
                 final_timelinedf[row['cbio']] = melted_df[row['cbio']]
         final_timelinedf['EVENT_TYPE'] = "Treatment"
-        final_timelinedf['TREATMENT_TYPE'] = "Systemic Therapy"
+        final_timelinedf['TREATMENT_TYPE'] = "Medical Type"
         # Remove all START_DATE is NULL
         final_timelinedf = final_timelinedf[
             ~final_timelinedf['START_DATE'].isnull()
@@ -912,19 +912,21 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.make_timeline_treatmentdf(
             timeline_infodf, "TIMELINE-TREATMENT"
         )
-        print("TREATMENT-RAD")
-        # TODO: Add rt_rt_int
-        treatment_rad_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-TREATMENT-RT"
-        )
-        rad_df = treatment_rad_data['df']
-        rad_df['STOP_DATE'] = rad_df['START_DATE'] + rad_df['TEMP']
-        rad_df = rad_df[rad_df['INDEX_CANCER'] == "Yes"]
-        del rad_df['INDEX_CANCER']
-        del rad_df['TEMP']
-        treatment_data['df'] = treatment_data['df'].append(
-            rad_df
-        )
+
+        if self._SPONSORED_PROJECT not in ['BrCa', 'CRC', 'NSCLC']:
+            print("TREATMENT-RAD")
+            # TODO: Add rt_rt_int
+            treatment_rad_data = self.create_fixed_timeline_files(
+                timeline_infodf, "TIMELINE-TREATMENT-RT"
+            )
+            rad_df = treatment_rad_data['df']
+            rad_df['STOP_DATE'] = rad_df['START_DATE'] + rad_df['TEMP']
+            rad_df = rad_df[rad_df['INDEX_CANCER'] == "Yes"]
+            del rad_df['INDEX_CANCER']
+            del rad_df['TEMP']
+            treatment_data['df'] = treatment_data['df'].append(
+                rad_df
+            )
         treatment_path = os.path.join(self._SPONSORED_PROJECT,
                                       "data_timeline_treatment.txt")
         self.write_and_storedf(treatment_data['df'], treatment_path,
