@@ -84,3 +84,19 @@ def main():
         datatype="GENE_PANEL_MATRIX",
         filename="data_gene_matrix.txt"
     )
+    timeline_meta_files = [
+        "data_timeline_cancer_diagnosis.txt",
+        "data_timeline_imaging.txt",
+        "data_timeline_medonc.txt",
+        "data_timeline_pathology.txt",
+        "data_timeline_sample_acquisition.txt",
+        "data_timeline_sequencing.txt",
+        "data_timeline_treatment"
+    ]
+    for filenames in timeline_meta_files:
+        create_meta_file(
+            study_identifier="crc_genie_bpc",
+            alteration_type="CLINICAL",
+            datatype="TIMELINE",
+            filename=filenames
+        )
