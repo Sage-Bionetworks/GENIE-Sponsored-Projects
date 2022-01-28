@@ -8,8 +8,9 @@ from .bpc_redcap_export_mapping import BpcProjectRunner
 
 class Brca(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
+
     # Sponsorted project name
-    _SPONSORED_PROJECT = 'BrCa'
+    _SPONSORED_PROJECT = "BrCa"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.7"
     # Mapping from Synapse Table to form (derived files)
@@ -27,8 +28,9 @@ class Brca(BpcProjectRunner):
 
 class Crc(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
+
     # Sponsorted project name
-    _SPONSORED_PROJECT = 'CRC'
+    _SPONSORED_PROJECT = "CRC"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.6"
     # Mapping from Synapse Table to form (derived files)
@@ -47,8 +49,9 @@ class Crc(BpcProjectRunner):
 
 class Nsclc(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
+
     # Sponsorted project name
-    _SPONSORED_PROJECT = 'NSCLC'
+    _SPONSORED_PROJECT = "NSCLC"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.6"
     # Mapping from Synapse Table to form (derived files)
@@ -66,8 +69,9 @@ class Nsclc(BpcProjectRunner):
 
 class Panc(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
+
     # Sponsorted project name
-    _SPONSORED_PROJECT = 'PANC'
+    _SPONSORED_PROJECT = "PANC"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.14"
     # Mapping from Synapse Table to form (derived files)
@@ -82,10 +86,12 @@ class Panc(BpcProjectRunner):
         # "geniesp/bpc_config.py"
     )
 
+
 class Prostate(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
+
     # Sponsorted project name
-    _SPONSORED_PROJECT = 'Prostate'
+    _SPONSORED_PROJECT = "Prostate"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.14"
     # Mapping from Synapse Table to form (derived files)

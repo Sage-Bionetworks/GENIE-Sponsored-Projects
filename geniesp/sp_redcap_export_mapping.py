@@ -33,7 +33,7 @@ GENIE_PROCESSING_URL = "https://github.com/Sage-Bionetworks/GENIE-Sponsored-Proj
 def removePandasDfFloat(df):
     text = df.to_csv(sep="\t", index=False)
     text = replace0(text)
-    return(text)
+    return text
 
 
 def replace0(x):
@@ -42,7 +42,7 @@ def replace0(x):
     """
     x = x.replace(".0\t", "\t")
     x = x.replace(".0\n", "\n")
-    return(x)
+    return x
 
 
 def configureMafRow(rowArray, headers, keepSamples):
@@ -55,50 +55,64 @@ def configureMafRow(rowArray, headers, keepSamples):
 
     :returns:              Configured maf row as a text to append
     """
-    sampleId = str(rowArray[headers.index('Tumor_Sample_Barcode')])
+    sampleId = str(rowArray[headers.index("Tumor_Sample_Barcode")])
     if pd.Series(sampleId).isin(keepSamples).any():
         fillnas = [
-            't_depth', 't_ref_count', 't_alt_count', 'n_depth',
-            'n_ref_count', 'n_alt_count']
+            "t_depth",
+            "t_ref_count",
+            "t_alt_count",
+            "n_depth",
+            "n_ref_count",
+            "n_alt_count",
+        ]
         for i in fillnas:
             value = rowArray[headers.index(i)]
             rowArray[headers.index(i)] = "" if str(value) == "." else value
-        rowArray[headers.index("Validation_Status")] = ''
+        rowArray[headers.index("Validation_Status")] = ""
         newRow = "\t".join(rowArray)
         newRow += "\n"
         newRow = replace0(newRow)
-        return(newRow)
+        return newRow
     else:
-        return(None)
+        return None
 
 
 def replacePeriod(x):
     """
     Replace any periods in the string with blank spaces
     """
-    return(x.replace(".", ""))
+    return x.replace(".", "")
 
 
 def randomString():
     """
     Generate random string of length 5
     """
-    return(''.join(random.choice(string.ascii_uppercase + string.digits)
-           for _ in range(5)))
+    return "".join(
+        random.choice(string.ascii_uppercase + string.digits) for _ in range(5)
+    )
 
 
 def removeNull(x):
     """
     Annotate any null timeline fields with DEFINITELYNOTEINHERE
     """
-    wanted = x[[
-        "START_DATE", "STOP_DATE", "THERAPY_DRUG_CLINTRIAL",
-        "THERAPY_DRUG_AZD5363", "THERAPY_DRUG_OTHER",
-        "THERAPY_DRUG_DISCONTINUE", "THERAPY_DRUG_REASON", "AGENT"]]
+    wanted = x[
+        [
+            "START_DATE",
+            "STOP_DATE",
+            "THERAPY_DRUG_CLINTRIAL",
+            "THERAPY_DRUG_AZD5363",
+            "THERAPY_DRUG_OTHER",
+            "THERAPY_DRUG_DISCONTINUE",
+            "THERAPY_DRUG_REASON",
+            "AGENT",
+        ]
+    ]
     if sum(wanted.isnull()) + sum(wanted == "") != 8:
-        return(x)
+        return x
     else:
-        return("DEFINITELYNOTINHERE")
+        return "DEFINITELYNOTINHERE"
 
 
 def changeToDate(x):
@@ -106,9 +120,9 @@ def changeToDate(x):
     Function to change date fields to months
     """
     if math.isnan(x):
-        return(pd.np.nan)
+        return pd.np.nan
     else:
-        return(math.floor(x/30.4))
+        return math.floor(x / 30.4)
 
 
 def configureTimeLineDf(timeline):
@@ -117,37 +131,33 @@ def configureTimeLineDf(timeline):
     """
     # Configure removeNull function to take in timeline columns
     timeline = timeline.apply(removeNull, axis=1)
-    final_timeline = timeline[timeline['START_DATE'] != "DEFINITELYNOTINHERE"]
+    final_timeline = timeline[timeline["START_DATE"] != "DEFINITELYNOTINHERE"]
     # FIX START/STOP DATE
-    stopDates = \
-        final_timeline['STOP_DATE'][final_timeline['START_DATE'].isnull()]
+    stopDates = final_timeline["STOP_DATE"][final_timeline["START_DATE"].isnull()]
     stopDates = stopDates.fillna(0)
-    final_timeline['STOP_DATE'][
-        final_timeline['START_DATE'].isnull()] = stopDates
-    final_timeline['START_DATE'][
-        final_timeline['START_DATE'].isnull()] = stopDates - 1
-    final_timeline['START_DATE'][
-        final_timeline['START_DATE'] == -1] = 0
-    startDates = \
-        final_timeline['START_DATE'][final_timeline['STOP_DATE'].isnull()]
-    final_timeline['STOP_DATE'][
-        final_timeline['STOP_DATE'].isnull()] = startDates + 1
-    final_timeline['START_DATE'] = final_timeline['START_DATE'].astype(int)
-    final_timeline['STOP_DATE'] = final_timeline['STOP_DATE'].astype(int)
+    final_timeline["STOP_DATE"][final_timeline["START_DATE"].isnull()] = stopDates
+    final_timeline["START_DATE"][final_timeline["START_DATE"].isnull()] = stopDates - 1
+    final_timeline["START_DATE"][final_timeline["START_DATE"] == -1] = 0
+    startDates = final_timeline["START_DATE"][final_timeline["STOP_DATE"].isnull()]
+    final_timeline["STOP_DATE"][final_timeline["STOP_DATE"].isnull()] = startDates + 1
+    final_timeline["START_DATE"] = final_timeline["START_DATE"].astype(int)
+    final_timeline["STOP_DATE"] = final_timeline["STOP_DATE"].astype(int)
     # Make sure the STATUS rows don't have a stop date
-    final_timeline['STOP_DATE'][
-        final_timeline['STATUS'] == "Metastatic Diagnosis"] = pd.np.nan
+    final_timeline["STOP_DATE"][
+        final_timeline["STATUS"] == "Metastatic Diagnosis"
+    ] = pd.np.nan
     # Strip white space off patient and sample ids
-    final_timeline['PATIENT_ID'] = [
-        patient.replace(" ", "") for patient in final_timeline['PATIENT_ID']]
-    return(final_timeline)
+    final_timeline["PATIENT_ID"] = [
+        patient.replace(" ", "") for patient in final_timeline["PATIENT_ID"]
+    ]
+    return final_timeline
 
 
 class SponsoredProjectRunner(object):
-    _SPONSORED_PROJECT = ''
+    _SPONSORED_PROJECT = ""
     _DATES = []
     _CASE_LIST_MAF_SAMPLES_TEMPLATE = None
-    _CASE_LIST_PATH = os.path.join(_SPONSORED_PROJECT, 'case_lists')
+    _CASE_LIST_PATH = os.path.join(_SPONSORED_PROJECT, "case_lists")
     _UNMAPPED_SYN_ID = None
     _MAPPED_SYN_ID = None
     _CASE_LIST_SYN_ID = None
@@ -209,109 +219,122 @@ class SponsoredProjectRunner(object):
         ID = x[col]
         center = x[centerCol]
         if str(ID).startswith("%s-" % center):
-            return('GENIE-%s' % str(ID))
-        elif not str(ID).startswith('GENIE-%s-' % center):
-            return('GENIE-%s-%s' % (center, str(ID)))
+            return "GENIE-%s" % str(ID)
+        elif not str(ID).startswith("GENIE-%s-" % center):
+            return "GENIE-%s-%s" % (center, str(ID))
         else:
-            return(str(ID))
+            return str(ID)
 
     def createGeneMatrixDf(self, clinicalDf, cnaSamples, usedEnt):
         """
         Create gene matrix dataframe
         """
         data_gene_panel = clinicalDf[["SAMPLE_ID", "SEQ_ASSAY_ID"]]
-        data_gene_panel = data_gene_panel.rename(
-            columns={"SEQ_ASSAY_ID": "mutations"})
-        data_gene_panel = data_gene_panel[data_gene_panel['SAMPLE_ID'] != ""]
+        data_gene_panel = data_gene_panel.rename(columns={"SEQ_ASSAY_ID": "mutations"})
+        data_gene_panel = data_gene_panel[data_gene_panel["SAMPLE_ID"] != ""]
         data_gene_panel.drop_duplicates("SAMPLE_ID", inplace=True)
-        cnaSeqIds = data_gene_panel['mutations'][
-            data_gene_panel['SAMPLE_ID'].isin(cnaSamples)].unique()
-        data_gene_panel['cna'] = data_gene_panel['mutations']
-        data_gene_panel['cna'][~data_gene_panel['cna'].isin(cnaSeqIds)] = "NA"
+        cnaSeqIds = data_gene_panel["mutations"][
+            data_gene_panel["SAMPLE_ID"].isin(cnaSamples)
+        ].unique()
+        data_gene_panel["cna"] = data_gene_panel["mutations"]
+        data_gene_panel["cna"][~data_gene_panel["cna"].isin(cnaSeqIds)] = "NA"
         data_gene_panel.to_csv(
-            "%s/data_gene_matrix.txt" % self._SPONSORED_PROJECT,
-            sep="\t", index=False)
+            "%s/data_gene_matrix.txt" % self._SPONSORED_PROJECT, sep="\t", index=False
+        )
         fileEnt = File(
-            "%s/data_gene_matrix.txt" % self._SPONSORED_PROJECT,
-            parent=self._SP_SYN_ID)
+            "%s/data_gene_matrix.txt" % self._SPONSORED_PROJECT, parent=self._SP_SYN_ID
+        )
         if not self.staging:
-            self.syn.store(
-                fileEnt, used=usedEnt.id,
-                executed=GENIE_PROCESSING_URL)
+            self.syn.store(fileEnt, used=usedEnt.id, executed=GENIE_PROCESSING_URL)
 
-    def createClinicalFile(
-            self, sponsoredProject_mapped_df, removeCols, mapping):
+    def createClinicalFile(self, sponsoredProject_mapped_df, removeCols, mapping):
         """
         Create clinical file from sponsored project mapped dataframe
         """
         finalClinical = pd.DataFrame()
-        sponsoredProject_mapped_df[''] = ''
+        sponsoredProject_mapped_df[""] = ""
         for i in range(0, self._NUM_SAMPLE_COLS):
             cols = [
                 col.split(",")[i] if len(col.split(",")) > 1 else col
-                for col in mapping['code']]
+                for col in mapping["code"]
+            ]
             newDF = sponsoredProject_mapped_df[cols]
-            newDF.columns = mapping['cbio']
+            newDF.columns = mapping["cbio"]
             finalClinical = finalClinical.append(newDF)
         finalClinical = finalClinical.drop_duplicates()
-        print("Number of null patients: {}".format(
-            sum(finalClinical['PATIENT_ID'].isnull())))
-        print("Number of null samples: {}".format(
-            sum(finalClinical['SAMPLE_ID'].isnull())))
-        assert sum(finalClinical['PATIENT_ID'].isnull()) == 0, \
-            "Must have no null patient ids"
-        finalClinical['SAMPLE_ID'] = finalClinical.apply(
-            lambda x: self.checkGenieId(x, 'CENTER', 'SAMPLE_ID'), axis=1)
+        print(
+            "Number of null patients: {}".format(
+                sum(finalClinical["PATIENT_ID"].isnull())
+            )
+        )
+        print(
+            "Number of null samples: {}".format(
+                sum(finalClinical["SAMPLE_ID"].isnull())
+            )
+        )
+        assert (
+            sum(finalClinical["PATIENT_ID"].isnull()) == 0
+        ), "Must have no null patient ids"
+        finalClinical["SAMPLE_ID"] = finalClinical.apply(
+            lambda x: self.checkGenieId(x, "CENTER", "SAMPLE_ID"), axis=1
+        )
 
         for col in finalClinical:
             numMissing = sum(finalClinical[col].isnull())
             if numMissing > 0:
                 print("Number of missing %s: %d" % (col, numMissing))
 
-        finalClinical['ETHNICITY'][finalClinical['ETHNICITY'] == 99] = 9
+        finalClinical["ETHNICITY"][finalClinical["ETHNICITY"] == 99] = 9
 
         removeColumns = [
-            'ELIGIBILITY_CRITERIA_COMPLETE', 'PATIENT_INFORMATION_COMPLETE',
-            'DIAGNOSIS_INFORMATION_COMPLETE', 'SAMPLE_INFORMATION_COMPLETE',
-            'TREATMENT_INFORMATION_COMPLETE']
+            "ELIGIBILITY_CRITERIA_COMPLETE",
+            "PATIENT_INFORMATION_COMPLETE",
+            "DIAGNOSIS_INFORMATION_COMPLETE",
+            "SAMPLE_INFORMATION_COMPLETE",
+            "TREATMENT_INFORMATION_COMPLETE",
+        ]
         for remove in removeColumns:
             if finalClinical.get(remove) is not None:
                 del finalClinical[remove]
 
-        finalClinical['OS_STATUS'] = finalClinical['VITAL_STATUS']
-        finalClinical['OS_STATUS'][
-            finalClinical['OS_STATUS'] == "Dead"] = "DECEASED"
-        finalClinical['OS_STATUS'][
-            finalClinical['OS_STATUS'] == "Alive"] = "LIVING"
+        finalClinical["OS_STATUS"] = finalClinical["VITAL_STATUS"]
+        finalClinical["OS_STATUS"][finalClinical["OS_STATUS"] == "Dead"] = "DECEASED"
+        finalClinical["OS_STATUS"][finalClinical["OS_STATUS"] == "Alive"] = "LIVING"
 
         # Hard coded clinical database
-        clinical_db = self.syn.tableQuery('select * from syn7517674')
+        clinical_db = self.syn.tableQuery("select * from syn7517674")
         clinicaldf = clinical_db.asDataFrame()
         # Hard coded clinicalSP database
-        clinical_nonGENIEdb = self.syn.tableQuery('SELECT * FROM syn11492579')
+        clinical_nonGENIEdb = self.syn.tableQuery("SELECT * FROM syn11492579")
         clinical_nonGENIEdbdf = clinical_nonGENIEdb.asDataFrame()
         clinicaldf = clinicaldf.append(clinical_nonGENIEdbdf)
 
-        finalClinical['PATIENT_ID'] = [
-            patient.replace(" ", "")
-            for patient in finalClinical['PATIENT_ID']]
-        finalClinical['SAMPLE_ID'] = [
+        finalClinical["PATIENT_ID"] = [
+            patient.replace(" ", "") for patient in finalClinical["PATIENT_ID"]
+        ]
+        finalClinical["SAMPLE_ID"] = [
             sample.replace(" ", "") if not pd.isnull(sample) else sample
-            for sample in finalClinical['SAMPLE_ID']]
+            for sample in finalClinical["SAMPLE_ID"]
+        ]
 
         # Temporary get rid of these patients: AKT1
         finalClinical = finalClinical[
-            finalClinical['PATIENT_ID'] != "GENIE-MSK-P-0001078"]
+            finalClinical["PATIENT_ID"] != "GENIE-MSK-P-0001078"
+        ]
 
         print("Samples not in GENIE clinical databases (SP and normal)")
-        notFoundSamples = finalClinical[~finalClinical[
-            'SAMPLE_ID'].isin(clinicaldf['SAMPLE_ID'])]['SAMPLE_ID']
+        notFoundSamples = finalClinical[
+            ~finalClinical["SAMPLE_ID"].isin(clinicaldf["SAMPLE_ID"])
+        ]["SAMPLE_ID"]
         print(notFoundSamples[~notFoundSamples.isnull()])
         notFoundSamples.to_csv("notfoundsamples.csv", header=False)
         if not self.staging:
-            self.syn.store(synapseclient.File(
-                "notfoundsamples.csv", parent=self._SP_REDCAP_EXPORTS_SYNID))
-        return(finalClinical, clinicaldf)
+            self.syn.store(
+                synapseclient.File(
+                    "notfoundsamples.csv", parent=self._SP_REDCAP_EXPORTS_SYNID
+                )
+            )
+        return (finalClinical, clinicaldf)
 
     def reviseMetadataFiles(self):
         """
@@ -319,11 +342,12 @@ class SponsoredProjectRunner(object):
         """
         allFiles = self.syn.getChildren(self._SP_SYN_ID)
         for i in allFiles:
-            if 'meta' in i['name']:
+            if "meta" in i["name"]:
                 self.syn.get(
-                    i['id'],
+                    i["id"],
                     downloadLocation=self._SPONSORED_PROJECT,
-                    ifcollision="overwrite.local")
+                    ifcollision="overwrite.local",
+                )
 
     def run(self):
         if not os.path.exists(self._SPONSORED_PROJECT):
@@ -336,71 +360,77 @@ class SponsoredProjectRunner(object):
 
         tempIdMapping = self.syn.tableQuery(
             "select * from syn10164044 where project = '{}'".format(
-                self._SPONSORED_PROJECT))
+                self._SPONSORED_PROJECT
+            )
+        )
         tempIdMappingDf = tempIdMapping.asDataFrame()
 
         sponsoredProject_columns_ent = self.syn.get(self._UNMAPPED_SYN_ID)
-        sponsoredProject_columns_df = \
-            pd.read_csv(sponsoredProject_columns_ent.path)
+        sponsoredProject_columns_df = pd.read_csv(sponsoredProject_columns_ent.path)
 
         sponsoredProject_mapped_ent = self.syn.get(self._MAPPED_SYN_ID)
-        sponsoredProject_mapped_df = \
-            pd.read_csv(sponsoredProject_mapped_ent.path)
+        sponsoredProject_mapped_df = pd.read_csv(sponsoredProject_mapped_ent.path)
         wantedCols = [
-            i for i in sponsoredProject_mapped_df.columns
-            if not i.startswith("Unnamed:")]
+            i
+            for i in sponsoredProject_mapped_df.columns
+            if not i.startswith("Unnamed:")
+        ]
         sponsoredProject_mapped_df = sponsoredProject_mapped_df[wantedCols]
 
-        sponsoredProject_mapped_df.columns = \
-            sponsoredProject_columns_df.columns
-        sponsoredProject_mapped_df[''] = ''
+        sponsoredProject_mapped_df.columns = sponsoredProject_columns_df.columns
+        sponsoredProject_mapped_df[""] = ""
 
-        hop = sponsoredProject_mapped_df['redcap_data_access_group'] == "hop"
-        sponsoredProject_mapped_df['redcap_data_access_group'][hop] = "JHU"
-        sponsoredProject_mapped_df['redcap_data_access_group'] = \
-            sponsoredProject_mapped_df['redcap_data_access_group'].apply(
-                lambda x: x.upper())
+        hop = sponsoredProject_mapped_df["redcap_data_access_group"] == "hop"
+        sponsoredProject_mapped_df["redcap_data_access_group"][hop] = "JHU"
+        sponsoredProject_mapped_df[
+            "redcap_data_access_group"
+        ] = sponsoredProject_mapped_df["redcap_data_access_group"].apply(
+            lambda x: x.upper()
+        )
 
-        sponsoredProject_mapped_df, temporaryIds = \
-            self.createNullPatients(sponsoredProject_mapped_df,
-                                    tempIdMappingDf)
+        sponsoredProject_mapped_df, temporaryIds = self.createNullPatients(
+            sponsoredProject_mapped_df, tempIdMappingDf
+        )
         # Timeline must be days so the conversion to months is done after
-        timelineDf, removeCols = \
-            self.makeTimeLineDf(sponsoredProject_mapped_df, therapyRange=26)
+        timelineDf, removeCols = self.makeTimeLineDf(
+            sponsoredProject_mapped_df, therapyRange=26
+        )
         final_timeline = configureTimeLineDf(timelineDf)
 
         removeCols = pd.Series(list(set(removeCols)))
-        removeCols = removeCols[removeCols != '']
+        removeCols = removeCols[removeCols != ""]
 
-        sponsoredProject_mapped_df = \
-            self.addOSMonths(sponsoredProject_mapped_df)
+        sponsoredProject_mapped_df = self.addOSMonths(sponsoredProject_mapped_df)
         # The conversion is done after
-        sponsoredProject_mapped_df[self._DATES] = \
-            sponsoredProject_mapped_df[self._DATES].applymap(changeToDate)
-        sponsoredProject_mapped_df['SEQ_ASSAY_ID'] = ""
+        sponsoredProject_mapped_df[self._DATES] = sponsoredProject_mapped_df[
+            self._DATES
+        ].applymap(changeToDate)
+        sponsoredProject_mapped_df["SEQ_ASSAY_ID"] = ""
 
         # Pull down sponsoredProject REDCap to cbio mapping
         mapping_table = self.syn.tableQuery(
-            'SELECT * FROM %s' % self._REDCAP_TO_CBIOMAPPING_SYNID)
+            "SELECT * FROM %s" % self._REDCAP_TO_CBIOMAPPING_SYNID
+        )
         mapping = mapping_table.asDataFrame()
-        mapping = mapping[~mapping['code'].isin(removeCols)]
+        mapping = mapping[~mapping["code"].isin(removeCols)]
         # Set all NULL column types to STRING
         # Set all description to label
-        mapping['colType'][mapping['colType'].isnull()] = "STRING"
-        mapping['description'][mapping['description'].isnull()] = \
-            mapping['labels'][mapping['description'].isnull()]
-        patientCols = \
-            mapping['cbio'][mapping['sampleType'] == "PATIENT"].tolist()
-        sampleCols = \
-            mapping['cbio'][mapping['sampleType'] == "SAMPLE"].tolist()
+        mapping["colType"][mapping["colType"].isnull()] = "STRING"
+        mapping["description"][mapping["description"].isnull()] = mapping["labels"][
+            mapping["description"].isnull()
+        ]
+        patientCols = mapping["cbio"][mapping["sampleType"] == "PATIENT"].tolist()
+        sampleCols = mapping["cbio"][mapping["sampleType"] == "SAMPLE"].tolist()
         sampleCols.append("PATIENT_ID")
 
         finalClinical, clinicaldf = self.createClinicalFile(
-            sponsoredProject_mapped_df, removeCols, mapping)
+            sponsoredProject_mapped_df, removeCols, mapping
+        )
         forSpecialTable = finalClinical.copy()
 
-        getTimelineSpecimen = finalClinical[finalClinical[
-            'SAMPLE_ID'].isin(clinicaldf['SAMPLE_ID'])]
+        getTimelineSpecimen = finalClinical[
+            finalClinical["SAMPLE_ID"].isin(clinicaldf["SAMPLE_ID"])
+        ]
         # This patient file df copy has to be done here, because we want to
         # keep ALL the patients
         patientFileDf = finalClinical.copy()
@@ -409,164 +439,195 @@ class SponsoredProjectRunner(object):
         specimen = self.getSpecimen(getTimelineSpecimen)
 
         if finalClinical.get("RECORD_ID") is not None:
-            del finalClinical['RECORD_ID']
+            del finalClinical["RECORD_ID"]
 
-        temp = self.syn.tableQuery('SELECT * FROM syn10164044')
+        temp = self.syn.tableQuery("SELECT * FROM syn10164044")
         temp_df = temp.asDataFrame()
 
         # make table showing status of genetic data
         # if not temporaryIds.empty:
         hasSeqDataMapping = pd.DataFrame()
-        hasSeqDataMapping['uniqueId'] = \
-            forSpecialTable['PATIENT_ID'] + forSpecialTable['CENTER']
-        hasSeqDataMapping['sampleId'] = forSpecialTable['SAMPLE_ID']
-        hasSeqDataMapping['patientId'] = forSpecialTable['PATIENT_ID']
+        hasSeqDataMapping["uniqueId"] = (
+            forSpecialTable["PATIENT_ID"] + forSpecialTable["CENTER"]
+        )
+        hasSeqDataMapping["sampleId"] = forSpecialTable["SAMPLE_ID"]
+        hasSeqDataMapping["patientId"] = forSpecialTable["PATIENT_ID"]
         if not temporaryIds.empty:
-            hasSeqDataMapping['isTemporary'] = [
-                i in temporaryIds.tolist()
-                for i in hasSeqDataMapping['patientId']]
+            hasSeqDataMapping["isTemporary"] = [
+                i in temporaryIds.tolist() for i in hasSeqDataMapping["patientId"]
+            ]
         else:
-            hasSeqDataMapping['isTemporary'] = False
+            hasSeqDataMapping["isTemporary"] = False
 
-        hasSeqDataMapping['hasSeqData'] = hasSeqDataMapping[
-            'sampleId'].isin(clinicaldf['SAMPLE_ID'])
+        hasSeqDataMapping["hasSeqData"] = hasSeqDataMapping["sampleId"].isin(
+            clinicaldf["SAMPLE_ID"]
+        )
 
-        hasSeqDataMapping['project'] = self._SPONSORED_PROJECT
-        hasSeqDataMapping.drop_duplicates(
-            ["patientId", "sampleId"], inplace=True)
+        hasSeqDataMapping["project"] = self._SPONSORED_PROJECT
+        hasSeqDataMapping.drop_duplicates(["patientId", "sampleId"], inplace=True)
         process_functions.updateDatabase(
-            self.syn, temp_df,
-            hasSeqDataMapping, "syn10164044",
-            ['uniqueId', 'patientId', 'sampleId', 'project'])
+            self.syn,
+            temp_df,
+            hasSeqDataMapping,
+            "syn10164044",
+            ["uniqueId", "patientId", "sampleId", "project"],
+        )
 
         # WRITE OUT TIMELINE FILE HERE. NEED THE MUTATION FILTER
         final_timeline = final_timeline[
-            final_timeline['PATIENT_ID'].isin(finalClinical['PATIENT_ID'])]
+            final_timeline["PATIENT_ID"].isin(finalClinical["PATIENT_ID"])
+        ]
         colOrder = final_timeline.columns.tolist()
         colOrder.extend(["SAMPLE_ID", "SAMPLE_NOTES"])
         final_timeline = final_timeline.append(specimen)
         final_timeline = final_timeline[colOrder]
         timelineText = final_timeline.to_csv(index=False, sep="\t")
         timelineText = replace0(timelineText)
-        with open("%s/data_timeline.txt" % self._SPONSORED_PROJECT,
-                  'w') as timelineFile:
+        with open(
+            "%s/data_timeline.txt" % self._SPONSORED_PROJECT, "w"
+        ) as timelineFile:
             timelineFile.write(timelineText)
         fileEnt = File(
-            "%s/data_timeline.txt" % self._SPONSORED_PROJECT,
-            parent=self._SP_SYN_ID)
+            "%s/data_timeline.txt" % self._SPONSORED_PROJECT, parent=self._SP_SYN_ID
+        )
         if not self.staging:
             self.syn.store(
-                fileEnt, used=sponsoredProject_mapped_ent.id,
-                executed="https://github.com/Sage-Bionetworks/Genie_processing/blob/master/scripts/sponsoredProject_redcap_export_mapping.py")
+                fileEnt,
+                used=sponsoredProject_mapped_ent.id,
+                executed="https://github.com/Sage-Bionetworks/Genie_processing/blob/master/scripts/sponsoredProject_redcap_export_mapping.py",
+            )
 
         # Get patient and sample data descriptions
         patientLabels = [
-            str(mapping['labels'][mapping['cbio'] == i].values[0])
-            for i in patientCols]
+            str(mapping["labels"][mapping["cbio"] == i].values[0]) for i in patientCols
+        ]
         sampleLabels = [
-            str(mapping['labels'][mapping['cbio'] == i].values[0])
-            for i in sampleCols]
+            str(mapping["labels"][mapping["cbio"] == i].values[0]) for i in sampleCols
+        ]
         patientDesc = [
-            str(mapping['description'][mapping['cbio'] == i].values[0])
-            for i in patientCols]
+            str(mapping["description"][mapping["cbio"] == i].values[0])
+            for i in patientCols
+        ]
         sampleDesc = [
-            str(mapping['description'][mapping['cbio'] == i].values[0])
-            for i in sampleCols]
+            str(mapping["description"][mapping["cbio"] == i].values[0])
+            for i in sampleCols
+        ]
         patientType = [
-            str(mapping['colType'][mapping['cbio'] == i].values[0])
-            for i in patientCols]
+            str(mapping["colType"][mapping["cbio"] == i].values[0]) for i in patientCols
+        ]
         sampleType = [
-            str(mapping['colType'][mapping['cbio'] == i].values[0])
-            for i in sampleCols]
+            str(mapping["colType"][mapping["cbio"] == i].values[0]) for i in sampleCols
+        ]
 
         patientCols.extend(["OS_STATUS"])
         patientLabels.extend(["Overall Survival Status"])
         patientDesc.extend(["Overall patient survival status."])
         patientType.extend(["STRING"])
 
-        with open("%s/data_clinical_patient.txt" % self._SPONSORED_PROJECT,
-                  "w+") as patientFile:
+        with open(
+            "%s/data_clinical_patient.txt" % self._SPONSORED_PROJECT, "w+"
+        ) as patientFile:
             patientFile.write("#%s\n" % "\t".join(patientLabels))
             patientFile.write("#%s\n" % "\t".join(patientDesc))
             patientFile.write("#%s\n" % "\t".join(patientType))
-            patientFile.write("#%s\n" % "\t".join(['1']*len(patientLabels)))
+            patientFile.write("#%s\n" % "\t".join(["1"] * len(patientLabels)))
             patientFile.write(
-                replace0(patientFileDf[patientCols].drop_duplicates(
-                    'PATIENT_ID').to_csv(index=False, sep="\t")))
+                replace0(
+                    patientFileDf[patientCols]
+                    .drop_duplicates("PATIENT_ID")
+                    .to_csv(index=False, sep="\t")
+                )
+            )
 
         # Create sampleIds
         finalClinical = finalClinical[
-            finalClinical['SAMPLE_ID'].isin(clinicaldf['SAMPLE_ID'])]
-        finalClinical['ONCOTREE_CODE'] = [
+            finalClinical["SAMPLE_ID"].isin(clinicaldf["SAMPLE_ID"])
+        ]
+        finalClinical["ONCOTREE_CODE"] = [
             re.sub(".+\((.+)\)", "\\1", i) if not pd.isnull(i) else i
-            for i in finalClinical['ONCOTREE_CODE']]
+            for i in finalClinical["ONCOTREE_CODE"]
+        ]
 
-        finalClinical['SEQ_ASSAY_ID'] = [
-            clinicaldf['SEQ_ASSAY_ID'][clinicaldf['SAMPLE_ID'] == sample].values[0]
-            if sum(clinicaldf['SAMPLE_ID'] == sample) > 0 else float('nan')
-            for sample in finalClinical['SAMPLE_ID']]
+        finalClinical["SEQ_ASSAY_ID"] = [
+            clinicaldf["SEQ_ASSAY_ID"][clinicaldf["SAMPLE_ID"] == sample].values[0]
+            if sum(clinicaldf["SAMPLE_ID"] == sample) > 0
+            else float("nan")
+            for sample in finalClinical["SAMPLE_ID"]
+        ]
 
         samples = finalClinical[sampleCols].drop_duplicates()
 
-        with open("%s/data_clinical_sample.txt" % self._SPONSORED_PROJECT,
-                  "w+") as sampleFile:
+        with open(
+            "%s/data_clinical_sample.txt" % self._SPONSORED_PROJECT, "w+"
+        ) as sampleFile:
             sampleFile.write("#%s\n" % "\t".join(sampleLabels))
             sampleFile.write("#%s\n" % "\t".join(sampleDesc))
             sampleFile.write("#%s\n" % "\t".join(sampleType))
-            sampleFile.write("#%s\n" % "\t".join(['1']*len(sampleLabels)))
+            sampleFile.write("#%s\n" % "\t".join(["1"] * len(sampleLabels)))
             sampleFile.write(replace0(samples.to_csv(index=False, sep="\t")))
 
         oncotreeLink = self.syn.get("syn13890902").externalURL
         # Use the old oncotree link for now
-        oncotreeLink = 'http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2017_06_21'
-        oncotreeDict = \
-            process_functions.get_oncotree_code_mappings(oncotreeLink)
-        finalClinical['CANCER_TYPE'] = [
-            oncotreeDict[code.upper()].get("CANCER_TYPE", float('nan'))
-            for code in finalClinical['ONCOTREE_CODE']]
-        finalClinical['CANCER_TYPE_DETAILED'] = [
-            oncotreeDict[code.upper()].get("CANCER_TYPE_DETAILED",
-                                           float('nan'))
-            for code in finalClinical['ONCOTREE_CODE']]
-        finalClinical['ONCOTREE_PRIMARY_NODE'] = [
-            oncotreeDict[code.upper()].get("ONCOTREE_PRIMARY_NODE",
-                                           float('nan'))
-            for code in finalClinical['ONCOTREE_CODE']]
-        finalClinical['ONCOTREE_SECONDARY_NODE'] = [
-            oncotreeDict[code.upper()].get("ONCOTREE_SECONDARY_NODE",
-                                           float('nan'))
-            for code in finalClinical['ONCOTREE_CODE']]
+        oncotreeLink = (
+            "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2017_06_21"
+        )
+        oncotreeDict = process_functions.get_oncotree_code_mappings(oncotreeLink)
+        finalClinical["CANCER_TYPE"] = [
+            oncotreeDict[code.upper()].get("CANCER_TYPE", float("nan"))
+            for code in finalClinical["ONCOTREE_CODE"]
+        ]
+        finalClinical["CANCER_TYPE_DETAILED"] = [
+            oncotreeDict[code.upper()].get("CANCER_TYPE_DETAILED", float("nan"))
+            for code in finalClinical["ONCOTREE_CODE"]
+        ]
+        finalClinical["ONCOTREE_PRIMARY_NODE"] = [
+            oncotreeDict[code.upper()].get("ONCOTREE_PRIMARY_NODE", float("nan"))
+            for code in finalClinical["ONCOTREE_CODE"]
+        ]
+        finalClinical["ONCOTREE_SECONDARY_NODE"] = [
+            oncotreeDict[code.upper()].get("ONCOTREE_SECONDARY_NODE", float("nan"))
+            for code in finalClinical["ONCOTREE_CODE"]
+        ]
         finalClinical.to_csv(
-            "%s/data_clinical.txt" % self._SPONSORED_PROJECT, index=False,
-            sep="\t")
+            "%s/data_clinical.txt" % self._SPONSORED_PROJECT, index=False, sep="\t"
+        )
 
         fileEnt = File(
             "%s/data_clinical_patient.txt" % self._SPONSORED_PROJECT,
-            parent=self._SP_SYN_ID)
+            parent=self._SP_SYN_ID,
+        )
         if not self.staging:
             patient_ent = self.syn.store(
-                fileEnt, used=sponsoredProject_mapped_ent.id,
-                executed=GENIE_PROCESSING_URL)
+                fileEnt,
+                used=sponsoredProject_mapped_ent.id,
+                executed=GENIE_PROCESSING_URL,
+            )
 
         fileEnt = File(
             "%s/data_clinical_sample.txt" % self._SPONSORED_PROJECT,
-            parent=self._SP_SYN_ID)
+            parent=self._SP_SYN_ID,
+        )
         if not self.staging:
             sample_ent = self.syn.store(
-                fileEnt, used=sponsoredProject_mapped_ent.id,
-                executed=GENIE_PROCESSING_URL)
+                fileEnt,
+                used=sponsoredProject_mapped_ent.id,
+                executed=GENIE_PROCESSING_URL,
+            )
 
-        databaseToSynIdMapping = \
-            self.syn.tableQuery('SELECT * FROM syn10967259')
+        databaseToSynIdMapping = self.syn.tableQuery("SELECT * FROM syn10967259")
         databaseToSynIdMappingDf = databaseToSynIdMapping.asDataFrame()
-        mafSPSynId = databaseToSynIdMappingDf[
-            'Id'][databaseToSynIdMappingDf['Database'] == "mafSP"][0]
+        mafSPSynId = databaseToSynIdMappingDf["Id"][
+            databaseToSynIdMappingDf["Database"] == "mafSP"
+        ][0]
 
-        centerMafFileViewSynId = databaseToSynIdMappingDf[
-            'Id'][databaseToSynIdMappingDf['Database'] == "centerMafView"][0]
+        centerMafFileViewSynId = databaseToSynIdMappingDf["Id"][
+            databaseToSynIdMappingDf["Database"] == "centerMafView"
+        ][0]
         centerMafSynIds = self.syn.tableQuery(
             "select id from {} where name like '%mutation%'".format(
-                centerMafFileViewSynId))
+                centerMafFileViewSynId
+            )
+        )
         centerMafSynIdsDf = centerMafSynIds.asDataFrame()
         # This value must be set outside here because the first maf file might
         # Not be part of the centers
@@ -576,61 +637,68 @@ class SponsoredProjectRunner(object):
             mafEnt = self.syn.get(mafSynId)
             print(mafEnt.path)
             mafcenter = mafEnt.path.split("_")[3]
-            if mafcenter in finalClinical['CENTER'].tolist():
+            if mafcenter in finalClinical["CENTER"].tolist():
                 print("running")
                 with open(mafEnt.path, "r") as mafFile:
                     header = mafFile.readline()
                     headers = header.replace("\n", "").split("\t")
                     if index == 0:
-                        with open(mafpath, 'w') as f:
+                        with open(mafpath, "w") as f:
                             f.write(header)
                     index += 1
                     for row in mafFile:
                         rowArray = row.replace("\n", "").split("\t")
-                        center = rowArray[headers.index('Center')]
+                        center = rowArray[headers.index("Center")]
                         newMergedRow = configureMafRow(
-                            rowArray, headers, finalClinical['SAMPLE_ID'])
+                            rowArray, headers, finalClinical["SAMPLE_ID"]
+                        )
                         if newMergedRow is not None:
-                            with open(mafpath, 'a') as f:
+                            with open(mafpath, "a") as f:
                                 f.write(newMergedRow)
 
-        mutations_nonGENIEdb = \
-            self.syn.tableQuery('SELECT * FROM %s' % mafSPSynId)
+        mutations_nonGENIEdb = self.syn.tableQuery("SELECT * FROM %s" % mafSPSynId)
         mutations_nonGENIEdbdf = mutations_nonGENIEdb.asDataFrame()
         # ##SUBSETTING GENOMIC DATA
-        fillna_cols = [
-            'n_alt_count', 't_alt_count', 't_ref_count',
-            'n_ref_count']
-        mutations_nonGENIEdbdf[fillna_cols] = \
-            mutations_nonGENIEdbdf[fillna_cols].fillna('')
-        mutations_nonGENIEdbdf[fillna_cols] = \
-            mutations_nonGENIEdbdf[fillna_cols].applymap(str)
-        mutations_nonGENIEdbdf[fillna_cols] = \
-            mutations_nonGENIEdbdf[fillna_cols].applymap(replacePeriod)
-        mutations_nonGENIEdbdf['Validation_Status'] = ''
+        fillna_cols = ["n_alt_count", "t_alt_count", "t_ref_count", "n_ref_count"]
+        mutations_nonGENIEdbdf[fillna_cols] = mutations_nonGENIEdbdf[
+            fillna_cols
+        ].fillna("")
+        mutations_nonGENIEdbdf[fillna_cols] = mutations_nonGENIEdbdf[
+            fillna_cols
+        ].applymap(str)
+        mutations_nonGENIEdbdf[fillna_cols] = mutations_nonGENIEdbdf[
+            fillna_cols
+        ].applymap(replacePeriod)
+        mutations_nonGENIEdbdf["Validation_Status"] = ""
         # The "temp" is to specify the 'self'
         mutations_nonGENIEdbdf = process_mutation.format_maf(
             mutations_nonGENIEdbdf, "temp"
         )
-        sp_maf_path = "{}/data_mutations_extended.txt".format(
-            self._SPONSORED_PROJECT)
-        with open(sp_maf_path, 'a') as mutFile:
+        sp_maf_path = "{}/data_mutations_extended.txt".format(self._SPONSORED_PROJECT)
+        with open(sp_maf_path, "a") as mutFile:
             subset_mut = mutations_nonGENIEdbdf.Tumor_Sample_Barcode.isin(
-                finalClinical['SAMPLE_ID'])
+                finalClinical["SAMPLE_ID"]
+            )
             mutText = mutations_nonGENIEdbdf[subset_mut].to_csv(
-                sep="\t", index=False, header=None)
+                sep="\t", index=False, header=None
+            )
             mutText = replace0(mutText)
             mutFile.write(mutText)
         fileEnt = File(sp_maf_path, parent=self._SP_SYN_ID)
         if not self.staging:
-            self.syn.store(fileEnt, used=centerMafSynIdsDf.id.tolist(),
-                           executed=GENIE_PROCESSING_URL)
+            self.syn.store(
+                fileEnt,
+                used=centerMafSynIdsDf.id.tolist(),
+                executed=GENIE_PROCESSING_URL,
+            )
 
         CNA_PATH = "%s/data_CNA.txt" % self._SPONSORED_PROJECT
         CNA_CENTER_PATH = self._SPONSORED_PROJECT + "/data_CNA_%s.txt"
         centerCNASynIds = self.syn.tableQuery(
             "select id from {} where name like 'data_CNA%'".format(
-                centerMafFileViewSynId))
+                centerMafFileViewSynId
+            )
+        )
         centerCNASynIdsDf = centerCNASynIds.asDataFrame()
         # Grab all unique symbols and form cnaTemplate
         allSymbols = set()
@@ -642,14 +710,16 @@ class SponsoredProjectRunner(object):
                 samples = cnaFile.readline()
                 # Get all hugo symbols
                 allSymbols = allSymbols.union(
-                    set(line.split("\t")[0] for line in cnaFile))
+                    set(line.split("\t")[0] for line in cnaFile)
+                )
         cnaTemplate = pd.DataFrame({"Hugo_Symbol": list(allSymbols)})
         cnaTemplate.sort_values("Hugo_Symbol", inplace=True)
         cnaTemplate.to_csv(CNA_PATH, sep="\t", index=False)
 
         withMergedHugoSymbol = pd.Series("Hugo_Symbol")
-        withMergedHugoSymbol = \
-            withMergedHugoSymbol.append(pd.Series(finalClinical['SAMPLE_ID']))
+        withMergedHugoSymbol = withMergedHugoSymbol.append(
+            pd.Series(finalClinical["SAMPLE_ID"])
+        )
 
         cnaSamples = []
 
@@ -659,19 +729,18 @@ class SponsoredProjectRunner(object):
             print(cnaEnt.path)
             # if center in CENTER_MAPPING_DF.center.tolist():
             centerCNA = pd.read_csv(cnaEnt.path, sep="\t")
-            merged = cnaTemplate.merge(
-                centerCNA, on="Hugo_Symbol", how="outer")
+            merged = cnaTemplate.merge(centerCNA, on="Hugo_Symbol", how="outer")
             merged.sort_values("Hugo_Symbol", inplace=True)
 
             # This is to remove more samples for the final cna file
-            merged = merged[merged.columns[
-                merged.columns.isin(withMergedHugoSymbol)]]
+            merged = merged[merged.columns[merged.columns.isin(withMergedHugoSymbol)]]
 
             cnaText = removePandasDfFloat(merged)
-            cnaText = cnaText.replace(
-                "\t\t", "\tNA\t").replace(
-                "\t\t", "\tNA\t").replace(
-                '\t\n', "\tNA\n")
+            cnaText = (
+                cnaText.replace("\t\t", "\tNA\t")
+                .replace("\t\t", "\tNA\t")
+                .replace("\t\n", "\tNA\n")
+            )
 
             with open(CNA_CENTER_PATH % center, "w") as cnaFile:
                 cnaFile.write(cnaText)
@@ -686,66 +755,78 @@ class SponsoredProjectRunner(object):
         fileEnt = File(CNA_PATH, parent=self._SP_SYN_ID)
         if not self.staging:
             self.syn.store(
-                fileEnt, used=centerCNASynIdsDf.id.tolist(),
-                executed=GENIE_PROCESSING_URL)
+                fileEnt,
+                used=centerCNASynIdsDf.id.tolist(),
+                executed=GENIE_PROCESSING_URL,
+            )
 
-        self.createGeneMatrixDf(
-            finalClinical, cnaSamples, sponsoredProject_mapped_ent)
+        self.createGeneMatrixDf(finalClinical, cnaSamples, sponsoredProject_mapped_ent)
 
         fusion = self.syn.tableQuery(
             "SELECT * FROM syn7893268 where "
             "TUMOR_SAMPLE_BARCODE in ('{}')".format(
-                "','".join(finalClinical['SAMPLE_ID'])))
+                "','".join(finalClinical["SAMPLE_ID"])
+            )
+        )
         fusions_df = fusion.asDataFrame()
 
         if not fusions_df.empty:
-            fusions_df = fusions_df.rename(columns={
-                'HUGO_SYMBOL': 'Hugo_Symbol',
-                'ENTREZ_GENE_ID': 'Entrez_Gene_Id',
-                'CENTER': 'Center',
-                'TUMOR_SAMPLE_BARCODE': 'Tumor_Sample_Barcode',
-                'FUSION': 'Fusion',
-                'DNA_SUPPORT': 'DNA_support',
-                'RNA_SUPPORT': 'RNA_support',
-                'METHOD': 'Method',
-                'FRAME': 'Frame',
-                'COMMENTS': 'Comments'})
-            fusions_df.Entrez_Gene_Id[
-                fusions_df.Entrez_Gene_Id == 0] = pd.np.nan
+            fusions_df = fusions_df.rename(
+                columns={
+                    "HUGO_SYMBOL": "Hugo_Symbol",
+                    "ENTREZ_GENE_ID": "Entrez_Gene_Id",
+                    "CENTER": "Center",
+                    "TUMOR_SAMPLE_BARCODE": "Tumor_Sample_Barcode",
+                    "FUSION": "Fusion",
+                    "DNA_SUPPORT": "DNA_support",
+                    "RNA_SUPPORT": "RNA_support",
+                    "METHOD": "Method",
+                    "FRAME": "Frame",
+                    "COMMENTS": "Comments",
+                }
+            )
+            fusions_df.Entrez_Gene_Id[fusions_df.Entrez_Gene_Id == 0] = pd.np.nan
             fusionText = fusions_df.to_csv(sep="\t", index=False)
             fusionText = replace0(fusionText)
-            with open("%s/data_fusions.txt" % self._SPONSORED_PROJECT, "w") as fusionFile:
+            with open(
+                "%s/data_fusions.txt" % self._SPONSORED_PROJECT, "w"
+            ) as fusionFile:
                 fusionFile.write(fusionText)
-            fileEnt = File("%s/data_fusions.txt" % self._SPONSORED_PROJECT,
-                           parent=self._SP_SYN_ID)
+            fileEnt = File(
+                "%s/data_fusions.txt" % self._SPONSORED_PROJECT, parent=self._SP_SYN_ID
+            )
             if not self.staging:
                 self.syn.store(
-                    fileEnt,
-                    used="syn7893268",
-                    executed=GENIE_PROCESSING_URL)
+                    fileEnt, used="syn7893268", executed=GENIE_PROCESSING_URL
+                )
 
         seg = self.syn.tableQuery(
             "SELECT ID, CHROM, LOCSTART, LOCEND, NUMMARK, SEGMEAN FROM "
             "syn7893341 where ID in ('{}')".format(
-                "','".join(finalClinical['SAMPLE_ID'])))
+                "','".join(finalClinical["SAMPLE_ID"])
+            )
+        )
         seg_df = seg.asDataFrame()
         if not seg_df.empty:
-            seg_df.rename(columns={
-                "CHROM": "chrom",
-                "LOCSTART": "loc.start",
-                "LOCEND": "loc.end",
-                "NUMMARK": "num.mark",
-                "SEGMEAN": "seg.mean"}, inplace=True)
+            seg_df.rename(
+                columns={
+                    "CHROM": "chrom",
+                    "LOCSTART": "loc.start",
+                    "LOCEND": "loc.end",
+                    "NUMMARK": "num.mark",
+                    "SEGMEAN": "seg.mean",
+                },
+                inplace=True,
+            )
             segText = replace0(seg_df.to_csv(sep="\t", index=False))
             segpath = "{}/genie_{}_data_cna_hg19.seg".format(
-                self._SPONSORED_PROJECT, self._SPONSORED_PROJECT.lower())
-            with open(segpath, 'w') as segFile:
+                self._SPONSORED_PROJECT, self._SPONSORED_PROJECT.lower()
+            )
+            with open(segpath, "w") as segFile:
                 segFile.write(segText)
             fileEnt = File(segpath, parent=self._SP_SYN_ID)
             if not self.staging:
-                self.syn.store(
-                    fileEnt, used=seg.tableId,
-                    executed=GENIE_PROCESSING_URL)
+                self.syn.store(fileEnt, used=seg.tableId, executed=GENIE_PROCESSING_URL)
 
         # Create case lists
         if not os.path.exists(self._CASE_LIST_PATH):
@@ -761,7 +842,8 @@ class SponsoredProjectRunner(object):
             "%s/data_clinical.txt" % self._SPONSORED_PROJECT,
             "%s/data_gene_matrix.txt" % self._SPONSORED_PROJECT,
             self._CASE_LIST_PATH,
-            "genie_{}".format(self._SPONSORED_PROJECT.lower()))
+            "genie_{}".format(self._SPONSORED_PROJECT.lower()),
+        )
 
         caseListFiles = os.listdir(self._CASE_LIST_PATH)
         for casePath in caseListFiles:
@@ -769,53 +851,64 @@ class SponsoredProjectRunner(object):
             fileEnt = File(casePath, parent=self._CASE_LIST_SYN_ID)
             if not self.staging:
                 self.syn.store(
-                    fileEnt, used=[sample_ent.id, patient_ent.id],
-                    executed=GENIE_PROCESSING_URL)
+                    fileEnt,
+                    used=[sample_ent.id, patient_ent.id],
+                    executed=GENIE_PROCESSING_URL,
+                )
 
-        seq_assays = "','".join(set(finalClinical['SEQ_ASSAY_ID']))
-        bed = self.syn.tableQuery("SELECT Hugo_Symbol, SEQ_ASSAY_ID FROM syn8457748 where "
-                                  "SEQ_ASSAY_ID in ('{}') and "
-                                  "Feature_Type = 'exon' and "
-                                  "Hugo_Symbol is not null and "
-                                  "includeInPanel is true".format(seq_assays))
+        seq_assays = "','".join(set(finalClinical["SEQ_ASSAY_ID"]))
+        bed = self.syn.tableQuery(
+            "SELECT Hugo_Symbol, SEQ_ASSAY_ID FROM syn8457748 where "
+            "SEQ_ASSAY_ID in ('{}') and "
+            "Feature_Type = 'exon' and "
+            "Hugo_Symbol is not null and "
+            "includeInPanel is true".format(seq_assays)
+        )
         beddf = bed.asDataFrame()
-        bed = self.syn.tableQuery("SELECT Hugo_Symbol, SEQ_ASSAY_ID FROM syn11516678 where "
-                                  "SEQ_ASSAY_ID in ('{}') and "
-                                  "Feature_Type = 'exon' and "
-                                  "Hugo_Symbol is not null and "
-                                  "includeInPanel is true".format(seq_assays))
+        bed = self.syn.tableQuery(
+            "SELECT Hugo_Symbol, SEQ_ASSAY_ID FROM syn11516678 where "
+            "SEQ_ASSAY_ID in ('{}') and "
+            "Feature_Type = 'exon' and "
+            "Hugo_Symbol is not null and "
+            "includeInPanel is true".format(seq_assays)
+        )
         non_genie_beddf = bed.asDataFrame()
         beddf = beddf.append(non_genie_beddf)
-        seq_assay_groups = beddf.groupby('SEQ_ASSAY_ID')
+        seq_assay_groups = beddf.groupby("SEQ_ASSAY_ID")
         for seq_assay_id, seqdf in seq_assay_groups:
             unique_genes = seqdf.Hugo_Symbol.unique()
-            gene_panel_text = ("stable_id: {seq_assay_id}\n"
-                               "description: {seq_assay_id}, "
-                               "Number of Genes - {num_genes}\n"
-                               "gene_list:\t{genelist}".format(
-                                   seq_assay_id=seq_assay_id,
-                                   num_genes=len(unique_genes),
-                                   genelist="\t".join(unique_genes)))
+            gene_panel_text = (
+                "stable_id: {seq_assay_id}\n"
+                "description: {seq_assay_id}, "
+                "Number of Genes - {num_genes}\n"
+                "gene_list:\t{genelist}".format(
+                    seq_assay_id=seq_assay_id,
+                    num_genes=len(unique_genes),
+                    genelist="\t".join(unique_genes),
+                )
+            )
             gene_panel_name = "data_gene_panel_" + seq_assay_id + ".txt"
-            gene_panel_path = os.path.join(self._SPONSORED_PROJECT,
-                                           gene_panel_name)
+            gene_panel_path = os.path.join(self._SPONSORED_PROJECT, gene_panel_name)
             with open(gene_panel_path, "w+") as f:
                 f.write(gene_panel_text)
             fileEnt = File(gene_panel_path, parent=self._SP_SYN_ID)
             if not self.staging:
-                self.syn.store(
-                    fileEnt,
-                    executed=GENIE_PROCESSING_URL)
+                self.syn.store(fileEnt, executed=GENIE_PROCESSING_URL)
 
         # Make sure to re download all the metadata files again
         self.reviseMetadataFiles()
-        cmd = [os.path.join(self.cbioPath,
-                            "core/src/main/scripts/importer/validateData.py"),
-               "-s", self._SPONSORED_PROJECT, "-n"]
+        cmd = [
+            os.path.join(
+                self.cbioPath, "core/src/main/scripts/importer/validateData.py"
+            ),
+            "-s",
+            self._SPONSORED_PROJECT,
+            "-n",
+        ]
         subprocess.call(cmd)
 
         if self.export:
             # AKT1 only
             files = self.syn.getChildren("syn8363325")
             for i in files:
-                synu.copy(self.syn, i['id'], "syn8475908", updateExisting=True)
+                synu.copy(self.syn, i["id"], "syn8475908", updateExisting=True)
