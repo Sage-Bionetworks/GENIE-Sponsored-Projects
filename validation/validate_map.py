@@ -6,17 +6,17 @@ Date: 2022-01-27
 
 import argparse
 import logging
-import pandas as pd
-import yaml
-import logging
 import re
 
+import pandas as pd
 import synapseclient
 from synapseclient import Synapse
 from synapseclient.core.exceptions import (
     SynapseAuthenticationError,
     SynapseNoCredentialsError,
 )
+import yaml
+
 
 def _check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
   """Check for any code that is empty.
