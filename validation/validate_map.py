@@ -75,7 +75,7 @@ def _check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> lis
     return absent
 
 
-def _format_result(codes: list, config: dict, check_no: int):
+def _format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
     Args:
         df: dataframe representing map
@@ -90,6 +90,14 @@ def _format_result(codes: list, config: dict, check_no: int):
     formatted["description"] = config["check"][check_no]["description"]
     formatted["action"] = config["check"][check_no]["request"]
     return formatted
+
+
+def _create_function_map() -> dict:
+  fxns = {
+  "_check_code_name_absent": _check_code_name_absent,
+  "_check_code_name_empty": _check_code_name_empty
+  }
+  return fxns
 
 
 def validate_map(
@@ -107,6 +115,7 @@ def validate_map(
 
     errors = pd.DataFrame()
     df = pd.DataFrame()
+    fxns = _create_function_map()
     if version == "None":
         df = pd.read_csv(syn.get(synapse_id)["path"])
     else:
@@ -120,8 +129,8 @@ def validate_map(
             config["check"][check_no]["implemented"]
             and not config["check"][check_no]["deprecated"]
         ):
-            function_name = config["check"][check_no]["function"]
-            result = eval(function_name + "(df, syn, config)")
+            fxn_name = config["check"][check_no]["function"]
+            result = fxns[fxn_name](df, syn, config)
             errors = errors.append(_format_result(result, config, check_no))
             logging.info(f"  Found {errors.shape[0]} error(s).")
         else:
@@ -161,7 +170,6 @@ def build_parser():
     parser.add_argument(
         "--log",
         "-l",
-        metavar="LEVEL",
         type=str,
         choices=["debug", "info", "warning", "error"],
         default="error",
