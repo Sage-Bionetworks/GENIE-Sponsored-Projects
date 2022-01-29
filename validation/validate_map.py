@@ -18,7 +18,7 @@ from synapseclient.core.exceptions import (
 import yaml
 
 
-def _check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
+def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
     """Check for any code that is empty.
      Args:
       df: dataframe representing map
@@ -31,7 +31,7 @@ def _check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict) -> list
     return list(empty)
 
 
-def _check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
+def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
     """Check for any code that is not code name that
     does not appear in its associated data file.
     Args:
@@ -75,7 +75,7 @@ def _check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> lis
     return absent
 
 
-def _format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
+def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
     Args:
         df: dataframe representing map
@@ -92,12 +92,12 @@ def _format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     return formatted
 
 
-def _create_function_map() -> dict:
-  fxns = {
-  "_check_code_name_absent": _check_code_name_absent,
-  "_check_code_name_empty": _check_code_name_empty
-  }
-  return fxns
+def create_function_map() -> dict:
+    fxns = {
+        "check_code_name_absent": check_code_name_absent,
+        "check_code_name_empty": check_code_name_empty,
+    }
+    return fxns
 
 
 def validate_map(
@@ -115,7 +115,7 @@ def validate_map(
 
     errors = pd.DataFrame()
     df = pd.DataFrame()
-    fxns = _create_function_map()
+    fxns = create_function_map()
     if version == "None":
         df = pd.read_csv(syn.get(synapse_id)["path"])
     else:
@@ -131,7 +131,7 @@ def validate_map(
         ):
             fxn_name = config["check"][check_no]["function"]
             result = fxns[fxn_name](df, syn, config)
-            errors = errors.append(_format_result(result, config, check_no))
+            errors = errors.append(format_result(result, config, check_no))
             logging.info(f"  Found {errors.shape[0]} error(s).")
         else:
             logging.info("  Check deprecated or not implemented.")
@@ -224,6 +224,8 @@ def main():
 
     res = validate_map(args.synapse_id, syn, config, args.version)
     res.to_csv(args.outfile, index=False)
+
+    logging.info(f"Output written to '{args.outfile}'")
 
 
 if __name__ == "__main__":

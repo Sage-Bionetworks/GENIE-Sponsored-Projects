@@ -37,13 +37,13 @@ dataset:
     file: ca_radtx_derived.csv
 check:
   1: 
-    function: _check_code_name_empty
+    function: check_code_name_empty
     implemented: 1
     deprecated: 0
     description: Code is empty.
     request: Please remove the row or fill in the code name. 
   2: 
-    function: _check_code_name_absent
+    function: check_code_name_absent
     implemented: 1
     deprecated: 0
     description: Code does not exist in associated dataset.
