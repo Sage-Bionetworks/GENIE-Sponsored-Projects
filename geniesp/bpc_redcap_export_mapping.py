@@ -356,6 +356,102 @@ def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCL
             'used': regimen_synid}
 
 
+def configure_heme(hemedf):
+    """Configure heme onc file to cBioPortal standard"""
+    heme_onc_class = ["hemonc_cytotoxic", "hemonc_immuno", "hemonc_targeted",
+                      "hemonc_endocrine"]
+    heme_onc_target = ["hemonc_EGFR", "hemonc_ALK", "hemonc_ROS1",
+                       "hemonc_MET", "hemonc_RET", "hemonc_BRAF",
+                       "hemonc_TRK", "hemonc_TKI"]
+    heme_onc_regimen = [
+        "Capecitabine monotherapy", "Gemcitabine monotherapy", "Gemcitabine and nab-Paclitaxel", "NO MATCH",
+        "Fluorouracil monotherapy", "Carboplatin and Pemetrexed",
+        "Erlotinib monotherapy", "Docetaxel monotherapy", "Nivolumab monotherapy",
+        "Carboplatin, Pemetrexed, Bevacizumab", "Pembrolizumab monotherapy",
+        "Carboplatin monotherapy", "Vinorelbine monotherapy", "Crizotinib monotherapy", "Cisplatin and Pemetrexed",
+        "Cannot be determined (>= 1 investigational drug)", "Cisplatin and Etoposide", "Carboplatin and Paclitaxel",
+        "Bevacizumab monotherapy", "Bicalutamide and Leuprolide", "Leuprolide monotherapy", "NA", "VH", "Pemetrexed monotherapy",
+        "Afatinib monotherapy", "Osimertinib monotherapy", "Cisplatin and Vinorelbine", "Cannot be determined (>= 1 other drug)",
+        "Alectinib monotherapy", "Brigatinib monotherapy", "Lorlatinib monotherapy", "Exemestane monotherapy",
+        "Anastrozole monotherapy", "FULV|Intraperitoneal 5-FU", "Carboplatin and Gemcitabine", "Tamoxifen monotherapy",
+        "Ceritinib monotherapy", "Pemetrexed and Bevacizumab", "Gefitinib monotherapy", "Atezolizumab monotherapy",
+        "FLOX|FOLFOX4|mFOLFOX6|FOLFOX2|FOLFOX 7/sLV5FU2|mFOLFOX7|Nordic FLOX|OXAFAFU|FOLFOX chronotherapy|OLF|FOLFOX",
+        "Cisplatin monotherapy", "Carboplatin, Paclitaxel, Bevacizumab", "AC-T|ddAC-T",
+        "Cisplatin and Paclitaxel", "Cisplatin and Gemcitabine", "CMF", "Letrozole monotherapy", "Gemcitabine and Paclitaxel", "Temozolomide monotherapy",
+        "Doxorubicin monotherapy", "Carboplatin and Etoposide",
+        "Carboplatin, Pemetrexed, Pembrolizumab",
+        "Cisplatin and Docetaxel", "Carboplatin and Docetaxel",
+        "Bacillus Calmette-Guerin (BCG) monotherapy",
+        "MVAC|MVAC, dose-dense", "Durvalumab monotherapy",
+        "nab-Paclitaxel monotherapy", "Carboplatin and nab-Paclitaxel",
+        "Flutamide and Leuprolide", "Imatinib monotherapy",
+        "Dabrafenib and Trametinib", "AC|ddAC", "Docetaxel and Ramucirumab",
+        "Sunitinib monotherapy", "Cisplatin, Pemetrexed, Bevacizumab",
+        "Gemcitabine and Vinorelbine", "Afatinib and Cetuximab",
+        "Cabozantinib monotherapy", "Degarelix monotherapy", "Paclitaxel and Ramucirumab",
+        "Vinorelbine and Bevacizumab", "Paclitaxel and Bevacizumab",
+        "Paclitaxel, nanoparticle albumin-bound and Bevacizumab", "Paclitaxel monotherapy",
+        "Vemurafenib monotherapy", "Dabrafenib monotherapy",
+        "Erlotinib and Bevacizumab", "Docetaxel and Vinorelbine",
+        "TC (Taxotere)", "Carboplatin, Paclitaxel, Pembrolizumab",
+        "Sorafenib monotherapy", "Ipilimumab and Nivolumab|Ipilimumab, then Nivolumab|Nivolumab, then Ipilimumab",
+        "FUOX and RT|FOLFOX 7/sLV5FU2 (L-Leucovorin)|FOLFOX4 (L-Leucovorin)|FLOX|FOLFOX4|mFOLFOX6|FOLFOX2|FOLFOX 7/sLV5FU2|mFOLFOX7|Nordic FLOX|OXAFAFU|FOLFOX chronotherapy|EOF|Fluorouracil, Oxaliplatin, RT|OLF|FOLFOX|mFOLFOX6 (L-Leucovorin)|mFOLFOX7 (L-Leucovorin)",
+        "Cetuximab monotherapy", "Docetaxel and Gemcitabine", "Gemcitabine and Trastuzumab",
+        "Mitomycin monotherapy", "Megestrol monotherapy", "Afatinib and Bevacizumab",
+        "BR", "Ipilimumab monotherapy", "Decitabine monotherapy",
+        "Carboplatin and Vinorelbine", "Gemcitabine and Bevacizumab",
+        "FUOX", "Capecitabine and Mitomycin", "Pomalidomide monotherapy",
+        "Daratumumab monotherapy", "Cisplatin, Gemcitabine, Necitumumab",
+        "IL-2 monotherapy", "Talimogene laherparepvec monotherapy",
+        "Dacarbazine monotherapy", "Pemetrexed and Pembrolizumab", "Carboplatin, Etoposide, Atezolizumab",
+        "Ado-trastuzumab emtansine monotherapy", "VR", "BVR", "EC|DI EC|ddEC",
+        "CISCA|CAP (Platinol)", "CapeOx and Erlotinib", "Capecitabine and Erlotinib", "Methotrexate monotherapy",
+        "Cyclophosphamide monotherapy", "DCF", "Trastuzumab monotherapy",
+        "Carboplatin, nab-Paclitaxel, Pembrolizumab"
+    ]
+    all_hemedf = pd.DataFrame()
+    for _, row in hemedf.iterrows():
+        heme_classes_list = []
+        for heme_class in heme_onc_class:
+            heme_modified = heme_class.replace("hemonc_", "").capitalize()
+            heme_classes_list.extend([heme_modified] * row[heme_class])
+        # OBTAIN HEME_ONC_TARGET map
+        # Since sometimes records can have more than one target,
+        # Keep the binary and add each heme onc column
+        target_map = {
+            ("HEME_ONC_TARGET_" + target.replace('hemonc_', "")): row[target]
+            for target in heme_onc_target
+        }
+        # target_cols = row[heme_onc_target]
+        # targets = [
+        #     target.replace("hemonc_", "")
+        #     for target in target_cols.index[target_cols == 1].tolist()
+        # ]
+        # target_str = ",".join(targets)
+        # Obtain HEME_ONC_REGIMEN
+        regimen_cols = row[heme_onc_regimen]
+        regimen = regimen_cols.index[regimen_cols == 1].tolist()
+        if regimen:
+            regimen = regimen[0]
+        else:
+            regimen = ""
+        # If a record doens't have any heme onc classes, it won't have any
+        # rows in the heme onc dataframe
+        new_heme_dict = {
+            'record_id': [row['record_id']] * len(heme_classes_list),
+            'redcap_repeat_instance': [row['redcap_repeat_instance']] * len(heme_classes_list),
+            'HEME_ONC_CLASS': heme_classes_list,
+            # 'HEME_ONC_TARGET': [target_str] * len(heme_classes_list),
+            'HEME_ONC_REGIMEN': [regimen] * len(heme_classes_list)
+        }
+        # Add target cols to heme
+        new_heme_dict.update(target_map)
+        new_hemedf = pd.DataFrame(new_heme_dict)
+        new_hemedf.drop_duplicates(inplace=True)
+        all_hemedf = all_hemedf.append(new_hemedf)
+    return all_hemedf
+
+
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
     # Sponsorted project name
@@ -543,6 +639,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     def make_timeline_treatmentdf(self, infodf, sample_type):
         """Make timeline treatment dataframe"""
         subset_infodf = infodf[infodf['sampleType'] == sample_type]
+        # Get heme info
+        heme_infodf = subset_infodf[
+            subset_infodf['data_type'] == 'heme'
+        ]
         # Exclude heme onc columns
         subset_infodf = subset_infodf[
             ~subset_infodf['data_type'].isin(['portal_value', 'heme'])
@@ -559,6 +659,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timelinedf = timelinedf[
             timelinedf['redcap_ca_index'] == "Yes"
         ]
+        # Get heme onc mapping
+        heme_synid = heme_infodf['id'].unique()[0]
+        heme_ent = self.syn.get(heme_synid)
+        used_heme_entity = f'{heme_synid}.{heme_ent.versionNumber}'
         # Flatten multiple columns values into multiple rows
         multiple_cols_idx = subset_infodf['code'].str.contains("[*]")
         final_timelinedf = pd.DataFrame()
@@ -589,6 +693,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ]
         non_multi_cols = subset_infodf[~multiple_cols_idx]['code'].tolist()
         non_multi_cols.append("record_id")
+        non_multi_cols.append("redcap_repeat_instance")
 
         # Merge final timeline
         final_timelinedf = final_timelinedf.merge(
@@ -610,6 +715,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Must add in PATIENT_ID
         mapping['record_id'] = 'PATIENT_ID'
         final_timelinedf = final_timelinedf.rename(columns=mapping)
+        hemedf = pd.read_csv(heme_ent.path)
+        hemedf = configure_heme(hemedf)
+        final_timelinedf = final_timelinedf.merge(
+            hemedf,
+            left_on=["PATIENT_ID", "redcap_repeat_instance"],
+            right_on=['record_id', 'redcap_repeat_instance'],
+            how="left"
+        )
+        final_timelinedf.drop(columns=['record_id', "redcap_repeat_instance"],
+                              inplace=True)
         # timeline file must be in this order
         cols_to_order = ['PATIENT_ID', 'START_DATE', 'STOP_DATE',
                          'EVENT_TYPE', 'TREATMENT_TYPE', 'AGENT']
@@ -619,7 +734,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         final_timelinedf = self.filter_df(final_timelinedf)
 
         return {'df': final_timelinedf[cols_to_order].drop_duplicates(),
-                'used': [used_entity]}
+                'used': [used_entity, used_heme_entity]}
 
     def filter_df(self, df):
         """Make sure samples and patients exist in the main genie
