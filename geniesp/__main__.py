@@ -3,7 +3,7 @@ import argparse
 
 import synapseclient
 
-from .bpc_config import Brca, Crc, Nsclc, Panc, Prostate
+from .bpc_config import Brca, Crc, Nsclc, Panc, Prostate, Bladder
 from .sp_config import Akt1, Erbb2, Fgfr4
 
 BPC_MAPPING = {
@@ -12,6 +12,7 @@ BPC_MAPPING = {
     "BrCa": Brca,
     "PANC": Panc,
     "Prostate": Prostate,
+    "BLADDER": Bladder,
     "AKT1": Akt1,
     "ERRB2": Erbb2,
     "FGFR4": Fgfr4,
