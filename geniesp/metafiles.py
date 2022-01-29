@@ -45,9 +45,13 @@ def create_meta_file(
     return clinical_meta
 
 
-def create_cna_meta_file(
-    datatype: str,
+def create_genomic_meta_file(
     study_identifier: str,
+    alteration_type: str,
+    datatype: str,
+    stable_id: str,
+    profile_name: str,
+    profile_description: str,
     filename: str
 ) -> dict:
     meta_cna = {
