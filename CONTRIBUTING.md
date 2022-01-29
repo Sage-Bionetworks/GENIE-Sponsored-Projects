@@ -75,7 +75,7 @@ You should now be able to see the branch on GitHub. Make commits as you deem nec
     black ./
     ```
 
-1. Once you have completed all the steps above, in Github, create a pull request from the feature branch of your fork to the `develop` branch of Sage-Bionetworks/synapsemonitor.
+1. Once you have completed all the steps above, in Github, create a pull request from the feature branch of your fork to the `develop` branch of Sage-Bionetworks/synapsemonitor.  Make sure to add 'Fixes #<issue_number>' to the comment of your pull request to automatically link the issue.  
 
 > *A code maintainer must review and accept your pull request.* A code review ideally happens with both the contributor and the reviewer present, but is not strictly required for contributing. This can be performed remotely (e.g., Zoom, Hangout, or other video or phone conference).
 
