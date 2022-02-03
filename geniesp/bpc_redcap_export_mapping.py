@@ -1036,17 +1036,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # supplemental clinical file
         print("SURVIVAL")
-        # This is important because tt_first_index_ca is needed
+        # This is important because dob_first_index_ca is needed
         # For filtering
         infodf = infodf.append(
             pd.DataFrame(
                 {
-                    "code": "tt_first_index_ca",
+                    "code": "dob_first_index_ca",
                     "sampleType": "SURVIVAL",
                     "dataset": "Cancer-level index dataset",
                     "cbio": "CANCER_INDEX",
                 },
-                index=["tt_first_index_ca"],
+                index=["dob_first_index_ca"],
             )
         )
         # Must do this because index gets reset
