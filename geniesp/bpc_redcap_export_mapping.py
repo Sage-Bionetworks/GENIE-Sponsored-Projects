@@ -362,7 +362,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Sponsorted project name
     _SPONSORED_PROJECT = ""
     # BPC No PHI Data element catalog
-    # Version 6 no longer has releaseScope, it has {SP}-sor
+    # Version 6 no longer has releaseScope, it has {SP}_sor
     # version 6 doesnt have MSI variables
     _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
@@ -844,7 +844,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Must use this to determine release scope!
         data_elements = self.syn.tableQuery(
             f"select distinct variable from {self._DATA_ELEMENT_SYN_ID} "
-            f'where "{self._SPONSORED_PROJECT}-sor" in '
+            f'where "{self._SPONSORED_PROJECT}_sor" in '
             "('project', 'consortium')"
         )
         data_elementsdf = data_elements.asDataFrame()
