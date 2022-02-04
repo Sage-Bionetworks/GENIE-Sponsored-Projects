@@ -112,7 +112,7 @@ class Bladder(BpcProjectRunner):
     # Sponsorted project name
     _SPONSORED_PROJECT = "BLADDER"
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.20"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.21"
     # Mapping from Synapse Table to form (derived files)
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
