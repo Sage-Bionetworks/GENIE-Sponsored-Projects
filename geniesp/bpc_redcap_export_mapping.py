@@ -1023,7 +1023,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             sequence_data["df"], sequence_path, used_entities=sequence_data["used"]
         )
 
-        if self._SPONSORED_PROJECT != "NSCLC":
+        if self._SPONSORED_PROJECT not in ['NSCLC','BLADDER'] :
             # Lab test
             print("LABTEST")
             lab_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
