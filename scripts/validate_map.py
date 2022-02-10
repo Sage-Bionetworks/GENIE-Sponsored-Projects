@@ -10,6 +10,7 @@ import re
 import math
 
 import pandas as pd
+
 import synapseclient
 from synapseclient import Synapse
 from synapseclient.core.exceptions import (
@@ -17,6 +18,24 @@ from synapseclient.core.exceptions import (
     SynapseNoCredentialsError,
 )
 import yaml
+
+
+def get_codes_to_remove(codes: list) -> list:
+    """Remove codes with wildcards or nan.
+
+    Args:
+        codes (list): list of codes
+
+    Returns:
+        list: codes that are nan or that contain wildcards
+    """
+    code_remove = []
+    for code in codes:
+        if bool(re.match(r"^.+[*]$", str(code).strip())):
+            code_remove.append(code)
+        elif pd.isna(code):
+            code_remove.append(code)
+    return(code_remove)
 
 
 def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
@@ -79,12 +98,7 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict, cohort:
         )
 
         # do not check wildcard code names or NA code names
-        code_remove = []
-        for code in code_map:
-            if bool(re.match(r"^.+[*]$", str(code).strip())):
-                code_remove.append(code)
-            elif pd.isna(code):
-                code_remove.append(code)
+        code_remove = get_codes_to_remove(code_map)
         for code in code_remove:
             code_map.remove(code)
 
@@ -131,6 +145,38 @@ def check_release_status_ambiguous(df: pd.DataFrame, syn: Synapse, config: dict,
     return codes
     
     
+def check_release_status_map_yes_sor_not(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
+    """Check for codes where release status in mapping file is yes 
+    but relase status in scope of release is not yes. 
+
+    Args:
+        df (pd.DataFrame): dataframe representing map
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        cohort (str): cohort label to check
+        release (str): release label to check
+
+    Returns:
+        list: codes with lenient release status
+    """
+    map_status = df[cohort].str.lower()
+    map_type = df["data_type"].str.lower()
+    map_codes = df.loc[((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))]["code"]
+
+    column_name = config["column_name"]["sor_cbio"][cohort][release]
+    file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
+    sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
+    sor_status = sor[column_name].str.lower()
+    sor_codes = sor.loc[sor_status == "yes"]["VARNAME"]
+
+    map_not_sor = list(set(map_codes) - set(sor_codes))
+    code_remove = get_codes_to_remove(map_not_sor)
+    for code in code_remove:
+        map_not_sor.remove(code)
+
+    return map_not_sor
+
+ 
 def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
 
@@ -161,6 +207,7 @@ def create_function_map() -> dict:
         "check_code_name_empty": check_code_name_empty,
         "check_dataset_names": check_dataset_names,
         "check_release_status_ambiguous": check_release_status_ambiguous,
+        "check_release_status_map_yes_sor_not": check_release_status_map_yes_sor_not,
     }
     return fxns
 

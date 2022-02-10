@@ -4,6 +4,11 @@ synapse:
     name: Data files for derived variables
     type: table
     description: Links derived variable Synapse entities to dataset names.
+  sor: 
+    id: syn22294851
+    name: GENIE_BPC_Release_Scope.xlsx
+    type: file
+    description: stats team Scope of Release for GENIE BPC
 column_name:
   sor_cbio:
     BLADDER:
@@ -24,25 +29,31 @@ column_name:
 check:
   1: 
     function: check_code_name_empty
-    implemented: 1
+    implemented: 0
     deprecated: 0
     description: Code is empty.
     request: Please remove the row or fill in the code name. 
   2: 
     function: check_code_name_absent
-    implemented: 1
+    implemented: 0
     deprecated: 0
     description: Code does not exist in associated dataset.
     request: Please check the code name and associated dataset. 
   3:
     function: check_dataset_names
-    implemented: 1
+    implemented: 0
     deprecated: 0
     description: Dataset name does not exist.
     request: Please check dataset name is associated with a dataset.  
   4:
     function: check_release_status_ambiguous
-    implemented: 1
+    implemented: 0
     deprecated: 0
     description: Release status in mapping file is ambiguous.
     request: Please update release status in mapping file.  
+  5:
+    function: check_release_status_map_yes_sor_not
+    implemented: 1
+    deprecated: 0
+    description: Released in mapping file but not scope of release.
+    request: Please double check release status in mapping file.  
