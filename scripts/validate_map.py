@@ -52,7 +52,7 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list
         dataset = row[1]
 
         data = pd.read_csv(
-            syn.get(synapse_id)
+            syn.get(synapse_id)["path"]
         )
         code_data = data.columns
 
