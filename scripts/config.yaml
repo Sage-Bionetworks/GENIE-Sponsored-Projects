@@ -4,6 +4,23 @@ synapse:
     name: Data files for derived variables
     type: table
     description: Links derived variable Synapse entities to dataset names.
+column_name:
+  sor_cbio:
+    BLADDER:
+      1.1-consortium: Cbio_Bladder_V1
+    BrCa:
+      1.1-consortium: Cbio_BrCa_V1
+    CRC:
+      1.1-consortium: Cbio_CRC_V1
+      1.2-consortium: Cbio_CRC_V1.2
+    NSCLC:
+      1.1-consortium: Cbio_NSCLC_V2.1
+      2.1-consortium: Cbio_NSCLC_V2.1
+      2.0-public: Shared for NSCLC Public Release
+    PANC:
+      1.1-consortium: Cbio_PANC_V1
+    Prostate:
+      1.1-consortium: Cbio_Prostate_V1
 check:
   1: 
     function: check_code_name_empty
