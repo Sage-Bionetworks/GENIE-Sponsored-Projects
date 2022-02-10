@@ -197,6 +197,14 @@ def build_parser():
         help="Synapse entity version number " "(default: current)",
     )
     parser.add_argument(
+        "--release",
+        "-r",
+        metavar="RELEASE",
+        type=str,
+        default="1.1-consortium",
+        help="Release label " "(default: %(default)s)",
+    )
+    parser.add_argument(
         "--outfile",
         "-o",
         metavar="OUTFILE",
