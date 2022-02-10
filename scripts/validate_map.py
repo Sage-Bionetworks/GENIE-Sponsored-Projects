@@ -21,14 +21,16 @@ import yaml
 
 def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
     """Check for any code that is empty.
+
      Args:
-      df: dataframe representing map
-      syn: Synapse object
-      config: configuration parameters
-      cohort: cohort label to check
-      release: release label to check
+        df (pd.DataFrame): dataframe representing map
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        cohort (str): cohort label to check
+        release (str): release label to check
+
     Returns:
-        list of codes names
+        list: missing code names
     """
     empty = df.loc[pd.isna(df["code"])]["code"]
     return list(empty)
@@ -37,14 +39,16 @@ def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict, cohort: 
 def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
     """Check for any code that is not code name that
     does not appear in its associated data file.
+
     Args:
-        df: dataframe representing map
-        syn: Synapse object
-        config: configuration parameters
-        cohort: cohort label to check
-        release: release label to check
+        df (pd.DataFrame): dataframe representing map
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        cohort (str): cohort label to check
+        release (str): release label to check
+
     Returns:
-        list of codes names
+        list: code names not found in datasets
     """
     absent = []
 
@@ -87,16 +91,19 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict, cohort:
         absent.extend(list(set(code_map) - set(code_data)))
     return absent
 
+
 def check_dataset_names(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
     """Check for any dataset name that is not associated with a dataset.
+
     Args:
-        df: dataframe representing map
-        syn: Synapse object
-        config: configuration parameters
-        cohort: cohort label to check
-        release: release label to check
+        df (pd.DataFrame): dataframe representing map
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        cohort (str): cohort label to check
+        release (str): release label to check
+
     Returns:
-        list of dataset names
+        list: dataset names in map but not on synapse
     """
 
     query = f'SELECT DISTINCT dataset FROM {config["synapse"]["dataset"]["id"]} WHERE dataset IS NOT NULL'
@@ -106,14 +113,34 @@ def check_dataset_names(df: pd.DataFrame, syn: Synapse, config: dict, cohort: st
     return list(res)
 
 
+def check_release_status_ambiguous(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
+    """Check for any codes with release status that is not y or n.
+
+    Args:
+        df (pd.DataFrame): dataframe representing map
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        cohort (str): cohort label to check
+        release (str): release label to check
+
+    Returns:
+        list: codes with ambiguous release status
+    """
+    status = df[cohort].str.lower()
+    codes = df.loc[[item not in ['y','n'] for item in status]]['code']
+    return codes
+    
+    
 def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
+
     Args:
-        df: dataframe representing map
-        config: configuration parameters
-        check_no: check number for which to format results
+        codes (list): problematic values
+        config (dict): configuration parameters
+        check_no (int): check number for which to format results
+
     Returns:
-        dataframe with additional metadata on any errors.
+        pd.DataFrame: [description]
     """
     formatted = pd.DataFrame()
     formatted["code"] = codes
@@ -124,10 +151,16 @@ def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
 
 
 def create_function_map() -> dict:
+    """Create a dictionary that maps function to string representation.
+
+    Returns:
+        dict: map from function to name as string
+    """
     fxns = {
         "check_code_name_absent": check_code_name_absent,
         "check_code_name_empty": check_code_name_empty,
         "check_dataset_names": check_dataset_names,
+        "check_release_status_ambiguous": check_release_status_ambiguous,
     }
     return fxns
 
@@ -136,16 +169,18 @@ def validate_map(
     synapse_id: str, file: str, syn: Synapse, config: dict, version: int, cohort: str, release: str
 ) -> pd.DataFrame:
     """Run all implemented checks on mapping file.
+
     Args:
-        synapse_id: Synapse ID of mapping file
-        file: local path to mapping file
-        syn: Synapse object
-        config: configuration parameters
-        version: Version number of Synapse ID
-        cohort: cohort label to check
-        release: release label to check
+        synapse_id (str): Synapse ID of mapping file
+        file (str): local path to mapping file
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        version (int):  Version number of Synapse ID
+        cohort (str): cohort label to check
+        release (str): release label to check
+
     Returns:
-        dataframe with additional metadata on any errors.
+        pd.DataFrame: [description]
     """
 
     errors = pd.DataFrame()
@@ -281,11 +316,15 @@ def read_config(file: str) -> dict:
 
 def synapse_login(synapse_config=synapseclient.client.CONFIG_FILE):
     """Login to Synapse
+
     Args:
-        synapse_config: Path to synapse configuration file.
-                        Defaults to ~/.synapseConfig
+        synapse_config ([type], optional): Path to synapse configuration file.. Defaults to synapseclient.client.CONFIG_FILE.
+
+    Raises:
+        ValueError: error logging into Synapse with given credentials
+
     Returns:
-        Synapse connection
+        Synapse: Synapse object
     """
     try:
         syn = synapseclient.Synapse(skip_checks=True, configPath=synapse_config)

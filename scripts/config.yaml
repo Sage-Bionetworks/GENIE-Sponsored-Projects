@@ -44,5 +44,5 @@ check:
     function: check_release_status_ambiguous
     implemented: 1
     deprecated: 0
-    description: Release status in SOR is ambiguous.
-    request: Please check dataset name is associated with a dataset.  
+    description: Release status in mapping file is ambiguous.
+    request: Please update release status in mapping file.  
