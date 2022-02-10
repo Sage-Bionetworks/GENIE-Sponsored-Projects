@@ -19,12 +19,14 @@ from synapseclient.core.exceptions import (
 import yaml
 
 
-def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
+def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
     """Check for any code that is empty.
      Args:
       df: dataframe representing map
       syn: Synapse object
       config: configuration parameters
+      cohort: cohort label to check
+      release: release label to check
     Returns:
         list of codes names
     """
@@ -32,13 +34,15 @@ def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
     return list(empty)
 
 
-def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
+def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
     """Check for any code that is not code name that
     does not appear in its associated data file.
     Args:
         df: dataframe representing map
         syn: Synapse object
         config: configuration parameters
+        cohort: cohort label to check
+        release: release label to check
     Returns:
         list of codes names
     """
@@ -83,12 +87,14 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list
         absent.extend(list(set(code_map) - set(code_data)))
     return absent
 
-def check_dataset_names(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
+def check_dataset_names(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
     """Check for any dataset name that is not associated with a dataset.
     Args:
         df: dataframe representing map
         syn: Synapse object
         config: configuration parameters
+        cohort: cohort label to check
+        release: release label to check
     Returns:
         list of dataset names
     """
@@ -127,7 +133,7 @@ def create_function_map() -> dict:
 
 
 def validate_map(
-    synapse_id: str, file: str, syn: Synapse, config: dict, version: int
+    synapse_id: str, file: str, syn: Synapse, config: dict, version: int, cohort: str, release: str
 ) -> pd.DataFrame:
     """Run all implemented checks on mapping file.
     Args:
@@ -136,6 +142,8 @@ def validate_map(
         syn: Synapse object
         config: configuration parameters
         version: Version number of Synapse ID
+        cohort: cohort label to check
+        release: release label to check
     Returns:
         dataframe with additional metadata on any errors.
     """
@@ -160,7 +168,7 @@ def validate_map(
             and not config["check"][check_no]["deprecated"]
         ):
             fxn_name = config["check"][check_no]["function"]
-            result = fxns[fxn_name](df, syn, config)
+            result = fxns[fxn_name](df, syn, config, cohort, release)
             errors = errors.append(format_result(result, config, check_no))
             logging.info(f"  Found {len(result)} error(s).")
         else:
@@ -305,7 +313,7 @@ def main():
         raise ValueError("Invalid log level: %s" % args.log)
     logging.basicConfig(level=numeric_level)
 
-    res = validate_map(args.synapse_id, args.file, syn, config, args.version)
+    res = validate_map(args.synapse_id, args.file, syn, config, args.version, args.cohort, args.release)
     res.to_csv(args.outfile, index=False)
 
     logging.info(f"Output written to '{args.outfile}'")
