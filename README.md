@@ -51,3 +51,37 @@ To load the files directly to Synapse, remove the --staging parameter
 ```
 docker run --rm -e SYNAPSE_AUTH_TOKEN='<PAT>' geniesp PANC 1.1-consortium
 ```
+
+## Scripts
+
+To validate a cBioPortal mapping file stored on synapse:
+```
+python validate_map.py --log info --synapse_id {synapse_id}
+```
+
+or stored in a local file:
+```
+python validate_map.py --log info --synapse_id {/path/to/file.csv}
+```
+
+To view full usage details:
+```
+python validate_map.py -h
+```
+
+which outputs:
+```
+Checks validity of BPC to cBioPortal mapping file
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --synapse_id SYNAPSE_ID, -s SYNAPSE_ID
+                        Synapse ID of mapping file
+  --file FILE, -f FILE  Local path to mapping file
+  --version VERSION, -v VERSION
+                        Synapse entity version number (default: current)
+  --outfile OUTFILE, -o OUTFILE
+                        Name of output file (default: output.csv)
+  --log {debug,info,warning,error}, -l {debug,info,warning,error}
+                        Set logging output level (default: error)
+```
