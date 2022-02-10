@@ -362,7 +362,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Sponsorted project name
     _SPONSORED_PROJECT = ""
     # BPC No PHI Data element catalog
-    # Version 6 no longer has releaseScope, it has {SP}-sor
+    # Version 6 no longer has releaseScope, it has {SP}_sor
     # version 6 doesnt have MSI variables
     _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
@@ -844,7 +844,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Must use this to determine release scope!
         data_elements = self.syn.tableQuery(
             f"select distinct variable from {self._DATA_ELEMENT_SYN_ID} "
-            f'where "{self._SPONSORED_PROJECT}-sor" in '
+            f'where "{self._SPONSORED_PROJECT}_sor" in '
             "('project', 'consortium')"
         )
         data_elementsdf = data_elements.asDataFrame()
@@ -1023,7 +1023,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             sequence_data["df"], sequence_path, used_entities=sequence_data["used"]
         )
 
-        if self._SPONSORED_PROJECT != "NSCLC":
+        if self._SPONSORED_PROJECT not in ['NSCLC','BLADDER'] :
             # Lab test
             print("LABTEST")
             lab_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
@@ -1036,17 +1036,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # supplemental clinical file
         print("SURVIVAL")
-        # This is important because tt_first_index_ca is needed
+        # This is important because dob_first_index_ca is needed
         # For filtering
         infodf = infodf.append(
             pd.DataFrame(
                 {
-                    "code": "tt_first_index_ca",
+                    "code": "dob_first_index_ca",
                     "sampleType": "SURVIVAL",
                     "dataset": "Cancer-level index dataset",
                     "cbio": "CANCER_INDEX",
                 },
-                index=["tt_first_index_ca"],
+                index=["dob_first_index_ca"],
             )
         )
         # Must do this because index gets reset
