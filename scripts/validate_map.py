@@ -153,12 +153,19 @@ def build_parser():
     parser = argparse.ArgumentParser(
         description="Checks validity of BPC to cBioPortal mapping file "
     )
-    parser.add_argument(
-        "synapse_id",
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--synapse_id",
+        "--s",
         metavar="SYNAPSE_ID",
         type=str,
-        help="Synapse ID of mapping file",
-    )
+        help="Synapse ID of mapping file",)
+    group.add_argument(
+        "--file",
+        "--f",
+        metavar="FILE",
+        type=str,
+        help="Local path to mapping file",)
     parser.add_argument(
         "--version",
         "-v",
