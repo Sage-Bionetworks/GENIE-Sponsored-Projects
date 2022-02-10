@@ -109,11 +109,12 @@ def create_function_map() -> dict:
 
 
 def validate_map(
-    synapse_id: str, syn: Synapse, config: dict, version: int
+    synapse_id: str, file: str, syn: Synapse, config: dict, version: int
 ) -> pd.DataFrame:
     """Run all implemented checks on mapping file.
     Args:
         synapse_id: Synapse ID of mapping file
+        file: local path to mapping file
         syn: Synapse object
         config: configuration parameters
         version: Version number of Synapse ID
@@ -124,10 +125,13 @@ def validate_map(
     errors = pd.DataFrame()
     df = pd.DataFrame()
     fxns = create_function_map()
-    if version == "None":
-        df = pd.read_csv(syn.get(synapse_id)["path"])
+    if synapse_id is not None:
+        if version == "None":
+            df = pd.read_csv(syn.get(synapse_id)["path"])
+        else:
+            df = pd.read_csv(syn.get(synapse_id, version=version)["path"])
     else:
-        df = pd.read_csv(syn.get(synapse_id, version=version)["path"])
+        df = pd.read_csv(file)
 
     for check_no in config["check"]:
 
@@ -156,13 +160,13 @@ def build_parser():
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "--synapse_id",
-        "--s",
+        "-s",
         metavar="SYNAPSE_ID",
         type=str,
         help="Synapse ID of mapping file",)
     group.add_argument(
         "--file",
-        "--f",
+        "-f",
         metavar="FILE",
         type=str,
         help="Local path to mapping file",)
@@ -237,7 +241,7 @@ def main():
         raise ValueError("Invalid log level: %s" % args.log)
     logging.basicConfig(level=numeric_level)
 
-    res = validate_map(args.synapse_id, syn, config, args.version)
+    res = validate_map(args.synapse_id, args.file, syn, config, args.version)
     res.to_csv(args.outfile, index=False)
 
     logging.info(f"Output written to '{args.outfile}'")
