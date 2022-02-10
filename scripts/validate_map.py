@@ -7,7 +7,7 @@ Date: 2022-01-27
 import argparse
 import logging
 import re
-import math
+from typing import Dict, List
 
 import pandas as pd
 
@@ -20,7 +20,7 @@ from synapseclient.core.exceptions import (
 import yaml
 
 
-def get_codes_to_remove(codes: list) -> list:
+def get_codes_to_remove(codes: List) -> List:
     """Remove codes with wildcards or nan.
 
     Args:
@@ -39,8 +39,8 @@ def get_codes_to_remove(codes: list) -> list:
 
 
 def check_code_name_empty(
-    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
-) -> list:
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
+) -> List:
     """Check for any code that is empty.
 
      Args:
@@ -58,8 +58,8 @@ def check_code_name_empty(
 
 
 def check_code_name_absent(
-    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
-) -> list:
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
+) -> List:
     """Check for any code that is not code name that
     does not appear in its associated data file.
 
@@ -109,8 +109,8 @@ def check_code_name_absent(
 
 
 def check_dataset_names(
-    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
-) -> list:
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
+) -> List:
     """Check for any dataset name that is not associated with a dataset.
 
     Args:
@@ -132,8 +132,8 @@ def check_dataset_names(
 
 
 def check_release_status_ambiguous(
-    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
-) -> list:
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
+) -> List:
     """Check for any codes with release status that is not y or n.
 
     Args:
@@ -152,8 +152,8 @@ def check_release_status_ambiguous(
 
 
 def check_release_status_map_yes_sor_not(
-    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
-) -> list:
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
+) -> List:
     """Check for codes where release status in mapping file is yes
     but relase status in scope of release is not yes.
 
@@ -187,7 +187,7 @@ def check_release_status_map_yes_sor_not(
     return map_not_sor
 
 
-def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
+def format_result(codes: List, config: Dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
 
     Args:
@@ -206,7 +206,7 @@ def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     return formatted
 
 
-def create_function_map() -> dict:
+def create_function_map() -> Dict:
     """Create a dictionary that maps function to string representation.
 
     Returns:
@@ -226,7 +226,7 @@ def validate_map(
     synapse_id: str,
     file: str,
     syn: Synapse,
-    config: dict,
+    config: Dict,
     version: int,
     cohort: str,
     release: str,
@@ -277,7 +277,16 @@ def validate_map(
     return errors
 
 
-def build_parser(cohorts, releases):
+def build_parser(cohorts: List, releases: List):
+    """Build command line parser.
+
+    Args:
+        cohorts (List): cohort label options
+        releases (List): release label options
+
+    Returns:
+        [type]: [description]
+    """
     parser = argparse.ArgumentParser(
         description="Checks validity of BPC to cBioPortal mapping file "
     )
@@ -337,7 +346,7 @@ def build_parser(cohorts, releases):
     return parser
 
 
-def get_cohorts(config: dict) -> list:
+def get_cohorts(config: Dict) -> List:
     """Get sorted list of cohort options.
 
     Args:
@@ -351,7 +360,7 @@ def get_cohorts(config: dict) -> list:
     return opts
 
 
-def get_releases(config: dict) -> list:
+def get_releases(config: Dict) -> List:
     """Get sorted list of release options.
 
     Args:
@@ -369,7 +378,7 @@ def get_releases(config: dict) -> list:
     return opts
 
 
-def read_config(file: str) -> dict:
+def read_config(file: str) -> Dict:
     config = None
     with open(file, "r") as stream:
         try:
