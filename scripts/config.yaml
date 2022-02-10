@@ -8,7 +8,7 @@ column_name:
   sor_cbio:
     BLADDER:
       1.1-consortium: Cbio_Bladder_V1
-    BrCa:
+    BRCA:
       1.1-consortium: Cbio_BrCa_V1
     CRC:
       1.1-consortium: Cbio_CRC_V1
@@ -19,7 +19,7 @@ column_name:
       2.0-public: Shared for NSCLC Public Release
     PANC:
       1.1-consortium: Cbio_PANC_V1
-    Prostate:
+    PROSTATE:
       1.1-consortium: Cbio_Prostate_V1
 check:
   1: 
@@ -39,4 +39,10 @@ check:
     implemented: 1
     deprecated: 0
     description: Dataset name does not exist.
+    request: Please check dataset name is associated with a dataset.  
+  4:
+    function: check_release_status_ambiguous
+    implemented: 1
+    deprecated: 0
+    description: Release status in SOR is ambiguous.
     request: Please check dataset name is associated with a dataset.  
