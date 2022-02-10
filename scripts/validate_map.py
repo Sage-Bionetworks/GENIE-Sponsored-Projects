@@ -35,10 +35,12 @@ def get_codes_to_remove(codes: list) -> list:
             code_remove.append(code)
         elif pd.isna(code):
             code_remove.append(code)
-    return(code_remove)
+    return code_remove
 
 
-def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
+def check_code_name_empty(
+    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
+) -> list:
     """Check for any code that is empty.
 
      Args:
@@ -55,7 +57,9 @@ def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict, cohort: 
     return list(empty)
 
 
-def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
+def check_code_name_absent(
+    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
+) -> list:
     """Check for any code that is not code name that
     does not appear in its associated data file.
 
@@ -79,9 +83,7 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict, cohort:
         synapse_id = row[0]
         dataset = row[1]
 
-        data = pd.read_csv(
-            syn.get(synapse_id)["path"], low_memory=False
-        )
+        data = pd.read_csv(syn.get(synapse_id)["path"], low_memory=False)
         code_data = data.columns
 
         # get codes associated with the dataset and of types derived or curated
@@ -106,7 +108,9 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict, cohort:
     return absent
 
 
-def check_dataset_names(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
+def check_dataset_names(
+    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
+) -> list:
     """Check for any dataset name that is not associated with a dataset.
 
     Args:
@@ -127,7 +131,9 @@ def check_dataset_names(df: pd.DataFrame, syn: Synapse, config: dict, cohort: st
     return list(res)
 
 
-def check_release_status_ambiguous(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
+def check_release_status_ambiguous(
+    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
+) -> list:
     """Check for any codes with release status that is not y or n.
 
     Args:
@@ -141,13 +147,15 @@ def check_release_status_ambiguous(df: pd.DataFrame, syn: Synapse, config: dict,
         list: codes with ambiguous release status
     """
     status = df[cohort].str.lower()
-    codes = df.loc[[item not in ['y','n'] for item in status]]['code']
+    codes = df.loc[[item not in ["y", "n"] for item in status]]["code"]
     return codes
-    
-    
-def check_release_status_map_yes_sor_not(df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str) -> list:
-    """Check for codes where release status in mapping file is yes 
-    but relase status in scope of release is not yes. 
+
+
+def check_release_status_map_yes_sor_not(
+    df: pd.DataFrame, syn: Synapse, config: dict, cohort: str, release: str
+) -> list:
+    """Check for codes where release status in mapping file is yes
+    but relase status in scope of release is not yes.
 
     Args:
         df (pd.DataFrame): dataframe representing map
@@ -161,7 +169,9 @@ def check_release_status_map_yes_sor_not(df: pd.DataFrame, syn: Synapse, config:
     """
     map_status = df[cohort].str.lower()
     map_type = df["data_type"].str.lower()
-    map_codes = df.loc[((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))]["code"]
+    map_codes = df.loc[
+        ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
+    ]["code"]
 
     column_name = config["column_name"]["sor_cbio"][cohort][release]
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
@@ -176,7 +186,7 @@ def check_release_status_map_yes_sor_not(df: pd.DataFrame, syn: Synapse, config:
 
     return map_not_sor
 
- 
+
 def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
 
@@ -213,7 +223,13 @@ def create_function_map() -> dict:
 
 
 def validate_map(
-    synapse_id: str, file: str, syn: Synapse, config: dict, version: int, cohort: str, release: str
+    synapse_id: str,
+    file: str,
+    syn: Synapse,
+    config: dict,
+    version: int,
+    cohort: str,
+    release: str,
 ) -> pd.DataFrame:
     """Run all implemented checks on mapping file.
 
@@ -271,13 +287,15 @@ def build_parser(cohorts, releases):
         "-s",
         metavar="SYNAPSE_ID",
         type=str,
-        help="Synapse ID of mapping file",)
+        help="Synapse ID of mapping file",
+    )
     group.add_argument(
         "--file",
         "-f",
         metavar="FILE",
         type=str,
-        help="Local path to mapping file",)
+        help="Local path to mapping file",
+    )
     parser.add_argument(
         "--version",
         "-v",
@@ -289,7 +307,7 @@ def build_parser(cohorts, releases):
     parser.add_argument(
         "--cohort",
         "-c",
-        choices = cohorts,
+        choices=cohorts,
         default=cohorts[0],
         help="BPC cohort label " "(default: %(default)s)",
     )
@@ -330,7 +348,7 @@ def get_cohorts(config: dict) -> list:
     """
     opts = list(config["column_name"]["sor_cbio"].keys())
     opts.sort()
-    return(opts)
+    return opts
 
 
 def get_releases(config: dict) -> list:
@@ -348,7 +366,7 @@ def get_releases(config: dict) -> list:
         releases.update(list(dict[cohort].keys()))
     opts = list(releases)
     opts.sort()
-    return(opts)
+    return opts
 
 
 def read_config(file: str) -> dict:
@@ -391,7 +409,9 @@ def synapse_login(synapse_config=synapseclient.client.CONFIG_FILE):
 def main():
 
     config = read_config("config.yaml")
-    args = build_parser(cohorts = get_cohorts(config), releases=get_releases(config)).parse_args()
+    args = build_parser(
+        cohorts=get_cohorts(config), releases=get_releases(config)
+    ).parse_args()
     syn = synapse_login()
 
     numeric_level = getattr(logging, args.log.upper(), None)
@@ -399,7 +419,9 @@ def main():
         raise ValueError("Invalid log level: %s" % args.log)
     logging.basicConfig(level=numeric_level)
 
-    res = validate_map(args.synapse_id, args.file, syn, config, args.version, args.cohort, args.release)
+    res = validate_map(
+        args.synapse_id, args.file, syn, config, args.version, args.cohort, args.release
+    )
     res.to_csv(args.outfile, index=False)
 
     logging.info(f"Output written to '{args.outfile}'")
