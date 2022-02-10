@@ -162,7 +162,7 @@ def validate_map(
             fxn_name = config["check"][check_no]["function"]
             result = fxns[fxn_name](df, syn, config)
             errors = errors.append(format_result(result, config, check_no))
-            logging.info(f"  Found {errors.shape[0]} error(s).")
+            logging.info(f"  Found {len(result)} error(s).")
         else:
             logging.info("  Check deprecated or not implemented.")
 
