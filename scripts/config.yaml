@@ -21,7 +21,7 @@ column_name:
     NSCLC:
       1.1-consortium: Cbio_NSCLC_V2.1
       2.1-consortium: Cbio_NSCLC_V2.1
-      2.0-public: Shared for NSCLC Public Release
+      2.0-public: Cbio_NSCLC_Public
     PANC:
       1.1-consortium: Cbio_PANC_V1
     PROSTATE:
