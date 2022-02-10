@@ -171,7 +171,7 @@ def validate_map(
     return errors
 
 
-def build_parser():
+def build_parser(cohorts, releases):
     parser = argparse.ArgumentParser(
         description="Checks validity of BPC to cBioPortal mapping file "
     )
@@ -197,11 +197,17 @@ def build_parser():
         help="Synapse entity version number " "(default: current)",
     )
     parser.add_argument(
+        "--cohort",
+        "-c",
+        choices = cohorts,
+        default=cohorts[0],
+        help="BPC cohort label " "(default: %(default)s)",
+    )
+    parser.add_argument(
         "--release",
         "-r",
-        metavar="RELEASE",
-        type=str,
-        default="1.1-consortium",
+        choices=releases,
+        default=releases[0],
         help="Release label " "(default: %(default)s)",
     )
     parser.add_argument(
@@ -221,6 +227,38 @@ def build_parser():
         help="Set logging output level " "(default: %(default)s)",
     )
     return parser
+
+
+def get_cohorts(config: dict) -> list:
+    """Get sorted list of cohort options.
+
+    Args:
+        config (dict): configuration file contents
+
+    Returns:
+        list: sorted list of possible cohort labels
+    """
+    opts = list(config["column_name"]["sor_cbio"].keys())
+    opts.sort()
+    return(opts)
+
+
+def get_releases(config: dict) -> list:
+    """Get sorted list of release options.
+
+    Args:
+        config (dict): configuration file contents
+
+    Returns:
+        list: sorted list of possible release labels
+    """
+    releases = set()
+    dict = config["column_name"]["sor_cbio"]
+    for cohort in dict:
+        releases.update(list(dict[cohort].keys()))
+    opts = list(releases)
+    opts.sort()
+    return(opts)
 
 
 def read_config(file: str) -> dict:
@@ -258,8 +296,8 @@ def synapse_login(synapse_config=synapseclient.client.CONFIG_FILE):
 
 def main():
 
-    args = build_parser().parse_args()
     config = read_config("config.yaml")
+    args = build_parser(cohorts = get_cohorts(config), releases=get_releases(config)).parse_args()
     syn = synapse_login()
 
     numeric_level = getattr(logging, args.log.upper(), None)
