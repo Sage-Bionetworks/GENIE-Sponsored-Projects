@@ -17,3 +17,9 @@ check:
     deprecated: 0
     description: Code does not exist in associated dataset.
     request: Please check the code name and associated dataset. 
+  3:
+    function: check_dataset_names
+    implemented: 1
+    deprecated: 0
+    description: Dataset name does not exist.
+    request: Please check dataset name is associated with a dataset.  

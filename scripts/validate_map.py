@@ -7,6 +7,7 @@ Date: 2022-01-27
 import argparse
 import logging
 import re
+import math
 
 import pandas as pd
 import synapseclient
@@ -25,7 +26,7 @@ def check_code_name_empty(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
       syn: Synapse object
       config: configuration parameters
     Returns:
-        dataframe with metadata on any empty codes.
+        list of codes names
     """
     empty = df.loc[pd.isna(df["code"])]["code"]
     return list(empty)
@@ -39,7 +40,7 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list
         syn: Synapse object
         config: configuration parameters
     Returns:
-        dataframe with metadata on any missing codes.
+        list of codes names
     """
     absent = []
 
@@ -82,6 +83,22 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list
         absent.extend(list(set(code_map) - set(code_data)))
     return absent
 
+def check_dataset_names(df: pd.DataFrame, syn: Synapse, config: dict) -> list:
+    """Check for any dataset name that is not associated with a dataset.
+    Args:
+        df: dataframe representing map
+        syn: Synapse object
+        config: configuration parameters
+    Returns:
+        list of dataset names
+    """
+
+    query = f'SELECT DISTINCT dataset FROM {config["synapse"]["dataset"]["id"]} WHERE dataset IS NOT NULL'
+    table_ds = syn.tableQuery(query).asDataFrame()
+    map_ds = df["dataset"].unique()
+    res = set([x for x in map_ds if pd.isnull(x) == False]) - set(table_ds["dataset"])
+    return list(res)
+
 
 def format_result(codes: list, config: dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
@@ -104,6 +121,7 @@ def create_function_map() -> dict:
     fxns = {
         "check_code_name_absent": check_code_name_absent,
         "check_code_name_empty": check_code_name_empty,
+        "check_dataset_names": check_dataset_names,
     }
     return fxns
 
