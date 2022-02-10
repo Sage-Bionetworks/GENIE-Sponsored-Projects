@@ -42,9 +42,17 @@ def check_code_name_absent(df: pd.DataFrame, syn: Synapse, config: dict) -> list
         dataframe with metadata on any missing codes.
     """
     absent = []
-    for dataset in config["dataset"]:
+
+    query = f'SELECT id, dataset FROM {config["synapse"]["dataset"]["id"]} WHERE dataset IS NOT NULL'
+    res = syn.tableQuery(query)
+
+    for row in res:
+
+        synapse_id = row[0]
+        dataset = row[1]
+
         data = pd.read_csv(
-            syn.get(config["dataset"][dataset]["id"])["path"], low_memory=False
+            syn.get(synapse_id, low_memory=False)
         )
         code_data = data.columns
 
