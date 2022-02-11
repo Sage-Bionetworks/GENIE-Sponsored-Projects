@@ -1,40 +1,30 @@
-dataset:
-  'Cancer-level dataset':
-    id: syn22296816  
-    file: ca_dx_derived.csv
-  'Patient-level dataset':
-    id: syn22296817
-    file: pt_derived.csv
-  'Regimen-Cancer level dataset':
-    id: syn22296818
-    file: ca_drugs_derived.csv
-  'Imaging-level dataset':
-    id: syn22296819
-    file: prissmm_image_derived.csv
-  'Pathology-report level dataset':
-    id: syn22296820
-    file: prissmm_path_derived.csv
-  'Med Onc Note level dataset':
-    id: syn22296822
-    file: prissmm_md_derived.csv
-  'Cancer panel test level dataset':
-    id: syn22296823
-    file: cpt_derived.csv
-  'Cancer-level index dataset': 
-    id: syn22314486
-    file: ca_dx_derived_index.csv
-  'Cancer-level non-index dataset': 
-    id: syn22314497
-    file: ca_dx_derived_non_index.csv
-  'Hemeonc dataset':
-    id: syn23561688
-    file: hemonc_mapping_cbio.csv
-  'PRISSMM Tumor Marker level dataset':
-    id: syn23561700
-    file: prissmm_tm_derived.csv
-  'Cancer-Directed Radiation Therapy dataset':
-    id: syn25931923  
-    file: ca_radtx_derived.csv
+synapse:
+  dataset:
+    id: syn22296821
+    name: Data files for derived variables
+    type: table
+    description: Links derived variable Synapse entities to dataset names.
+  sor: 
+    id: syn22294851
+    name: GENIE_BPC_Release_Scope.xlsx
+    type: file
+    description: stats team Scope of Release for GENIE BPC
+    column_name:
+      BLADDER:
+        1.1-consortium: Cbio_Bladder_V1
+      BRCA:
+        1.1-consortium: Cbio_BrCa_V1
+      CRC:
+        1.1-consortium: Cbio_CRC_V1
+        1.2-consortium: Cbio_CRC_V1.2
+      NSCLC:
+        1.1-consortium: Cbio_NSCLC_V2.1
+        2.1-consortium: Cbio_NSCLC_V2.1
+        2.0-public: Cbio_NSCLC_Public
+      PANC:
+        1.1-consortium: Cbio_PANC_V1
+      PROSTATE:
+        1.1-consortium: Cbio_Prostate_V1
 check:
   1: 
     function: check_code_name_empty
@@ -48,3 +38,21 @@ check:
     deprecated: 0
     description: Code does not exist in associated dataset.
     request: Please check the code name and associated dataset. 
+  3:
+    function: check_dataset_names
+    implemented: 1
+    deprecated: 0
+    description: Dataset name does not exist.
+    request: Please check dataset name is associated with a dataset.  
+  4:
+    function: check_release_status_ambiguous
+    implemented: 1
+    deprecated: 0
+    description: Release status in mapping file is ambiguous.
+    request: Please update release status in mapping file.  
+  5:
+    function: check_release_status_map_yes_sor_not
+    implemented: 1
+    deprecated: 0
+    description: Released in mapping file but not scope of release.
+    request: Please double check release status in mapping file.  
