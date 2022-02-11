@@ -173,7 +173,7 @@ def check_release_status_map_yes_sor_not(
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = config["column_name"]["sor_cbio"][cohort][release]
+    column_name = config["synapse"]["sor"]["column_name"][cohort][release]
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
@@ -355,7 +355,7 @@ def get_cohorts(config: Dict) -> List:
     Returns:
         list: sorted list of possible cohort labels
     """
-    opts = list(config["column_name"]["sor_cbio"].keys())
+    opts = list(config["synapse"]["sor"]["column_name"].keys())
     opts.sort()
     return opts
 
@@ -370,7 +370,7 @@ def get_releases(config: Dict) -> List:
         list: sorted list of possible release labels
     """
     releases = set()
-    dict = config["column_name"]["sor_cbio"]
+    dict = config["synapse"]["sor"]["column_name"]
     for cohort in dict:
         releases.update(list(dict[cohort].keys()))
     opts = list(releases)
