@@ -581,7 +581,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 final_timelinedf = final_timelinedf.append(melted_df)
             else:
                 final_timelinedf[row["cbio"]] = melted_df[row["cbio"]]
-        final_timelinedf["TREATMENT_TYPE"] = "Medical Type"
+        final_timelinedf["TREATMENT_TYPE"] = "Systemic Therapy"
         # Remove all START_DATE is NULL
         final_timelinedf = final_timelinedf[~final_timelinedf["START_DATE"].isnull()]
         non_multi_cols = subset_infodf[~multiple_cols_idx]["code"].tolist()
