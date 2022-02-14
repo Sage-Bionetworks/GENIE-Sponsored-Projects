@@ -6,9 +6,6 @@
   All dates are converted from days to months (days/30.4)
   Add headers
   REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
-
-USAGE:
->>> python runSP.py NSCLC ../cbioportal/ --staging
 """
 from abc import ABCMeta, abstractmethod
 import math
@@ -696,6 +693,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(timelinedf.columns.drop(cols_to_order).tolist())
         timelinedf = self.filter_df(timelinedf)
+        # Remove all null START_DATEs
+        timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         return {
             "df": timelinedf[cols_to_order].drop_duplicates(),
             "used": used_entities,
