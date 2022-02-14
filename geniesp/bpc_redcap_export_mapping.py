@@ -915,6 +915,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             rad_df = treatment_rad_data["df"]
             rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
             rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
+            rad_df["EVENT_TYPE"] = "Treatment"
             del rad_df["INDEX_CANCER"]
             del rad_df["TEMP"]
             treatment_data["df"] = treatment_data["df"].append(rad_df)
