@@ -581,7 +581,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 final_timelinedf = final_timelinedf.append(melted_df)
             else:
                 final_timelinedf[row["cbio"]] = melted_df[row["cbio"]]
-        final_timelinedf["EVENT_TYPE"] = "Treatment"
         final_timelinedf["TREATMENT_TYPE"] = "Medical Type"
         # Remove all START_DATE is NULL
         final_timelinedf = final_timelinedf[~final_timelinedf["START_DATE"].isnull()]
@@ -593,6 +592,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             timelinedf[non_multi_cols],
             on=["record_id", "regimen_drugs", "regimen_number"],
         )
+
+        # Make sure all events types are treatment
+        final_timelinedf["EVENT_TYPE"] = "Treatment"
+        
         # Make sure AGENT doesn't have parenthesis
         agents = []
         for index, agent in enumerate(final_timelinedf["AGENT"]):
