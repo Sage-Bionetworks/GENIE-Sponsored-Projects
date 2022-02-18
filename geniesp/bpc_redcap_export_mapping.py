@@ -1070,7 +1070,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         pfs_empty_idx = list(set(final_survivaldf['PFS_I_ADV_STATUS'].isnull()) | set(final_survivaldf['PFS_I_ADV_STATUS'] == ""))
         dup_patients_idx = list(set(final_survivaldf['PATIENT_ID'].duplicated(keep='first')) | set(final_survivaldf['PATIENT_ID'].duplicated(keep='last')))
         rm_idx = list(set(dup_patients_idx) & set(pfs_empty_idx))
-        final_survivaldf = final_survivaldf.drop(final_survivaldf.index[rm_idx], inplace=True)
+        final_survivaldf.drop(final_survivaldf.index[rm_idx], inplace=True)
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
