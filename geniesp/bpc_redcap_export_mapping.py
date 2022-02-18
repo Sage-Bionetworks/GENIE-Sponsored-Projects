@@ -581,8 +581,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 final_timelinedf = final_timelinedf.append(melted_df)
             else:
                 final_timelinedf[row["cbio"]] = melted_df[row["cbio"]]
-        final_timelinedf["EVENT_TYPE"] = "Treatment"
-        final_timelinedf["TREATMENT_TYPE"] = "Medical Type"
+        final_timelinedf["TREATMENT_TYPE"] = "Systemic Therapy"
         # Remove all START_DATE is NULL
         final_timelinedf = final_timelinedf[~final_timelinedf["START_DATE"].isnull()]
         non_multi_cols = subset_infodf[~multiple_cols_idx]["code"].tolist()
@@ -593,6 +592,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             timelinedf[non_multi_cols],
             on=["record_id", "regimen_drugs", "regimen_number"],
         )
+
+        # Make sure all events types are treatment
+        final_timelinedf["EVENT_TYPE"] = "Treatment"
+        
         # Make sure AGENT doesn't have parenthesis
         agents = []
         for index, agent in enumerate(final_timelinedf["AGENT"]):
@@ -912,6 +915,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             rad_df = treatment_rad_data["df"]
             rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
             rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
+            rad_df["EVENT_TYPE"] = "Treatment"
+            rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
             del rad_df["INDEX_CANCER"]
             del rad_df["TEMP"]
             treatment_data["df"] = treatment_data["df"].append(rad_df)
@@ -1060,6 +1065,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         final_survivaldf = final_survivaldf[final_survivaldf["CANCER_INDEX"].isnull()]
         # Remove cancer index column
         del final_survivaldf["CANCER_INDEX"]
+        # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
+        # tested on current survival data file and produces unique patient list
+        pfs_not_null_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
+        pfs_not_blank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
+        nondup_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep=False)
+        final_survivaldf = final_survivaldf[(pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)]
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
