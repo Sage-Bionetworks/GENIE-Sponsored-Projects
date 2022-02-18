@@ -1065,6 +1065,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
         final_survivaldf = final_survivaldf[final_survivaldf["CANCER_INDEX"].isnull()]
         # Remove cancer index column
         del final_survivaldf["CANCER_INDEX"]
+        # retain the row if PFS_I_ADV_STATUS contains data OR the patient_id is unique
+        # tested on current survival data file and produces unique patient list
+        pfs_isnull_idx = final_survivaldf['PFS_I_ADV_STATUS'].isnull()
+        pfs_isblank_idx = final_survivaldf['PFS_I_ADV_STATUS'] == ""
+        unique_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated()
+        final_survivaldf = final_survivaldf[
+            (pfs_isnull_idx & pfs_isblank_idx) | unique_patients_idx
+        ]
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
