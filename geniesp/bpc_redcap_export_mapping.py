@@ -1067,10 +1067,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del final_survivaldf["CANCER_INDEX"]
         # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
-        pfs_empty_idx = list(set(final_survivaldf['PFS_I_ADV_STATUS'].isnull()) | set(final_survivaldf['PFS_I_ADV_STATUS'] == ""))
-        dup_patients_idx = list(set(final_survivaldf['PATIENT_ID'].duplicated(keep='first')) | set(final_survivaldf['PATIENT_ID'].duplicated(keep='last')))
-        rm_idx = list(set(dup_patients_idx) & set(pfs_empty_idx))
-        final_survivaldf.drop(final_survivaldf.index[rm_idx], inplace=True)
+        pfs_not_null_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
+        pfs_not_blank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
+        nondup_patients_first_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep='first')
+        nondup_patients_last_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep='last')
+        final_survivaldf = final_survivaldf[(pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_first_idx & nondup_patients_last_idx)]
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
