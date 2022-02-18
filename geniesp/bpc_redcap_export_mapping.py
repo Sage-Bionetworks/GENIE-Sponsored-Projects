@@ -1071,7 +1071,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         pfs_isblank_idx = final_survivaldf['PFS_I_ADV_STATUS'] == ""
         unique_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated()
         final_survivaldf = final_survivaldf[
-            (pfs_isnull_idx & pfs_isblank_idx) | unique_patients_idx
+            (~pfs_isnull_idx & ~pfs_isblank_idx) | unique_patients_idx
         ]
         print("PATIENT")
         # Patient and sample files
