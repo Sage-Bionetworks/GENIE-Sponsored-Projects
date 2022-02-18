@@ -1065,14 +1065,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         final_survivaldf = final_survivaldf[final_survivaldf["CANCER_INDEX"].isnull()]
         # Remove cancer index column
         del final_survivaldf["CANCER_INDEX"]
-        # retain the row if PFS_I_ADV_STATUS contains data OR the patient_id is unique
+        # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
-        pfs_notnull_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
-        pfs_notblank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
-        unique_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated()
-        final_survivaldf = final_survivaldf[
-            (pfs_notnull_idx & pfs_notblank_idx) | unique_patients_idx
-        ]
+        pfs_empty_idx = final_survivaldf['PFS_I_ADV_STATUS'].isnull() or final_survivaldf['PFS_I_ADV_STATUS'] == ""
+        dup_patients_idx = final_survivaldf['PATIENT_ID'].duplicated(keep='first') or final_survivaldf['PATIENT_ID'].duplicated(keep='last')
+        rm_idx = list(set(dup_patients_idx) & set(pfs_empty_idx))
+        final_survivaldf = final_survivaldf.drop(final_survivaldf.index[rm_idx], inplace=True)
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
