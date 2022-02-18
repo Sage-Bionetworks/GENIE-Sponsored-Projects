@@ -1067,8 +1067,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del final_survivaldf["CANCER_INDEX"]
         # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
-        pfs_empty_idx = final_survivaldf['PFS_I_ADV_STATUS'].isnull() or final_survivaldf['PFS_I_ADV_STATUS'] == ""
-        dup_patients_idx = final_survivaldf['PATIENT_ID'].duplicated(keep='first') or final_survivaldf['PATIENT_ID'].duplicated(keep='last')
+        pfs_empty_idx = list(set(final_survivaldf['PFS_I_ADV_STATUS'].isnull()) | set(final_survivaldf['PFS_I_ADV_STATUS'] == ""))
+        dup_patients_idx = list(set(final_survivaldf['PATIENT_ID'].duplicated(keep='first')) | set(final_survivaldf['PATIENT_ID'].duplicated(keep='last')))
         rm_idx = list(set(dup_patients_idx) & set(pfs_empty_idx))
         final_survivaldf = final_survivaldf.drop(final_survivaldf.index[rm_idx], inplace=True)
         print("PATIENT")
