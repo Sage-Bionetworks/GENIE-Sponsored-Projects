@@ -1069,9 +1069,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # tested on current survival data file and produces unique patient list
         pfs_not_null_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
         pfs_not_blank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
-        nondup_patients_first_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep='first')
-        nondup_patients_last_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep='last')
-        final_survivaldf = final_survivaldf[(pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_first_idx & nondup_patients_last_idx)]
+        nondup_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep=False)
+        final_survivaldf = final_survivaldf[(pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)]
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
