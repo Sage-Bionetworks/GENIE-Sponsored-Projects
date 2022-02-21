@@ -920,7 +920,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
             del rad_df["INDEX_CANCER"]
             del rad_df["TEMP"]
-            treatment_data["df"] = treatment_data["df"].append(rad_df)
+            treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
         treatment_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_treatment.txt"
         )
@@ -1043,7 +1043,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         print("SURVIVAL")
         # This is important because dob_first_index_ca is needed
         # For filtering
-        infodf = infodf.append(
+        infodf = pd.concat([
+            infodf,
             pd.DataFrame(
                 {
                     "code": "dob_first_index_ca",
@@ -1053,7 +1054,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 },
                 index=["dob_first_index_ca"],
             )
-        )
+        ])
         # Must do this because index gets reset
         infodf.index = infodf["code"]
         survival_infodf = infodf[infodf["sampleType"] == "SURVIVAL"]
@@ -1076,13 +1077,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
         # Must get redcap_ca_index to grab only the index cancers
-        patient_infodf = patient_infodf.append(
-            {
-                "code": "redcap_ca_index",
-                "sampleType": "PATIENT",
-                "dataset": "Cancer-level dataset",
-            },
-            ignore_index=True,
+        patient_infodf = pd.concat([
+            patient_infodf,
+            pd.DataFrame(
+                {
+                    "code": "redcap_ca_index",
+                    "sampleType": "PATIENT",
+                    "dataset": "Cancer-level dataset",
+                },
+                index=['redcap_ca_index']
+            )],
+            ignore_index=True
         )
         patient_infodf.index = patient_infodf["code"]
         patient_data = get_file_data(
@@ -1172,7 +1177,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             cohort=self._SPONSORED_PROJECT,
         )
 
-        survival_info = infodf.append(regimens_data["info"])
+        survival_info = pd.concat([infodf, regimens_data["info"]])
 
         # Create survival data
         subset_survivaldf = final_survivaldf[
