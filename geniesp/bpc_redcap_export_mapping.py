@@ -1066,6 +1066,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del final_survivaldf["CANCER_INDEX"]
         # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
+        print(final_survivaldf)
         pfs_not_null_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
         pfs_not_blank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
         nondup_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep=False)
