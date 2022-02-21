@@ -710,8 +710,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             keep_samples: List of samples to keep
         """
         mafpath = os.path.join(self._SPONSORED_PROJECT, "data_mutations_extended.txt")
-        # 8.0 maf ent
-        maf_synid = "syn22228700"
+        maf_synid = self._SP_MAF
         maf_ent = self.syn.get(maf_synid)
         maf_chunks = pd.read_table(maf_ent.path, chunksize=50000)
         index = 0
