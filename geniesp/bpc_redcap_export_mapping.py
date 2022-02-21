@@ -384,13 +384,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.cbiopath = cbiopath
         self.staging = staging
         # Create case lists and release folder
-        sp_data_folder = syn.store(
-            Folder(self._SPONSORED_PROJECT, parentId="syn21241322")
-        )
-        release_folder = syn.store(Folder(release, parent=sp_data_folder))
-        # Add cBioPortal files into cBioPortal files folder in release
-        self._SP_SYN_ID = syn.store(Folder("cBioPortal_files", parent=release_folder))
-        self._CASE_LIST_SYN_ID = syn.store(Folder("case_lists", parent=self._SP_SYN_ID))
+        self._SP_SYN_ID = None
+        self._CASE_LIST_SYN_ID = None
+        if not self.staging:
+            sp_data_folder = syn.store(
+                Folder(self._SPONSORED_PROJECT, parentId="syn21241322")
+            )
+            release_folder = syn.store(Folder(release, parent=sp_data_folder))
+            # Add cBioPortal files into cBioPortal files folder in release
+            self._SP_SYN_ID = syn.store(
+                Folder("cBioPortal_files", parent=release_folder)
+            )
+            self._CASE_LIST_SYN_ID = syn.store(
+                Folder("case_lists", parent=self._SP_SYN_ID)
+            )
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
 
     def get_main_genie_clinicaldf(self) -> dict:
