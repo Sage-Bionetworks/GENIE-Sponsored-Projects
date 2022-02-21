@@ -9,7 +9,7 @@ from .bpc_redcap_export_mapping import BpcProjectRunner
 class Brca(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = "BrCa"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.7"
@@ -17,6 +17,8 @@ class Brca(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # MAF file version (8.1-public)
+    _SP_MAF = "syn22228700"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -29,7 +31,7 @@ class Brca(BpcProjectRunner):
 class Crc(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = "CRC"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.6"
@@ -38,6 +40,8 @@ class Crc(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # MAF file version (8.1-public)
+    _SP_MAF = "syn22228700"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -50,14 +54,16 @@ class Crc(BpcProjectRunner):
 class Nsclc(BpcProjectRunner):
     """NSCLC BPC sponsored project"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = "NSCLC"
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.6"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.24"
     # Mapping from Synapse Table to form (derived files)
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # MAF file version (11.0-public)
+    _SP_MAF = "syn26706787"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -70,7 +76,7 @@ class Nsclc(BpcProjectRunner):
 class Panc(BpcProjectRunner):
     """PANC BPC sponsored project"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = "PANC"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.24"
@@ -78,6 +84,8 @@ class Panc(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # MAF file version (8.1-public)
+    _SP_MAF = "syn22228700"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -90,7 +98,7 @@ class Panc(BpcProjectRunner):
 class Prostate(BpcProjectRunner):
     """Prostate BPC sponsored project"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = "Prostate"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.24"
@@ -98,6 +106,8 @@ class Prostate(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # MAF file version (8.1-public)
+    _SP_MAF = "syn22228700"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -109,7 +119,7 @@ class Prostate(BpcProjectRunner):
 class Bladder(BpcProjectRunner):
     """BLADDER BPC sponsored project"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = "BLADDER"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.24"
@@ -117,6 +127,8 @@ class Bladder(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # MAF file version (8.1-public)
+    _SP_MAF = "syn22228700"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
