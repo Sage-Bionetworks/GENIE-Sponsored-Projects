@@ -82,7 +82,27 @@ def create_genomic_meta_file(
     return meta_info
 
 
-def main(study_identifier: str):
+def main(
+    study_identifier: str,
+    cbio_fileformats: list = [
+        "data_clinical_sample.txt",
+        "data_clinical_patient.txt",
+        "data_clinical_supp_survival.txt",
+        "data_clinical_supp_survival_treatment.txt",
+        "data_gene_matrix.txt",
+        "data_timeline_cancer_diagnosis.txt",
+        "data_timeline_imaging.txt",
+        "data_timeline_medonc.txt",
+        "data_timeline_pathology.txt",
+        "data_timeline_sample_acquisition.txt",
+        "data_timeline_sequencing.txt",
+        "data_timeline_treatment.txt",
+        "data_timeline_labtest.txt",
+        "data_CNA.txt",
+        "data_fusions.txt",
+        "data_mutations_extended.txt"
+    ]
+):
     """Create metadata files
 
     Args:
@@ -100,6 +120,7 @@ def main(study_identifier: str):
         datatype="PATIENT_ATTRIBUTE",
         filename="data_clinical_patient.txt"
     )
+    # supp_survival* files don't need a meta file
     create_meta_file(
         study_identifier=study_identifier,
         alteration_type="GENE_PANEL_MATRIX",
@@ -113,7 +134,7 @@ def main(study_identifier: str):
         "data_timeline_pathology.txt",
         "data_timeline_sample_acquisition.txt",
         "data_timeline_sequencing.txt",
-        "data_timeline_treatment"
+        "data_timeline_treatment.txt"
     ]
     for filenames in timeline_meta_files:
         create_meta_file(

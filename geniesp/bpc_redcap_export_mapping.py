@@ -1389,10 +1389,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         self.create_gene_panels(subset_sampledf['SEQ_ASSAY_ID'].unique())
         # Make sure to re download all the metadata files again
+        # TODO: Download or create metadata files? Should we create meta files
+        # each time?
         self.download_metadata_files()
 
         cmd = ['python',
                os.path.join(self.cbiopath,
                             "core/src/main/scripts/importer/validateData.py"),
                "-s", self._SPONSORED_PROJECT, "-n"]
-        subprocess.call(cmd)
+        subprocess.run(cmd)
