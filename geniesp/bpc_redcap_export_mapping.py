@@ -241,8 +241,12 @@ def get_drug_mapping(syn, cohort, synid_file_grs, synid_table_prissmm):
 
     synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
 
-    dd = pd.read_csv(syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False)
-    grs = pd.read_csv(syn.get(synid_file_grs).path, encoding="unicode_escape", low_memory=False)
+    dd = pd.read_csv(
+        syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False
+    )
+    grs = pd.read_csv(
+        syn.get(synid_file_grs).path, encoding="unicode_escape", low_memory=False
+    )
     grs.columns = ["Variable / Field Name", "Choices, Calculations, OR Slider Labels"]
 
     for i in ["1", "2", "3", "4", "5"]:
@@ -595,7 +599,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Make sure all events types are treatment
         final_timelinedf["EVENT_TYPE"] = "Treatment"
-        
+
         # Make sure AGENT doesn't have parenthesis
         agents = []
         for index, agent in enumerate(final_timelinedf["AGENT"]):
@@ -1027,7 +1031,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             sequence_data["df"], sequence_path, used_entities=sequence_data["used"]
         )
 
-        if self._SPONSORED_PROJECT not in ['NSCLC','BLADDER'] :
+        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
             # Lab test
             print("LABTEST")
             lab_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
@@ -1067,10 +1071,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del final_survivaldf["CANCER_INDEX"]
         # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
-        pfs_not_null_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
-        pfs_not_blank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
-        nondup_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep=False)
-        final_survivaldf = final_survivaldf[(pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)]
+        pfs_not_null_idx = ~final_survivaldf["PFS_I_ADV_STATUS"].isnull()
+        pfs_not_blank_idx = final_survivaldf["PFS_I_ADV_STATUS"] != ""
+        nondup_patients_idx = ~final_survivaldf["PATIENT_ID"].duplicated(keep=False)
+        final_survivaldf = final_survivaldf[
+            (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
+        ]
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
