@@ -732,7 +732,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         """
         file_name = "data_mutations_extended.txt"
         mafpath = os.path.join(self._SPONSORED_PROJECT, file_name)
-        maf_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
+        maf_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name)
         maf_ent = self.syn.get(maf_synid)
         maf_chunks = pd.read_table(maf_ent.path, chunksize=50000, low_memory=False)
         index = 0
@@ -763,7 +763,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             keep_samples: List of samples to keep
         """
         file_name = "data_CNA.txt"
-        cna_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
+        cna_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name)
         cna_path = os.path.join(self._SPONSORED_PROJECT, file_name)
         cna_ent = self.syn.get(cna_synid)
         cnadf = pd.read_table(cna_ent.path, low_memory=False)
@@ -794,7 +794,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             keep_samples: List of samples to keep
         """
         file_name = "data_fusions.txt"
-        fusion_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
+        fusion_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name)
         fusion_ent = self.syn.get(fusion_synid)
         fusiondf = pd.read_table(fusion_ent.path, low_memory=False)
         fusiondf = fusiondf[fusiondf["Tumor_Sample_Barcode"].isin(keep_samples)]
@@ -810,7 +810,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             keep_samples: List of samples to keep
         """
         file_name = "genie_data_cna_hg19.seg"
-        seg_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
+        seg_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name)
         seg_ent = self.syn.get(seg_synid)
         segdf = pd.read_table(seg_ent.path, low_memory=False)
         segdf = segdf[segdf["ID"].isin(keep_samples)]
@@ -822,7 +822,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     def create_gene_panels(self, keep_seq_assay_ids):
         """Create gene panels"""
         file_name = "genomic_information.txt"
-        genomic_info_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
+        genomic_info_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name)
         genomic_info_ent = self.syn.get(genomic_info_synid)
         genomic_infodf = pd.read_table(genomic_info_ent.path, low_memory=False)
         # Filter by SEQ_ASSAY_ID and only exonic regions
