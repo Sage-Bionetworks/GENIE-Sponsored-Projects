@@ -116,6 +116,7 @@ class Prostate(BpcProjectRunner):
         # "geniesp/bpc_config.py"
     )
 
+
 class Bladder(BpcProjectRunner):
     """BLADDER BPC sponsored project"""
 
@@ -136,4 +137,3 @@ class Bladder(BpcProjectRunner):
         # "tree/a672a70ad5195e6e8359325f5cea10bef384b2ff/"
         # "geniesp/bpc_config.py"
     )
-
