@@ -17,8 +17,8 @@ class Brca(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # MAF file version (8.1-public)
-    _SP_MAF = "syn22228700"
+    # main GENIE release folder (8.1-public)
+    _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -40,8 +40,8 @@ class Crc(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # MAF file version (8.1-public)
-    _SP_MAF = "syn22228700"
+    # main GENIE release folder (8.1-public)
+    _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -62,8 +62,8 @@ class Nsclc(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # MAF file version (11.0-public)
-    _SP_MAF = "syn26706787"
+    # main GENIE release folder (11.0-public)
+    _MG_RELEASE_SYNID = "syn26706564"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -84,8 +84,8 @@ class Panc(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # MAF file version (8.1-public)
-    _SP_MAF = "syn22228700"
+    # main GENIE release folder (8.1-public)
+    _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -106,8 +106,8 @@ class Prostate(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # MAF file version (8.1-public)
-    _SP_MAF = "syn22228700"
+    # main GENIE release folder (8.1-public)
+    _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (
@@ -128,8 +128,8 @@ class Bladder(BpcProjectRunner):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # MAF file version (8.1-public)
-    _SP_MAF = "syn22228700"
+    # main GENIE release folder (8.1-public)
+    _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to
     # obtain shadigest
     _GITHUB_REPO = (

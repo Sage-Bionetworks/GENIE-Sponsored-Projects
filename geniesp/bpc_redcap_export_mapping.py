@@ -707,14 +707,32 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "used": used_entities,
         }
 
+    
+    def get_mg_synid(self, synid_folder: str, file_name: str) -> str:
+        """Get Synapse ID of main GENIE data file in release folder. 
+
+        Args:
+            synid_folder (str): Synapse ID of main GENIE release folder
+            file_name (str): File name for which to retrieve Synapse ID
+
+        Returns:
+            str: Synapse ID if file found; otherwise, None
+        """
+        synid_children = self.syn.getChildren(synid_folder)
+        for synid_child in synid_children:
+            if synid_child["name"] == file_name:
+                return synid_child["id"]
+        return None
+    
     def create_maf(self, keep_samples):
         """Create maf file from release maf
 
         Args:
             keep_samples: List of samples to keep
         """
-        mafpath = os.path.join(self._SPONSORED_PROJECT, "data_mutations_extended.txt")
-        maf_synid = self._SP_MAF
+        file_name = "data_mutations_extended.txt"
+        mafpath = os.path.join(self._SPONSORED_PROJECT, file_name)
+        maf_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
         maf_ent = self.syn.get(maf_synid)
         maf_chunks = pd.read_table(maf_ent.path, chunksize=50000, low_memory=False)
         index = 0
@@ -744,8 +762,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Args:
             keep_samples: List of samples to keep
         """
-        cna_synid = "syn22228693"
-        cna_path = os.path.join(self._SPONSORED_PROJECT, "data_CNA.txt")
+        file_name = "data_CNA.txt"
+        cna_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
+        cna_path = os.path.join(self._SPONSORED_PROJECT, file_name)
         cna_ent = self.syn.get(cna_synid)
         cnadf = pd.read_table(cna_ent.path, low_memory=False)
         keep_cols = ["Hugo_Symbol"]
@@ -774,13 +793,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Args:
             keep_samples: List of samples to keep
         """
-        fusion_synid = "syn22228696"
+        file_name = "data_fusions.txt"
+        fusion_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
         fusion_ent = self.syn.get(fusion_synid)
         fusiondf = pd.read_table(fusion_ent.path, low_memory=False)
         fusiondf = fusiondf[fusiondf["Tumor_Sample_Barcode"].isin(keep_samples)]
         # cBioPortal validation fails when Hugo Symbol is null
         fusiondf = fusiondf[~fusiondf["Hugo_Symbol"].isnull()]
-        fusion_path = os.path.join(self._SPONSORED_PROJECT, "data_fusions.txt")
+        fusion_path = os.path.join(self._SPONSORED_PROJECT, file_name)
         self.write_and_storedf(fusiondf, fusion_path, used_entities=[fusion_synid])
 
     def create_seg(self, keep_samples):
@@ -789,7 +809,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Args:
             keep_samples: List of samples to keep
         """
-        seg_synid = "syn22228729"
+        file_name = "genie_data_cna_hg19.seg"
+        seg_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
         seg_ent = self.syn.get(seg_synid)
         segdf = pd.read_table(seg_ent.path, low_memory=False)
         segdf = segdf[segdf["ID"].isin(keep_samples)]
@@ -800,7 +821,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def create_gene_panels(self, keep_seq_assay_ids):
         """Create gene panels"""
-        genomic_info_synid = "syn22228730"
+        file_name = "genomic_information.txt"
+        genomic_info_synid = self.get_mg_synid(self, self._MG_RELEASE_SYNID, file_name = file_name)
         genomic_info_ent = self.syn.get(genomic_info_synid)
         genomic_infodf = pd.read_table(genomic_info_ent.path, low_memory=False)
         # Filter by SEQ_ASSAY_ID and only exonic regions
