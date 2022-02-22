@@ -453,8 +453,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             self._SPONSORED_PROJECT, "data_gene_matrix.txt"
         )
         data_gene_panel.to_csv(gene_matrix_filepath, sep="\t", index=False)
-        file_ent = File(gene_matrix_filepath, parent=self._SP_SYN_ID)
         if not self.staging:
+            file_ent = File(gene_matrix_filepath, parent=self._SP_SYN_ID)
             self.syn.store(file_ent, used=used_ent, executed=self._GITHUB_REPO)
 
     def configure_clinicaldf(self, clinicaldf, redcap_to_cbiomappingdf):
