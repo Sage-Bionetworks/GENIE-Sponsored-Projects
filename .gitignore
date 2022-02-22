@@ -1,0 +1,12 @@
+cbioportal
+BrCa/
+CRC/
+NSCLC/
+PANC/
+Prostate/
+AKT1/
+ERBB2/
+FGFR4/
+*.egg-info/
+*.vscode
+__pycache__

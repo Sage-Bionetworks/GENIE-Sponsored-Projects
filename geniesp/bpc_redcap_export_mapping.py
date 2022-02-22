@@ -37,7 +37,7 @@ def get_data(syn, mappingdf, sampletype):
         table = syn.tableQuery(f"select * from {synid}")
         tabledf = table.asDataFrame()
         if finaldf.empty:
-            finaldf = finaldf.append(tabledf)
+            finaldf = pd.concat([finaldf, tabledf])
         else:
             # must remove this or else columns will be duplicated
             del tabledf["redcap_data_access_group"]
@@ -90,7 +90,7 @@ def get_file_data(syn, mappingdf, sampletype, cohort="NSCLC"):
         tabledf = tabledf[cols]
         # Append to final dataframe if empty
         if finaldf.empty:
-            finaldf = finaldf.append(tabledf)
+            finaldf = pd.concat([finaldf, tabledf])
         else:
             # Records missing pathology reports still have to be present
             # So a left merge has to happen.  This logic also assumes that
@@ -342,7 +342,7 @@ def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCL
         regimen_drug_info["priority"] = [
             int(value) for value in regimen_infodf["priority"]
         ]
-        new_regimen_info = new_regimen_info.append(regimen_drug_info)
+        new_regimen_info = pd.concat([new_regimen_info, regimen_drug_info])
 
         col_map = regimen_drug_info["cbio"].to_dict()
         col_map["record_id"] = "PATIENT_ID"
@@ -582,7 +582,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
             del melted_df["variable"]
             if final_timelinedf.empty:
-                final_timelinedf = final_timelinedf.append(melted_df)
+                final_timelinedf = pd.concat([final_timelinedf, melted_df])
             else:
                 final_timelinedf[row["cbio"]] = melted_df[row["cbio"]]
         final_timelinedf["TREATMENT_TYPE"] = "Systemic Therapy"
@@ -889,7 +889,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ~patient_sample_idx & ~regimen_idx
         ].merge(data_tablesdf, on="dataset", how="left")
         # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
-        timeline_infodf = timeline_infodf.append(
+        timeline_infodf = pd.concat([
+            timeline_infodf,
             pd.DataFrame(
                 {
                     "code": "rt_rt_int",
@@ -899,7 +900,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 },
                 index=["rt_rt_int"],
             )
-        )
+        ])
         # Must do this, because index gets reset after appending
         timeline_infodf.index = timeline_infodf["code"]
         # TODO: Must add sample retraction here, also check against main
@@ -923,7 +924,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
             del rad_df["INDEX_CANCER"]
             del rad_df["TEMP"]
-            treatment_data["df"] = treatment_data["df"].append(rad_df)
+            treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
         treatment_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_treatment.txt"
         )
@@ -1046,7 +1047,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         print("SURVIVAL")
         # This is important because dob_first_index_ca is needed
         # For filtering
-        infodf = infodf.append(
+        infodf = pd.concat([
+            infodf,
             pd.DataFrame(
                 {
                     "code": "dob_first_index_ca",
@@ -1056,7 +1058,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 },
                 index=["dob_first_index_ca"],
             )
-        )
+        ])
         # Must do this because index gets reset
         infodf.index = infodf["code"]
         survival_infodf = infodf[infodf["sampleType"] == "SURVIVAL"]
@@ -1081,13 +1083,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
         # Must get redcap_ca_index to grab only the index cancers
-        patient_infodf = patient_infodf.append(
-            {
-                "code": "redcap_ca_index",
-                "sampleType": "PATIENT",
-                "dataset": "Cancer-level dataset",
-            },
-            ignore_index=True,
+        patient_infodf = pd.concat([
+            patient_infodf,
+            pd.DataFrame(
+                {
+                    "code": "redcap_ca_index",
+                    "sampleType": "PATIENT",
+                    "dataset": "Cancer-level dataset",
+                },
+                index=['redcap_ca_index']
+            )],
+            ignore_index=True
         )
         patient_infodf.index = patient_infodf["code"]
         patient_data = get_file_data(
@@ -1177,7 +1183,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             cohort=self._SPONSORED_PROJECT,
         )
 
-        survival_info = infodf.append(regimens_data["info"])
+        survival_info = pd.concat([infodf, regimens_data["info"]])
 
         # Create survival data
         subset_survivaldf = final_survivaldf[
