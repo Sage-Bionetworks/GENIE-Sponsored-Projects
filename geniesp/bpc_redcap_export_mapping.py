@@ -872,7 +872,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         data_elements = self.syn.tableQuery(
             f"select distinct variable from {self._DATA_ELEMENT_SYN_ID} "
             f'where "{self._SPONSORED_PROJECT}_sor" in '
-            "('project', 'consortium')"
+            "('project', 'consortium', 'public')"
         )
         data_elementsdf = data_elements.asDataFrame()
         data_elements_str = "','".join(data_elementsdf["variable"])
