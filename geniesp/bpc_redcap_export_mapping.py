@@ -722,7 +722,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         for synid_child in synid_children:
             if synid_child["name"] == file_name:
                 return synid_child["id"]
-        return None
+        raise ValueError(f"file '{file_name}' not found in {synid_folder}")
     
     def create_maf(self, keep_samples):
         """Create maf file from release maf
