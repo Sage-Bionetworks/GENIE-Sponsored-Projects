@@ -1,3 +1,4 @@
 aacrgenie>=12.5.0
 pandas>=1.0
 synapseclient>=2.4.0
+openpyxl>=3.0.9
