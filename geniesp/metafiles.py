@@ -61,12 +61,12 @@ def create_genomic_meta_file(
     Args:
         study_identifier (str): A string used to uniquely identify this cancer study
                                 within the database
-        alteration_type (str): [description]
-        datatype (str): [description]
-        stable_id (str): [description]
-        profile_name (str): [description]
-        profile_description (str): [description]
-        filename (str): [description]
+        alteration_type (str): Allowed values - MUTATIONS_EXTENDED, FUSION, COPY_NUMBER_ALTERATION
+        datatype (str): Allowed values - DISCRETE, FUSION, MAF
+        stable_id (str): Allowed values - mutations, fusion, cna
+        profile_name (str): A name for the data
+        profile_description (str): A description of the data
+        filename (str): cbioportal filename
 
     Returns:
         dict: cBioPortal meta file
@@ -87,8 +87,6 @@ def create_genomic_meta_file(
 
 def create_seg_meta_file(
     study_identifier: str,
-    alteration_type: str,
-    datatype: str,
     reference_genome_id: str,
     description: str,
     filename: str
@@ -98,19 +96,17 @@ def create_seg_meta_file(
     Args:
         study_identifier (str): A string used to uniquely identify this cancer study
                                 within the database
-        alteration_type (str): [description]
-        datatype (str): [description]
-        reference_genome_id (str): [description]
-        description (str): [description]
-        filename (str): [description]
+        reference_genome_id (str): Reference genome version.
+        description (str): A description of the segmented data.
+        filename (str): cbioportal filename
 
     Returns:
         dict: cBioPortal meta file
     """
     meta_info = {
         "cancer_study_identifier": study_identifier,
-        "genetic_alteration_type": alteration_type,
-        "datatype": datatype,
+        "genetic_alteration_type": "COPY_NUMBER_ALTERATION",
+        "datatype": "SEG",
         "reference_genome_id": reference_genome_id,
         "description": description,
         "data_filename": filename
@@ -133,10 +129,11 @@ def create_meta_study(
         study_identifier (str): A string used to uniquely identify this cancer study
                                 within the database
         type_of_cancer (str): The cancer type abbreviation
-        name (str): [description]
-        description (str): [description]
-        groups (str): [description]
-        short_name (str): [description]
+        name (str): The name of the cancer study
+        description (str): A description of the cancer study
+        groups (str): When using an authenticating cBioPortal, lists the user-groups
+                      that are allowed access to this study.
+        short_name (str): The abbreviated name of the cancer study
 
     Returns:
         dict: cBioPortal meta file
@@ -188,21 +185,21 @@ def create_cbio_metafiles(
                 study_identifier=study_identifier,
                 alteration_type="CLINICAL",
                 datatype="SAMPLE_ATTRIBUTE",
-                filename="data_clinical_sample.txt"
+                filename=cbio_file
             )
         elif cbio_file.startswith("data_clinical_patient"):
             create_clinical_meta_file(
                 study_identifier=study_identifier,
                 alteration_type="CLINICAL",
                 datatype="PATIENT_ATTRIBUTE",
-                filename="data_clinical_patient.txt"
+                filename=cbio_file
             )
         elif cbio_file.startswith("data_gene_matrix"):
             create_clinical_meta_file(
                 study_identifier=study_identifier,
                 alteration_type="GENE_PANEL_MATRIX",
                 datatype="GENE_PANEL_MATRIX",
-                filename="data_gene_matrix.txt"
+                filename=cbio_file
             )
         elif cbio_file.startswith([
             "data_timeline_cancer_diagnosis.txt",
@@ -227,7 +224,7 @@ def create_cbio_metafiles(
                 stable_id="cna",
                 profile_name="Copy-number alterations",
                 profile_description="Copy-number alterations",
-                filename="data_CNA.txt"
+                filename=cbio_file
             )
         elif cbio_file.startswith("data_fusions"):
             create_genomic_meta_file(
@@ -237,7 +234,7 @@ def create_cbio_metafiles(
                 stable_id="fusion",
                 profile_name="Fusions",
                 profile_description="Fusions",
-                filename="data_fusions.txt"
+                filename=cbio_file
             )
         elif cbio_file.startswith("data_mutations_extended"):
             create_genomic_meta_file(
@@ -247,13 +244,11 @@ def create_cbio_metafiles(
                 stable_id="mutations",
                 profile_name="Mutations",
                 profile_description="Mutation data from next-gen sequencing.",
-                filename="data_mutations_extended.txt"
+                filename=cbio_file
             )
         elif cbio_file.endswith("data_cna_hg19.seg"):
             create_seg_meta_file(
                 study_identifier=study_identifier,
-                alteration_type="COPY_NUMBER_ALTERATION",
-                datatype="SEG",
                 reference_genome_id="hg19",
                 description="Segment data for the genie study",
                 filename=cbio_file
