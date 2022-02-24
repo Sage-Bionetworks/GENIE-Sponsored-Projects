@@ -10,17 +10,18 @@
 USAGE:
 >>> python runSP.py NSCLC ../cbioportal/ --staging
 """
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 import math
 import os
 import subprocess
 
-import synapseclient
-from synapseclient import File, Folder
-import pandas as pd
-
 import genie
 from genie import create_case_lists, process_functions
+import pandas as pd
+import synapseclient
+from synapseclient import File, Folder
+
+from . import metafiles
 
 
 def get_data(syn, mappingdf, sampletype):
@@ -1144,9 +1145,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         # Create regimens data for patient file
         drug_mapping = get_drug_mapping(syn=self.syn, 
-                                          cohort=self._SPONSORED_PROJECT, 
-                                          synid_file_grs=self._GRS_SYNID, 
-                                          synid_table_prissmm=self._PRISSMM_SYNID)
+                                        cohort=self._SPONSORED_PROJECT,
+                                        synid_file_grs=self._GRS_SYNID,
+                                        synid_table_prissmm=self._PRISSMM_SYNID)
         regimens_data = create_regimens(self.syn, regimen_infodf,
                                         mapping = drug_mapping,
                                         top_x_regimens=20,
@@ -1254,8 +1255,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # if duplicated.any():
         #     # TODO: Add in duplicated ids
         #     print("DUPLICATED SAMPLE_IDs")
-            # There are duplicated samples
-            # subset_sampledf = subset_sampledf[~duplicated]
+        #     There are duplicated samples
+        #     subset_sampledf = subset_sampledf[~duplicated]
         sample_path = self.write_clinical_file(subset_sampledf, infodf,
                                                "sample")
 
@@ -1389,9 +1390,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         self.create_gene_panels(subset_sampledf['SEQ_ASSAY_ID'].unique())
         # Make sure to re download all the metadata files again
-        # TODO: Download or create metadata files? Should we create meta files
-        # each time?
-        self.download_metadata_files()
+        # TODO: need to add folder path to write meta files to...
+        metafiles.create_cbio_metafiles(study_identifier="insert_study_id?")
+        # self.download_metadata_files()
 
         cmd = ['python',
                os.path.join(self.cbiopath,
