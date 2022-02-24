@@ -20,10 +20,7 @@ def write_meta_file(meta_info: dict, filename: str) -> str:
 
 
 def create_clinical_meta_file(
-    study_identifier: str,
-    alteration_type: str,
-    datatype: str,
-    filename: str
+    study_identifier: str, alteration_type: str, datatype: str, filename: str
 ) -> dict:
     """Create cbio meta files
 
@@ -42,7 +39,7 @@ def create_clinical_meta_file(
         "cancer_study_identifier": study_identifier,
         "genetic_alteration_type": alteration_type,
         "datatype": datatype,
-        "data_filename": filename
+        "data_filename": filename,
     }
     write_meta_file(meta_info, filename)
     return meta_info
@@ -55,7 +52,7 @@ def create_genomic_meta_file(
     stable_id: str,
     profile_name: str,
     profile_description: str,
-    filename: str
+    filename: str,
 ) -> dict:
     """Create genomic metadata files
 
@@ -80,17 +77,14 @@ def create_genomic_meta_file(
         "show_profile_in_analysis_tab": "true",
         "profile_name": profile_name,
         "profile_description": profile_description,
-        "data_filename": filename
+        "data_filename": filename,
     }
     write_meta_file(meta_info, filename)
     return meta_info
 
 
 def create_seg_meta_file(
-    study_identifier: str,
-    reference_genome_id: str,
-    description: str,
-    filename: str
+    study_identifier: str, reference_genome_id: str, description: str, filename: str
 ) -> dict:
     """Create seg metadata files
 
@@ -110,7 +104,7 @@ def create_seg_meta_file(
         "datatype": "SEG",
         "reference_genome_id": reference_genome_id,
         "description": description,
-        "data_filename": filename
+        "data_filename": filename,
     }
     write_meta_file(meta_info, filename)
     return meta_info
@@ -122,7 +116,7 @@ def create_meta_study(
     name: str,
     description: str,
     groups: str,
-    short_name: str
+    short_name: str,
 ) -> dict:
     """Create seg metadata files
 
@@ -145,7 +139,7 @@ def create_meta_study(
         "name": name,
         "description": description,
         "groups": groups,
-        "short_name": short_name
+        "short_name": short_name,
     }
     write_meta_file(meta_info, "meta_study.txt")
     return meta_info
@@ -169,8 +163,8 @@ def create_cbio_metafiles(
         "data_timeline_labtest.txt",
         "data_CNA.txt",
         "data_fusions.txt",
-        "data_mutations_extended.txt"
-    ]
+        "data_mutations_extended.txt",
+    ],
 ):
     """Create cbioportal metadata files
 
@@ -186,36 +180,38 @@ def create_cbio_metafiles(
                 study_identifier=study_identifier,
                 alteration_type="CLINICAL",
                 datatype="SAMPLE_ATTRIBUTE",
-                filename=cbio_file
+                filename=cbio_file,
             )
         elif cbio_file.startswith("data_clinical_patient"):
             create_clinical_meta_file(
                 study_identifier=study_identifier,
                 alteration_type="CLINICAL",
                 datatype="PATIENT_ATTRIBUTE",
-                filename=cbio_file
+                filename=cbio_file,
             )
         elif cbio_file.startswith("data_gene_matrix"):
             create_clinical_meta_file(
                 study_identifier=study_identifier,
                 alteration_type="GENE_PANEL_MATRIX",
                 datatype="GENE_PANEL_MATRIX",
-                filename=cbio_file
+                filename=cbio_file,
             )
-        elif cbio_file.startswith([
-            "data_timeline_cancer_diagnosis",
-            "data_timeline_imaging",
-            "data_timeline_medonc",
-            "data_timeline_pathology",
-            "data_timeline_sample_acquisition",
-            "data_timeline_sequencing",
-            "data_timeline_treatment"
-        ]):
+        elif cbio_file.startswith(
+            [
+                "data_timeline_cancer_diagnosis",
+                "data_timeline_imaging",
+                "data_timeline_medonc",
+                "data_timeline_pathology",
+                "data_timeline_sample_acquisition",
+                "data_timeline_sequencing",
+                "data_timeline_treatment",
+            ]
+        ):
             create_clinical_meta_file(
                 study_identifier=study_identifier,
                 alteration_type="CLINICAL",
                 datatype="TIMELINE",
-                filename=cbio_file
+                filename=cbio_file,
             )
         elif cbio_file.startswith("data_CNA"):
             create_genomic_meta_file(
@@ -225,7 +221,7 @@ def create_cbio_metafiles(
                 stable_id="cna",
                 profile_name="Copy-number alterations",
                 profile_description="Copy-number alterations",
-                filename=cbio_file
+                filename=cbio_file,
             )
         elif cbio_file.startswith("data_fusions"):
             create_genomic_meta_file(
@@ -235,7 +231,7 @@ def create_cbio_metafiles(
                 stable_id="fusion",
                 profile_name="Fusions",
                 profile_description="Fusions",
-                filename=cbio_file
+                filename=cbio_file,
             )
         elif cbio_file.startswith("data_mutations_extended"):
             create_genomic_meta_file(
@@ -245,14 +241,14 @@ def create_cbio_metafiles(
                 stable_id="mutations",
                 profile_name="Mutations",
                 profile_description="Mutation data from next-gen sequencing.",
-                filename=cbio_file
+                filename=cbio_file,
             )
         elif cbio_file.endswith("data_cna_hg19.seg"):
             create_seg_meta_file(
                 study_identifier=study_identifier,
                 reference_genome_id="hg19",
                 description="Segment data for the genie study",
-                filename=cbio_file
+                filename=cbio_file,
             )
         else:
             print(f"{cbio_file} does not have associated metafile")
@@ -262,5 +258,5 @@ def create_cbio_metafiles(
             name="PLACEHOLDER",
             description="PLACEHOLDER",
             groups="GENIE",
-            short_name="PLACEHOLDER"
+            short_name="PLACEHOLDER",
         )

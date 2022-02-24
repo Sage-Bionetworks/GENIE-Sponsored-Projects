@@ -708,9 +708,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "used": used_entities,
         }
 
-    
     def get_mg_synid(self, synid_folder: str, file_name: str) -> str:
-        """Get Synapse ID of main GENIE data file in release folder. 
+        """Get Synapse ID of main GENIE data file in release folder.
 
         Args:
             synid_folder (str): Synapse ID of main GENIE release folder
@@ -724,7 +723,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             if synid_child["name"] == file_name:
                 return synid_child["id"]
         raise ValueError(f"file '{file_name}' not found in {synid_folder}")
-    
+
     def create_maf(self, keep_samples):
         """Create maf file from release maf
 
@@ -911,18 +910,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ~patient_sample_idx & ~regimen_idx
         ].merge(data_tablesdf, on="dataset", how="left")
         # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
-        timeline_infodf = pd.concat([
-            timeline_infodf,
-            pd.DataFrame(
-                {
-                    "code": "rt_rt_int",
-                    "sampleType": "TIMELINE-TREATMENT-RT",
-                    "dataset": "Cancer-Directed Radiation Therapy dataset",
-                    "cbio": "TEMP",
-                },
-                index=["rt_rt_int"],
-            )
-        ])
+        timeline_infodf = pd.concat(
+            [
+                timeline_infodf,
+                pd.DataFrame(
+                    {
+                        "code": "rt_rt_int",
+                        "sampleType": "TIMELINE-TREATMENT-RT",
+                        "dataset": "Cancer-Directed Radiation Therapy dataset",
+                        "cbio": "TEMP",
+                    },
+                    index=["rt_rt_int"],
+                ),
+            ]
+        )
         # Must do this, because index gets reset after appending
         timeline_infodf.index = timeline_infodf["code"]
         # TODO: Must add sample retraction here, also check against main
@@ -1069,18 +1070,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         print("SURVIVAL")
         # This is important because dob_first_index_ca is needed
         # For filtering
-        infodf = pd.concat([
-            infodf,
-            pd.DataFrame(
-                {
-                    "code": "dob_first_index_ca",
-                    "sampleType": "SURVIVAL",
-                    "dataset": "Cancer-level index dataset",
-                    "cbio": "CANCER_INDEX",
-                },
-                index=["dob_first_index_ca"],
-            )
-        ])
+        infodf = pd.concat(
+            [
+                infodf,
+                pd.DataFrame(
+                    {
+                        "code": "dob_first_index_ca",
+                        "sampleType": "SURVIVAL",
+                        "dataset": "Cancer-level index dataset",
+                        "cbio": "CANCER_INDEX",
+                    },
+                    index=["dob_first_index_ca"],
+                ),
+            ]
+        )
         # Must do this because index gets reset
         infodf.index = infodf["code"]
         survival_infodf = infodf[infodf["sampleType"] == "SURVIVAL"]
@@ -1095,26 +1098,30 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del final_survivaldf["CANCER_INDEX"]
         # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
-        if 'PFS_I_ADV_STATUS' in final_survivaldf.columns: 
-            pfs_not_null_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
-            pfs_not_blank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
-            nondup_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep=False)
-            final_survivaldf = final_survivaldf[(pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)]
+        if "PFS_I_ADV_STATUS" in final_survivaldf.columns:
+            pfs_not_null_idx = ~final_survivaldf["PFS_I_ADV_STATUS"].isnull()
+            pfs_not_blank_idx = final_survivaldf["PFS_I_ADV_STATUS"] != ""
+            nondup_patients_idx = ~final_survivaldf["PATIENT_ID"].duplicated(keep=False)
+            final_survivaldf = final_survivaldf[
+                (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
+            ]
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
         # Must get redcap_ca_index to grab only the index cancers
-        patient_infodf = pd.concat([
-            patient_infodf,
-            pd.DataFrame(
-                {
-                    "code": "redcap_ca_index",
-                    "sampleType": "PATIENT",
-                    "dataset": "Cancer-level dataset",
-                },
-                index=['redcap_ca_index']
-            )],
-            ignore_index=True
+        patient_infodf = pd.concat(
+            [
+                patient_infodf,
+                pd.DataFrame(
+                    {
+                        "code": "redcap_ca_index",
+                        "sampleType": "PATIENT",
+                        "dataset": "Cancer-level dataset",
+                    },
+                    index=["redcap_ca_index"],
+                ),
+            ],
+            ignore_index=True,
         )
         patient_infodf.index = patient_infodf["code"]
         patient_data = get_file_data(
