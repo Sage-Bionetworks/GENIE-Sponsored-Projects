@@ -604,6 +604,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         agents = []
         print(final_timelinedf["AGENT"])
         for index, agent in enumerate(final_timelinedf["AGENT"]):
+            print(f"index = {index}")
+            print(f"agent = {agent}")
             if "(" in agent:
                 agents.append(agent.split("(")[0].strip())
             else:
