@@ -8,6 +8,7 @@
   REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
 """
 from abc import ABCMeta
+from datetime import date
 import math
 import os
 import subprocess
@@ -373,6 +374,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _DATA_TABLE_IDS = None
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = None
+    # main GENIE release folder (8.1-public)
+    _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # PRISSMM documentation table
@@ -433,6 +436,26 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     downloadLocation=self._SPONSORED_PROJECT,
                     ifcollision="overwrite.local",
                 )
+
+    def create_bpc_cbio_metafiles(self):
+        name = f"GENIE BPC {self._SPONSORED_PROJECT} v{self.release}"
+        description = f"{self._SPONSORED_PROJECT} cohort v{self._SPONSORED_PROJECT} (GENIE {date.today().year}) GENIE {mg_release}"
+        short_name = f"{self._SPONSORED_PROJECT} GENIE"
+        study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
+        metafiles.create_cbio_metafiles(
+            study_identifier=study_identifier,
+            outdir=self._SPONSORED_PROJECT
+        )
+        meta_study = metafiles.create_meta_study(
+            study_identifier=study_identifier,
+            type_of_cancer="mixed",
+            name=name,
+            description=description,
+            groups="GENIE",
+            short_name=short_name,
+        )
+        metafiles.write_meta_file(meta_info=meta_study, filename="meta_study.txt", outdir=self._SPONSORED_PROJECT)
+
 
     def create_genematrixdf(self, clinicaldf, cna_samples, used_ent=None):
         """

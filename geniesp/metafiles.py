@@ -3,12 +3,13 @@ from typing import List
 import yaml
 
 
-def write_meta_file(meta_info: dict, filename: str) -> str:
+def write_meta_file(meta_info: dict, filename: str, outdir: str) -> str:
     """Writes metadata file
 
     Args:
         meta_info (dict): metafile in a dict
         filename (str): cbioportal filename
+
 
     Returns:
         str: meta file path
@@ -41,7 +42,6 @@ def create_clinical_meta_file(
         "datatype": datatype,
         "data_filename": filename,
     }
-    write_meta_file(meta_info, filename)
     return meta_info
 
 
@@ -79,7 +79,6 @@ def create_genomic_meta_file(
         "profile_description": profile_description,
         "data_filename": filename,
     }
-    write_meta_file(meta_info, filename)
     return meta_info
 
 
@@ -106,7 +105,6 @@ def create_seg_meta_file(
         "description": description,
         "data_filename": filename,
     }
-    write_meta_file(meta_info, filename)
     return meta_info
 
 
@@ -141,8 +139,92 @@ def create_meta_study(
         "groups": groups,
         "short_name": short_name,
     }
-    write_meta_file(meta_info, "meta_study.txt")
     return meta_info
+
+
+def get_cbio_file_metadata(
+    study_identifier: str,
+    cbio_filename: str
+) -> dict:
+    """Get cBioPortal metadata in a dict
+
+    Args:
+        study_identifier (str): A string used to uniquely identify this cancer study
+                                within the database
+        cbio_filename (str): cbioportal file name
+
+    Returns:
+        dict: cBioPortal metadata
+    """
+    # supp_survival* files don't need a meta file
+    if cbio_filename.startswith("data_clinical_sample"):
+        meta_dict = create_clinical_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="CLINICAL",
+            datatype="SAMPLE_ATTRIBUTE",
+            filename=cbio_filename,
+        )
+    elif cbio_filename.startswith("data_clinical_patient"):
+        meta_dict = create_clinical_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="CLINICAL",
+            datatype="PATIENT_ATTRIBUTE",
+            filename=cbio_filename,
+        )
+    elif cbio_filename.startswith("data_gene_matrix"):
+        meta_dict = create_clinical_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="GENE_PANEL_MATRIX",
+            datatype="GENE_PANEL_MATRIX",
+            filename=cbio_filename,
+        )
+    elif cbio_filename.startswith("data_timeline"):
+        meta_dict = create_clinical_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="CLINICAL",
+            datatype="TIMELINE",
+            filename=cbio_filename,
+        )
+    elif cbio_filename.startswith("data_CNA"):
+        meta_dict = create_genomic_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="COPY_NUMBER_ALTERATION",
+            datatype="DISCRETE",
+            stable_id="cna",
+            profile_name="Copy-number alterations",
+            profile_description="Copy-number alterations",
+            filename=cbio_filename,
+        )
+    elif cbio_filename.startswith("data_fusions"):
+        meta_dict = create_genomic_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="FUSION",
+            datatype="FUSION",
+            stable_id="fusion",
+            profile_name="Fusions",
+            profile_description="Fusions",
+            filename=cbio_filename,
+        )
+    elif cbio_filename.startswith("data_mutations_extended"):
+        meta_dict = create_genomic_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="MUTATIONS_EXTENDED",
+            datatype="MAF",
+            stable_id="mutations",
+            profile_name="Mutations",
+            profile_description="Mutation data from next-gen sequencing.",
+            filename=cbio_filename,
+        )
+    elif cbio_filename.endswith("data_cna_hg19.seg"):
+        meta_dict = create_seg_meta_file(
+            study_identifier=study_identifier,
+            reference_genome_id="hg19",
+            description="Segment data for the genie study",
+            filename=cbio_filename,
+        )
+    else:
+        raise NotImplementedError(f"{cbio_filename} does not have associated metafile")
+    return meta_dict
 
 
 def create_cbio_metafiles(
@@ -165,88 +247,20 @@ def create_cbio_metafiles(
         "data_fusions.txt",
         "data_mutations_extended.txt",
     ],
+    outdir: str = "./"
 ):
     """Create cbioportal metadata files
 
     Args:
         study_identifier (str): A string used to uniquely identify this cancer study
                                 within the database
-        cbio_fileformats (list): List of cbioportal file names
+        cbio_fileformats (list): List of cbioportal file names.
+        outdir (str): Directory to write metadata files to. Defaults to current dir.
     """
     # supp_survival* files don't need a meta file
     for cbio_file in cbio_fileformats:
-        if cbio_file.startswith("data_clinical_sample"):
-            create_clinical_meta_file(
-                study_identifier=study_identifier,
-                alteration_type="CLINICAL",
-                datatype="SAMPLE_ATTRIBUTE",
-                filename=cbio_file,
-            )
-        elif cbio_file.startswith("data_clinical_patient"):
-            create_clinical_meta_file(
-                study_identifier=study_identifier,
-                alteration_type="CLINICAL",
-                datatype="PATIENT_ATTRIBUTE",
-                filename=cbio_file,
-            )
-        elif cbio_file.startswith("data_gene_matrix"):
-            create_clinical_meta_file(
-                study_identifier=study_identifier,
-                alteration_type="GENE_PANEL_MATRIX",
-                datatype="GENE_PANEL_MATRIX",
-                filename=cbio_file,
-            )
-        elif cbio_file.startswith("data_timeline"):
-            create_clinical_meta_file(
-                study_identifier=study_identifier,
-                alteration_type="CLINICAL",
-                datatype="TIMELINE",
-                filename=cbio_file,
-            )
-        elif cbio_file.startswith("data_CNA"):
-            create_genomic_meta_file(
-                study_identifier=study_identifier,
-                alteration_type="COPY_NUMBER_ALTERATION",
-                datatype="DISCRETE",
-                stable_id="cna",
-                profile_name="Copy-number alterations",
-                profile_description="Copy-number alterations",
-                filename=cbio_file,
-            )
-        elif cbio_file.startswith("data_fusions"):
-            create_genomic_meta_file(
-                study_identifier=study_identifier,
-                alteration_type="FUSION",
-                datatype="FUSION",
-                stable_id="fusion",
-                profile_name="Fusions",
-                profile_description="Fusions",
-                filename=cbio_file,
-            )
-        elif cbio_file.startswith("data_mutations_extended"):
-            create_genomic_meta_file(
-                study_identifier=study_identifier,
-                alteration_type="MUTATIONS_EXTENDED",
-                datatype="MAF",
-                stable_id="mutations",
-                profile_name="Mutations",
-                profile_description="Mutation data from next-gen sequencing.",
-                filename=cbio_file,
-            )
-        elif cbio_file.endswith("data_cna_hg19.seg"):
-            create_seg_meta_file(
-                study_identifier=study_identifier,
-                reference_genome_id="hg19",
-                description="Segment data for the genie study",
-                filename=cbio_file,
-            )
-        else:
-            print(f"{cbio_file} does not have associated metafile")
-        create_meta_study(
+        meta_dict = get_cbio_file_metadata(
             study_identifier=study_identifier,
-            type_of_cancer="mixed",
-            name="PLACEHOLDER",
-            description="PLACEHOLDER",
-            groups="GENIE",
-            short_name="PLACEHOLDER",
+            cbio_filename=cbio_file
         )
+        write_meta_file(meta_info=meta_dict, filename=cbio_file, outdir=outdir)
