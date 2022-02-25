@@ -600,12 +600,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Make sure all events types are treatment
         final_timelinedf["EVENT_TYPE"] = "Treatment"
 
-        # Make sure AGENT doesn't have parenthesis
+        # Make sure AGENT is not null and doesn't have parenthesis
         agents = []
+        final_timelinedf[~final_timelinedf["AGENT"].isnull()]
         for index, agent in enumerate(final_timelinedf["AGENT"]):
-            print(f"index = {index}")
-            print(f"agent = {agent}")
-            print(final_timelinedf.iloc[index])
             if "(" in agent:
                 agents.append(agent.split("(")[0].strip())
             else:
