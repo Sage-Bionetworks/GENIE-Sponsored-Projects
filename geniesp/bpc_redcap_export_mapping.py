@@ -602,7 +602,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Make sure AGENT is not null and doesn't have parenthesis
         agents = []
-        final_timelinedf[~final_timelinedf["AGENT"].isnull()]
+        final_timelinedf = final_timelinedf[~final_timelinedf["AGENT"].isnull()]
         for index, agent in enumerate(final_timelinedf["AGENT"]):
             if "(" in agent:
                 agents.append(agent.split("(")[0].strip())
