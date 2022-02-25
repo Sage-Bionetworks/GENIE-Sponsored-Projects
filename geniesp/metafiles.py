@@ -142,10 +142,7 @@ def create_meta_study(
     return meta_info
 
 
-def get_cbio_file_metadata(
-    study_identifier: str,
-    cbio_filename: str
-) -> dict:
+def get_cbio_file_metadata(study_identifier: str, cbio_filename: str) -> dict:
     """Get cBioPortal metadata in a dict
 
     Args:
@@ -247,7 +244,7 @@ def create_cbio_metafiles(
         "data_fusions.txt",
         "data_mutations_extended.txt",
     ],
-    outdir: str = "./"
+    outdir: str = "./",
 ):
     """Create cbioportal metadata files
 
@@ -260,7 +257,6 @@ def create_cbio_metafiles(
     # supp_survival* files don't need a meta file
     for cbio_file in cbio_fileformats:
         meta_dict = get_cbio_file_metadata(
-            study_identifier=study_identifier,
-            cbio_filename=cbio_file
+            study_identifier=study_identifier, cbio_filename=cbio_file
         )
         write_meta_file(meta_info=meta_dict, filename=cbio_file, outdir=outdir)

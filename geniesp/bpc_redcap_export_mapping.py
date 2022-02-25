@@ -438,8 +438,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 )
 
     def create_bpc_cbio_metafiles(self):
-        """Create BPC cBioPortal meta* files
-        """
+        """Create BPC cBioPortal meta* files"""
         mg_release_ent = self.syn.get(self._MG_RELEASE_SYNID)
         name = f"GENIE BPC {self._SPONSORED_PROJECT} v{self.release}"
         description = (
@@ -449,8 +448,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
         metafiles.create_cbio_metafiles(
-            study_identifier=study_identifier,
-            outdir=self._SPONSORED_PROJECT
+            study_identifier=study_identifier, outdir=self._SPONSORED_PROJECT
         )
         meta_study = metafiles.create_meta_study(
             study_identifier=study_identifier,
@@ -461,7 +459,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             short_name=short_name,
         )
         metafiles.write_meta_file(
-            meta_info=meta_study, filename="meta_study.txt", outdir=self._SPONSORED_PROJECT
+            meta_info=meta_study,
+            filename="meta_study.txt",
+            outdir=self._SPONSORED_PROJECT,
         )
 
     def create_genematrixdf(self, clinicaldf, cna_samples, used_ent=None):
