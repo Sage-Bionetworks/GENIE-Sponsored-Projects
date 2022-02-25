@@ -196,17 +196,7 @@ def create_cbio_metafiles(
                 datatype="GENE_PANEL_MATRIX",
                 filename=cbio_file,
             )
-        elif cbio_file.startswith(
-            [
-                "data_timeline_cancer_diagnosis",
-                "data_timeline_imaging",
-                "data_timeline_medonc",
-                "data_timeline_pathology",
-                "data_timeline_sample_acquisition",
-                "data_timeline_sequencing",
-                "data_timeline_treatment",
-            ]
-        ):
+        elif cbio_file.startswith("data_timeline"):
             create_clinical_meta_file(
                 study_identifier=study_identifier,
                 alteration_type="CLINICAL",
