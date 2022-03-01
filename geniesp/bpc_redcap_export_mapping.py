@@ -1178,7 +1178,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "bilateral Wilms' tumors",
             "5": "Paired site: midline tumor",
             "9": "Paired site, but no information concerning laterality",
-            "Not paired": "Not paired",
+            "Not paired": "Not a paired site",
         }
         if subset_patientdf.get("NAACCR_LATERALITY_CD") is not None:
             remapped_values = subset_patientdf["NAACCR_LATERALITY_CD"].astype(str).map(
