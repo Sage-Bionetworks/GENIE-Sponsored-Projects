@@ -462,8 +462,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Get list of files to create cBioPortal metadata files for
         to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exlude_files))
         metafiles.create_cbio_metafiles(
-            study_identifier=study_identifier, outdir=self._SPONSORED_PROJECT,
-            cbio_fileformats=to_create_meta
+            study_identifier=study_identifier,
+            outdir=self._SPONSORED_PROJECT,
+            cbio_fileformats=to_create_meta,
         )
         meta_study = metafiles.create_meta_study(
             study_identifier=study_identifier,
