@@ -466,7 +466,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             outdir=self._SPONSORED_PROJECT,
             cbio_fileformats=to_create_meta,
         )
-        meta_study = metafiles.create_meta_study(
+        meta_study = metafiles.create_study_meta_file(
             study_identifier=study_identifier,
             type_of_cancer="mixed",
             name=name,
