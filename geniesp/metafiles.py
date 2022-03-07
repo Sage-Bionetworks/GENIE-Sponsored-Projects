@@ -161,14 +161,14 @@ def get_cbio_file_metadata(study_identifier: str, cbio_filename: str) -> dict:
         meta_dict = create_clinical_meta_file(
             study_identifier=study_identifier,
             alteration_type="CLINICAL",
-            datatype="SAMPLE_ATTRIBUTE",
+            datatype="SAMPLE_ATTRIBUTES",
             filename=cbio_filename,
         )
     elif cbio_filename.startswith("data_clinical_patient"):
         meta_dict = create_clinical_meta_file(
             study_identifier=study_identifier,
             alteration_type="CLINICAL",
-            datatype="PATIENT_ATTRIBUTE",
+            datatype="PATIENT_ATTRIBUTES",
             filename=cbio_filename,
         )
     elif cbio_filename.startswith("data_gene_matrix"):
@@ -208,7 +208,7 @@ def get_cbio_file_metadata(study_identifier: str, cbio_filename: str) -> dict:
     elif cbio_filename.startswith("data_mutations_extended"):
         meta_dict = create_genomic_meta_file(
             study_identifier=study_identifier,
-            alteration_type="MUTATIONS_EXTENDED",
+            alteration_type="MUTATION_EXTENDED",
             datatype="MAF",
             stable_id="mutations",
             profile_name="Mutations",
