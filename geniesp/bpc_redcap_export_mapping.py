@@ -1168,19 +1168,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(subset_patientdf.columns.drop(cols_to_order).tolist())
         # HACK: Temporary remapping of specific values in a column
         laterality_mapping = {
-            0: "Not a paired site",
-            1: "Right: origin of primary",
-            2: "Left: origin of primary",
-            3: "Only one side involved, right or left origin unspecified",
-            4: "Bilateral involvement at time of diagnosis, lateral origin "
+            "0": "Not a paired site",
+            "1": "Right: origin of primary",
+            "2": "Left: origin of primary",
+            "3": "Only one side involved, right or left origin unspecified",
+            "4": "Bilateral involvement at time of diagnosis, lateral origin "
             "unknown for a single primary; or both ovaries involved "
             "simultaneously, single histology; bilateral retinoblastomas; "
             "bilateral Wilms' tumors",
-            5: "Paired site: midline tumor",
-            9: "Paired site, but no information concerning laterality",
+            "5": "Paired site: midline tumor",
+            "9": "Paired site, but no information concerning laterality",
+            "Not paired": "Not a paired site",
         }
         if subset_patientdf.get("NAACCR_LATERALITY_CD") is not None:
-            remapped_values = subset_patientdf["NAACCR_LATERALITY_CD"].map(
+            remapped_values = subset_patientdf["NAACCR_LATERALITY_CD"].astype(str).map(
                 laterality_mapping
             )
             subset_patientdf["NAACCR_LATERALITY_CD"] = remapped_values
