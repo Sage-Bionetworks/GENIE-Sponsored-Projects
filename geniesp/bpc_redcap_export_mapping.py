@@ -33,8 +33,8 @@ CBIO_FILEFORMATS_ALL = [
     "data_timeline_labtest.txt",
     "data_clinical_supp_survival.txt",
     "data_clinical_supp_survival_treatment.txt",
-    "data_clinical_supp_sample.txt",
-    "data_clinical_supp_patient.txt",
+    "data_clinical_sample.txt",
+    "data_clinical_patient.txt",
     "data_mutations_extended.txt",
     "data_cna_hg19.seg",
     "data_fusions.txt",
@@ -415,6 +415,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.syn = syn
         self.cbiopath = cbiopath
         self.staging = staging
+        self.release = release
         # Create case lists and release folder
         sp_data_folder = syn.store(
             Folder(self._SPONSORED_PROJECT, parentId="syn21241322")
@@ -461,7 +462,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
         # Get list of files to create cBioPortal metadata files for
         to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exclude_files))
-        metafiles.create_cbio_metafiles(
+        meta_files = metafiles.create_cbio_metafiles(
             study_identifier=study_identifier,
             outdir=self._SPONSORED_PROJECT,
             cbio_fileformats=to_create_meta,
@@ -474,11 +475,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
             groups="GENIE",
             short_name=short_name,
         )
-        metafiles.write_meta_file(
+        study_file = metafiles.write_meta_file(
             meta_info=meta_study,
             filename="meta_study.txt",
             outdir=self._SPONSORED_PROJECT,
         )
+        meta_files.append(study_file)
+        return meta_files
 
     def create_genematrixdf(self, clinicaldf, cna_samples, used_ent=None):
         """
@@ -1503,7 +1506,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Create gene panel files
         self.create_gene_panels(subset_sampledf["SEQ_ASSAY_ID"].unique())
         # Create metadata files
-        self.create_bpc_cbio_metafiles()
+        metadata_files = self.create_bpc_cbio_metafiles()
+        # must store metadata files if not staging
+        if not self.staging:
+            for metadata_file in metadata_files:
+                file_ent = File(metadata_file, parent=self._SP_SYN_ID)
+                self.syn.store(
+                    file_ent,
+                    executed=self._GITHUB_REPO,
+                )
 
         cmd = [
             "python",

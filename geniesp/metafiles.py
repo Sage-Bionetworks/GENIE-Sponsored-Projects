@@ -1,3 +1,5 @@
+"""Write cBioPortal metadata files"""
+import os
 from typing import List
 
 import yaml
@@ -15,9 +17,10 @@ def write_meta_file(meta_info: dict, filename: str, outdir: str) -> str:
         str: meta file path
     """
     meta_filename = filename.replace("data", "meta")
-    with open(meta_filename, "w") as meta_f:
+    filepath = os.path.join(outdir, meta_filename)
+    with open(filepath, "w") as meta_f:
         yaml.dump(meta_info, meta_f)
-    return meta_filename
+    return filepath
 
 
 def create_clinical_meta_file(
@@ -151,7 +154,7 @@ def get_cbio_file_metadata(study_identifier: str, cbio_filename: str) -> dict:
         cbio_filename (str): cbioportal file name
 
     Returns:
-        dict: cBioPortal metadata
+        dict: cBioPortal metadata. None if metadata is skipped for fileformat
     """
     # supp_survival* files don't need a meta file
     if cbio_filename.startswith("data_clinical_sample"):
@@ -219,6 +222,9 @@ def get_cbio_file_metadata(study_identifier: str, cbio_filename: str) -> dict:
             description="Segment data for the genie study",
             filename=cbio_filename,
         )
+    # Survival clinical files don't have metadata files
+    elif cbio_filename.startswith("data_clinical_supp_survival"):
+        return None
     else:
         raise NotImplementedError(f"{cbio_filename} does not have associated metafile")
     return meta_dict
@@ -245,7 +251,7 @@ def create_cbio_metafiles(
         "data_mutations_extended.txt",
     ],
     outdir: str = "./",
-):
+) -> List[str]:
     """Create cbioportal metadata files
 
     Args:
@@ -253,10 +259,18 @@ def create_cbio_metafiles(
                                 within the database
         cbio_fileformats (list): List of cbioportal file names.
         outdir (str): Directory to write metadata files to. Defaults to current dir.
+
+    Returns:
+        list: List of metadata file paths
     """
     # supp_survival* files don't need a meta file
+    meta_filepaths = []
     for cbio_file in cbio_fileformats:
         meta_dict = get_cbio_file_metadata(
             study_identifier=study_identifier, cbio_filename=cbio_file
         )
-        write_meta_file(meta_info=meta_dict, filename=cbio_file, outdir=outdir)
+        if meta_dict is not None:
+            meta_filepath = write_meta_file(meta_info=meta_dict, filename=cbio_file,
+                                            outdir=outdir)
+            meta_filepaths.append(meta_filepath)
+    return meta_filepaths
