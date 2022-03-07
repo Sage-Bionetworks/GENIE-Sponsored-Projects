@@ -116,7 +116,7 @@ def create_meta_study(
     groups: str,
     short_name: str,
 ) -> dict:
-    """Create seg metadata files
+    """Create study metadata file
 
     Args:
         study_identifier (str): A string used to uniquely identify this cancer study
