@@ -71,6 +71,7 @@ class Nsclc(BpcProjectRunner):
         # "tree/765a209402a0e4c8517ec826ddad1f05d842f54a/"
         # "geniesp/bpc_config.py"
     )
+    _exclude_files = ["data_timeline_labtest.txt"]
 
 
 class Panc(BpcProjectRunner):
@@ -137,3 +138,4 @@ class Bladder(BpcProjectRunner):
         # "tree/a672a70ad5195e6e8359325f5cea10bef384b2ff/"
         # "geniesp/bpc_config.py"
     )
+    _exclude_files = ["data_timeline_labtest.txt"]

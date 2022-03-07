@@ -405,7 +405,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # exclude files to be created for cbioportal
     # TODO: need to support this feature in rest of code, for now
     # This is added for metadata files
-    _exlude_files = []
+    _exclude_files = []
 
     def __init__(self, syn, cbiopath, release, staging=False):
         if not os.path.exists(cbiopath):
@@ -460,7 +460,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
         # Get list of files to create cBioPortal metadata files for
-        to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exlude_files))
+        to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exclude_files))
         metafiles.create_cbio_metafiles(
             study_identifier=study_identifier,
             outdir=self._SPONSORED_PROJECT,
