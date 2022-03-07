@@ -21,7 +21,7 @@ from synapseclient import File, Folder
 
 from . import metafiles
 
-
+# All cbioportal file formats written in BPC
 CBIO_FILEFORMATS_ALL = [
     "data_timeline_treatment.txt",
     "data_timeline_cancer_diagnosis.txt",
@@ -462,6 +462,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
         # Get list of files to create cBioPortal metadata files for
         to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exclude_files))
+        # HACK: manually add seg file into list of cbioportal files because of
+        # seg filename
+        to_create_meta.append(
+            f"genie_{self._SPONSORED_PROJECT.lower()}_data_cna_hg19.seg"
+        )
         meta_files = metafiles.create_cbio_metafiles(
             study_identifier=study_identifier,
             outdir=self._SPONSORED_PROJECT,
