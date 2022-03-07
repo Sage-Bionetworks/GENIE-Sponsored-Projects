@@ -7,17 +7,38 @@
   Add headers
   REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
 """
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
+from datetime import date
 import math
 import os
 import subprocess
 
-import synapseclient
-from synapseclient import File, Folder
-import pandas as pd
-
 import genie
 from genie import create_case_lists, process_functions
+import pandas as pd
+import synapseclient
+from synapseclient import File, Folder
+
+from . import metafiles
+
+# All cbioportal file formats written in BPC
+CBIO_FILEFORMATS_ALL = [
+    "data_timeline_treatment.txt",
+    "data_timeline_cancer_diagnosis.txt",
+    "data_timeline_pathology.txt",
+    "data_timeline_sample_acquisition.txt",
+    "data_timeline_medonc.txt",
+    "data_timeline_imaging.txt",
+    "data_timeline_sequencing.txt",
+    "data_timeline_labtest.txt",
+    "data_clinical_supp_survival.txt",
+    "data_clinical_supp_survival_treatment.txt",
+    "data_clinical_sample.txt",
+    "data_clinical_patient.txt",
+    "data_mutations_extended.txt",
+    "data_fusions.txt",
+    "data_CNA.txt",
+]
 
 
 def get_data(syn, mappingdf, sampletype):
@@ -372,12 +393,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _DATA_TABLE_IDS = None
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = None
+    # main GENIE release folder (8.1-public)
+    _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
     _GRS_SYNID = "syn24184523"
+    # exclude files to be created for cbioportal
+    # TODO: need to support this feature in rest of code, for now
+    # This is added for metadata files
+    _exclude_files = []
 
     def __init__(self, syn, cbiopath, release, staging=False):
         if not os.path.exists(cbiopath):
@@ -387,6 +414,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.syn = syn
         self.cbiopath = cbiopath
         self.staging = staging
+        self.release = release
         # Create case lists and release folder
         sp_data_folder = syn.store(
             Folder(self._SPONSORED_PROJECT, parentId="syn21241322")
@@ -421,17 +449,43 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ]
         return keep_clinicaldf
 
-    def download_metadata_files(self):
-        """Downloads all the metadata files"""
-        # TODO: need to edit the study file
-        all_files = self.syn.getChildren(self._SP_SYN_ID)
-        for genie_file in all_files:
-            if "meta" in genie_file["name"]:
-                self.syn.get(
-                    genie_file["id"],
-                    downloadLocation=self._SPONSORED_PROJECT,
-                    ifcollision="overwrite.local",
-                )
+    def create_bpc_cbio_metafiles(self):
+        """Create BPC cBioPortal meta* files"""
+        mg_release_ent = self.syn.get(self._MG_RELEASE_SYNID)
+        name = f"GENIE BPC {self._SPONSORED_PROJECT} v{self.release}"
+        description = (
+            f"{self._SPONSORED_PROJECT} cohort v{self._SPONSORED_PROJECT} "
+            f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}"
+        )
+        short_name = f"{self._SPONSORED_PROJECT} GENIE"
+        study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
+        # Get list of files to create cBioPortal metadata files for
+        to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exclude_files))
+        # HACK: manually add seg file into list of cbioportal files because of
+        # seg filename
+        to_create_meta.append(
+            f"genie_{self._SPONSORED_PROJECT.lower()}_data_cna_hg19.seg"
+        )
+        meta_files = metafiles.create_cbio_metafiles(
+            study_identifier=study_identifier,
+            outdir=self._SPONSORED_PROJECT,
+            cbio_fileformats=to_create_meta,
+        )
+        meta_study = metafiles.create_study_meta_file(
+            study_identifier=study_identifier,
+            type_of_cancer="mixed",
+            name=name,
+            description=description,
+            groups="GENIE",
+            short_name=short_name,
+        )
+        study_file = metafiles.write_meta_file(
+            meta_info=meta_study,
+            filename="meta_study.txt",
+            outdir=self._SPONSORED_PROJECT,
+        )
+        meta_files.append(study_file)
+        return meta_files
 
     def create_genematrixdf(self, clinicaldf, cna_samples, used_ent=None):
         """
@@ -708,9 +762,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "used": used_entities,
         }
 
-    
     def get_mg_synid(self, synid_folder: str, file_name: str) -> str:
-        """Get Synapse ID of main GENIE data file in release folder. 
+        """Get Synapse ID of main GENIE data file in release folder.
 
         Args:
             synid_folder (str): Synapse ID of main GENIE release folder
@@ -724,7 +777,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             if synid_child["name"] == file_name:
                 return synid_child["id"]
         raise ValueError(f"file '{file_name}' not found in {synid_folder}")
-    
+
     def create_maf(self, keep_samples):
         """Create maf file from release maf
 
@@ -911,18 +964,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ~patient_sample_idx & ~regimen_idx
         ].merge(data_tablesdf, on="dataset", how="left")
         # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
-        timeline_infodf = pd.concat([
-            timeline_infodf,
-            pd.DataFrame(
-                {
-                    "code": "rt_rt_int",
-                    "sampleType": "TIMELINE-TREATMENT-RT",
-                    "dataset": "Cancer-Directed Radiation Therapy dataset",
-                    "cbio": "TEMP",
-                },
-                index=["rt_rt_int"],
-            )
-        ])
+        timeline_infodf = pd.concat(
+            [
+                timeline_infodf,
+                pd.DataFrame(
+                    {
+                        "code": "rt_rt_int",
+                        "sampleType": "TIMELINE-TREATMENT-RT",
+                        "dataset": "Cancer-Directed Radiation Therapy dataset",
+                        "cbio": "TEMP",
+                    },
+                    index=["rt_rt_int"],
+                ),
+            ]
+        )
         # Must do this, because index gets reset after appending
         timeline_infodf.index = timeline_infodf["code"]
         # TODO: Must add sample retraction here, also check against main
@@ -1069,18 +1124,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         print("SURVIVAL")
         # This is important because dob_first_index_ca is needed
         # For filtering
-        infodf = pd.concat([
-            infodf,
-            pd.DataFrame(
-                {
-                    "code": "dob_first_index_ca",
-                    "sampleType": "SURVIVAL",
-                    "dataset": "Cancer-level index dataset",
-                    "cbio": "CANCER_INDEX",
-                },
-                index=["dob_first_index_ca"],
-            )
-        ])
+        infodf = pd.concat(
+            [
+                infodf,
+                pd.DataFrame(
+                    {
+                        "code": "dob_first_index_ca",
+                        "sampleType": "SURVIVAL",
+                        "dataset": "Cancer-level index dataset",
+                        "cbio": "CANCER_INDEX",
+                    },
+                    index=["dob_first_index_ca"],
+                ),
+            ]
+        )
         # Must do this because index gets reset
         infodf.index = infodf["code"]
         survival_infodf = infodf[infodf["sampleType"] == "SURVIVAL"]
@@ -1095,26 +1152,30 @@ class BpcProjectRunner(metaclass=ABCMeta):
         del final_survivaldf["CANCER_INDEX"]
         # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
-        if 'PFS_I_ADV_STATUS' in final_survivaldf.columns: 
-            pfs_not_null_idx = ~final_survivaldf['PFS_I_ADV_STATUS'].isnull()
-            pfs_not_blank_idx = final_survivaldf['PFS_I_ADV_STATUS'] != ""
-            nondup_patients_idx = ~final_survivaldf['PATIENT_ID'].duplicated(keep=False)
-            final_survivaldf = final_survivaldf[(pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)]
+        if "PFS_I_ADV_STATUS" in final_survivaldf.columns:
+            pfs_not_null_idx = ~final_survivaldf["PFS_I_ADV_STATUS"].isnull()
+            pfs_not_blank_idx = final_survivaldf["PFS_I_ADV_STATUS"] != ""
+            nondup_patients_idx = ~final_survivaldf["PATIENT_ID"].duplicated(keep=False)
+            final_survivaldf = final_survivaldf[
+                (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
+            ]
         print("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
         # Must get redcap_ca_index to grab only the index cancers
-        patient_infodf = pd.concat([
-            patient_infodf,
-            pd.DataFrame(
-                {
-                    "code": "redcap_ca_index",
-                    "sampleType": "PATIENT",
-                    "dataset": "Cancer-level dataset",
-                },
-                index=['redcap_ca_index']
-            )],
-            ignore_index=True
+        patient_infodf = pd.concat(
+            [
+                patient_infodf,
+                pd.DataFrame(
+                    {
+                        "code": "redcap_ca_index",
+                        "sampleType": "PATIENT",
+                        "dataset": "Cancer-level dataset",
+                    },
+                    index=["redcap_ca_index"],
+                ),
+            ],
+            ignore_index=True,
         )
         patient_infodf.index = patient_infodf["code"]
         patient_data = get_file_data(
@@ -1447,9 +1508,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     executed=self._GITHUB_REPO,
                 )
 
+        # Create gene panel files
         self.create_gene_panels(subset_sampledf["SEQ_ASSAY_ID"].unique())
-        # Make sure to re download all the metadata files again
-        self.download_metadata_files()
+        # Create metadata files
+        metadata_files = self.create_bpc_cbio_metafiles()
+        # must store metadata files if not staging
+        if not self.staging:
+            for metadata_file in metadata_files:
+                file_ent = File(metadata_file, parent=self._SP_SYN_ID)
+                self.syn.store(
+                    file_ent,
+                    executed=self._GITHUB_REPO,
+                )
 
         cmd = [
             "python",
@@ -1460,4 +1530,4 @@ class BpcProjectRunner(metaclass=ABCMeta):
             self._SPONSORED_PROJECT,
             "-n",
         ]
-        subprocess.call(cmd)
+        subprocess.run(cmd)
