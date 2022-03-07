@@ -22,6 +22,26 @@ from synapseclient import File, Folder
 from . import metafiles
 
 
+CBIO_FILEFORMATS_ALL = [
+    "data_timeline_treatment.txt",
+    "data_timeline_cancer_diagnosis.txt",
+    "data_timeline_pathology.txt",
+    "data_timeline_sample_acquisition.txt",
+    "data_timeline_medonc.txt",
+    "data_timeline_imaging.txt",
+    "data_timeline_sequencing.txt",
+    "data_timeline_labtest.txt",
+    "data_clinical_supp_survival.txt",
+    "data_clinical_supp_survival_treatment.txt",
+    "data_clinical_supp_sample.txt",
+    "data_clinical_supp_patient.txt",
+    "data_mutations_extended.txt",
+    "data_cna_hg19.seg",
+    "data_fusions.txt",
+    "data_CNA.txt",
+]
+
+
 def get_data(syn, mappingdf, sampletype):
     """Extracts the sample, patient and timeline df
 
@@ -382,6 +402,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
     _GRS_SYNID = "syn24184523"
+    # exclude files to be created for cbioportal
+    # TODO: need to support this feature in rest of code, for now
+    # This is added for metadata files
+    _exlude_files = []
 
     def __init__(self, syn, cbiopath, release, staging=False):
         if not os.path.exists(cbiopath):
@@ -425,18 +449,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ]
         return keep_clinicaldf
 
-    def download_metadata_files(self):
-        """Downloads all the metadata files"""
-        # TODO: need to edit the study file
-        all_files = self.syn.getChildren(self._SP_SYN_ID)
-        for genie_file in all_files:
-            if "meta" in genie_file["name"]:
-                self.syn.get(
-                    genie_file["id"],
-                    downloadLocation=self._SPONSORED_PROJECT,
-                    ifcollision="overwrite.local",
-                )
-
     def create_bpc_cbio_metafiles(self):
         """Create BPC cBioPortal meta* files"""
         mg_release_ent = self.syn.get(self._MG_RELEASE_SYNID)
@@ -447,8 +459,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
+        # Get list of files to create cBioPortal metadata files for
+        to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exlude_files))
         metafiles.create_cbio_metafiles(
-            study_identifier=study_identifier, outdir=self._SPONSORED_PROJECT
+            study_identifier=study_identifier, outdir=self._SPONSORED_PROJECT,
+            cbio_fileformats=to_create_meta
         )
         meta_study = metafiles.create_meta_study(
             study_identifier=study_identifier,
@@ -1483,11 +1498,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     executed=self._GITHUB_REPO,
                 )
 
+        # Create gene panel files
         self.create_gene_panels(subset_sampledf["SEQ_ASSAY_ID"].unique())
-        # Make sure to re download all the metadata files again
-        # TODO: need to add folder path to write meta files to...
-        metafiles.create_cbio_metafiles(study_identifier="insert_study_id?")
-        # self.download_metadata_files()
+        # Create metadata files
+        self.create_bpc_cbio_metafiles()
 
         cmd = [
             "python",

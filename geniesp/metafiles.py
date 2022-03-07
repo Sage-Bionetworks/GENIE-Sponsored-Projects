@@ -108,7 +108,7 @@ def create_seg_meta_file(
     return meta_info
 
 
-def create_meta_study(
+def create_study_meta_file(
     study_identifier: str,
     type_of_cancer: str,
     name: str,
