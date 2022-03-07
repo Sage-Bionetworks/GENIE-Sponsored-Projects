@@ -36,7 +36,6 @@ CBIO_FILEFORMATS_ALL = [
     "data_clinical_sample.txt",
     "data_clinical_patient.txt",
     "data_mutations_extended.txt",
-    "data_cna_hg19.seg",
     "data_fusions.txt",
     "data_CNA.txt",
 ]
