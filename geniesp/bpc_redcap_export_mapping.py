@@ -416,13 +416,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.staging = staging
         self.release = release
         # Create case lists and release folder
-        sp_data_folder = syn.store(
-            Folder(self._SPONSORED_PROJECT, parentId="syn21241322")
-        )
-        release_folder = syn.store(Folder(release, parent=sp_data_folder))
-        # Add cBioPortal files into cBioPortal files folder in release
-        self._SP_SYN_ID = syn.store(Folder("cBioPortal_files", parent=release_folder))
-        self._CASE_LIST_SYN_ID = syn.store(Folder("case_lists", parent=self._SP_SYN_ID))
+        self._SP_SYN_ID = None
+        self._CASE_LIST_SYN_ID = None
+        if not self.staging:
+            sp_data_folder = syn.store(
+                Folder(self._SPONSORED_PROJECT, parentId="syn21241322")
+            )
+            release_folder = syn.store(Folder(release, parent=sp_data_folder))
+            # Add cBioPortal files into cBioPortal files folder in release
+            self._SP_SYN_ID = syn.store(
+                Folder("cBioPortal_files", parent=release_folder)
+            )
+            self._CASE_LIST_SYN_ID = syn.store(
+                Folder("case_lists", parent=self._SP_SYN_ID)
+            )
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
 
     def get_main_genie_clinicaldf(self) -> dict:
@@ -504,8 +511,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             self._SPONSORED_PROJECT, "data_gene_matrix.txt"
         )
         data_gene_panel.to_csv(gene_matrix_filepath, sep="\t", index=False)
-        file_ent = File(gene_matrix_filepath, parent=self._SP_SYN_ID)
         if not self.staging:
+            file_ent = File(gene_matrix_filepath, parent=self._SP_SYN_ID)
             self.syn.store(file_ent, used=used_ent, executed=self._GITHUB_REPO)
 
     def configure_clinicaldf(self, clinicaldf, redcap_to_cbiomappingdf):
