@@ -242,7 +242,12 @@ def check_code_name_catalog(
 
     query = f'SELECT DISTINCT variable FROM {config["synapse"]["catalog"]["id"]}'
     table_var = syn.tableQuery(query).asDataFrame()
-    res = set(df["code"]) - set(table_var["variable"])
+
+    map_type = df["data_type"].str.lower()
+    map_codes = df.loc[
+        (((map_type == "derived") | (map_type == "curated")))]["code"]
+
+    res = set(map_codes) - set(table_var["variable"])
     return list(res)
     
     
