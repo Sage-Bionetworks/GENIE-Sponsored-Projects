@@ -245,7 +245,7 @@ def check_code_name_catalog(
 
     map_type = df["data_type"].str.lower()
     map_codes = df.loc[
-        (((map_type == "derived") | (map_type == "curated")))]["code"]
+        (('*' not in df["code"]) & ((map_type == "derived") | (map_type == "curated")))]["code"]
 
     res = set(map_codes) - set(table_var["variable"])
     return list(res)
