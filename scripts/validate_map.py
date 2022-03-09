@@ -187,6 +187,72 @@ def check_release_status_map_yes_sor_not(
     return map_not_sor
 
 
+def check_release_status_sor_yes_map_not(
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
+) -> List:
+    """Check for codes where release status in scope of release is yes
+    but relase status in mapping file is not yes.
+
+    Args:
+        df (pd.DataFrame): dataframe representing map
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        cohort (str): cohort label to check
+        release (str): release label to check
+
+    Returns:
+        list: codes with lenient release status
+    """
+    map_status = df[cohort].str.lower()
+    map_type = df["data_type"].str.lower()
+    map_codes = df.loc[
+        ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
+    ]["code"]
+
+    column_name = config["synapse"]["sor"]["column_name"][cohort][release]
+    file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
+    sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
+    sor_status = sor[column_name].str.lower()
+    sor_codes = sor.loc[sor_status == "yes"]["VARNAME"]
+
+    inter = set(sor_codes).intersection(set(df["code"]))
+    sor_not_map = list(inter - set(map_codes))
+    code_remove = get_codes_to_remove(sor_not_map)
+    for code in code_remove:
+        sor_not_map.remove(code)
+
+    return sor_not_map
+
+
+def check_code_name_catalog(
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
+) -> List:
+    """Check for any variable name not in the Sage data element catalog.
+
+    Args:
+        df (pd.DataFrame): dataframe representing map
+        syn (Synapse): Synapse object
+        config (dict): configuration parameters
+        cohort (str): cohort label to check
+        release (str): release label to check
+
+    Returns:
+        list: dataset names in map but not on catalog
+    """
+
+    query = f'SELECT DISTINCT variable FROM {config["synapse"]["catalog"]["id"]}'
+    table_var = syn.tableQuery(query).asDataFrame()
+
+    map_type = df["data_type"].str.lower()
+    map_nonwild = ["*" not in code for code in df["code"]]
+    map_codes = df.loc[
+        ((map_nonwild) & ((map_type == "derived") | (map_type == "curated")))
+    ]["code"]
+
+    res = set(map_codes) - set(table_var["variable"])
+    return list(res)
+
+
 def format_result(codes: List, config: Dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
 
@@ -218,6 +284,8 @@ def create_function_map() -> Dict:
         "check_dataset_names": check_dataset_names,
         "check_release_status_ambiguous": check_release_status_ambiguous,
         "check_release_status_map_yes_sor_not": check_release_status_map_yes_sor_not,
+        "check_release_status_sor_yes_map_not": check_release_status_sor_yes_map_not,
+        "check_code_name_catalog": check_code_name_catalog,
     }
     return fxns
 
