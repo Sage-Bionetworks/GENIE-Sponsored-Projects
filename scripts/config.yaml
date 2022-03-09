@@ -56,3 +56,9 @@ check:
     deprecated: 0
     description: Released in mapping file but not scope of release.
     request: Please double check release status in mapping file.  
+  6:
+    function: check_release_status_sor_yes_map_not
+    implemented: 1
+    deprecated: 0
+    description: Released in scope of release but not mapping file.
+    request: Please double check release status in mapping file.  
