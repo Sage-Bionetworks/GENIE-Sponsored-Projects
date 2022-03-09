@@ -4,6 +4,11 @@ synapse:
     name: Data files for derived variables
     type: table
     description: Links derived variable Synapse entities to dataset names.
+  catalog:
+    id: syn21431364
+    name: GENIE BPC No PHI Data Elements Catalog
+    type: table
+    description: cumulative data catalog reference of all BPC curated and derived data elements
   sor: 
     id: syn22294851
     name: GENIE_BPC_Release_Scope.xlsx
@@ -62,3 +67,9 @@ check:
     deprecated: 0
     description: Released in scope of release but not mapping file.
     request: Please double check release status in mapping file.  
+  7: 
+    function: check_code_name_catalog
+    implemented: 1
+    deprecated: 0
+    description: Code does not exist in data element catalog.
+    request: Please notify Sage that this variable needs to be added to the catalog. 
