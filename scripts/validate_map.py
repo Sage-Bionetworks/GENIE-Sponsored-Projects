@@ -244,8 +244,9 @@ def check_code_name_catalog(
     table_var = syn.tableQuery(query).asDataFrame()
 
     map_type = df["data_type"].str.lower()
+    map_nonwild = ["*" not in code for code in df["code"]]
     map_codes = df.loc[
-        (('*' not in df["code"]) & ((map_type == "derived") | (map_type == "curated")))]["code"]
+        ((map_nonwild) & ((map_type == "derived") | (map_type == "curated")))]["code"]
 
     res = set(map_codes) - set(table_var["variable"])
     return list(res)
