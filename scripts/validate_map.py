@@ -246,12 +246,13 @@ def check_code_name_catalog(
     map_type = df["data_type"].str.lower()
     map_nonwild = ["*" not in code for code in df["code"]]
     map_codes = df.loc[
-        ((map_nonwild) & ((map_type == "derived") | (map_type == "curated")))]["code"]
+        ((map_nonwild) & ((map_type == "derived") | (map_type == "curated")))
+    ]["code"]
 
     res = set(map_codes) - set(table_var["variable"])
     return list(res)
-    
-    
+
+
 def format_result(codes: List, config: Dict, check_no: int) -> pd.DataFrame:
     """Format output for interpretable log file.
 
