@@ -92,3 +92,21 @@ optional arguments:
   --log {debug,info,warning,error}, -l {debug,info,warning,error}
                         Set logging output level (default: error)
 ```
+
+## Troubleshooting
+The most common issues when running GENIE-Sponsored-Projects code for BPC involve changes to variable names of the underlying source data and outdated or incorrect references.  
+
+Variable references
+1. syn22294851: the Scope of Release maintains a running log of changes to derived variable names  
+2. syn17011602: curated variable names are listed in data dictionaries for each cohort
+
+If obtaining an error that a variable cannot be found, check and update the following references on Synapse:
+1. syn21431364: GENIE BPC No PHI Data Elements Catalog
+1. syn25712693: BPC REDCap to cbio mapping
+1. syn22296821: Dataset labels in Data files for derived variables
+
+On rare occassions, variable name changes may also require changes in the codebase:
+1. Check for any hardcoded variable names have been updated
+
+Finally, some information is not collected for particular cohorts.  
+1. syn20852283: check if data is collected for a given cohort by investigating raw file uploads
