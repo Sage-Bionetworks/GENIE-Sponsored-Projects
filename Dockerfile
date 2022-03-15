@@ -5,6 +5,6 @@ WORKDIR /usr/src/GENIE-Sponsored-Projects
 COPY . .
 RUN pip install ./
 
-RUN git clone git://github.com/cBioPortal/cbioportal.git ../cbioportal
+RUN git clone https://github.com/cBioPortal/cbioportal.git ../cbioportal
 
 ENTRYPOINT [ "geniesp" ]

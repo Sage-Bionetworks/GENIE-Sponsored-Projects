@@ -461,7 +461,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         mg_release_ent = self.syn.get(self._MG_RELEASE_SYNID)
         name = f"GENIE BPC {self._SPONSORED_PROJECT} v{self.release}"
         description = (
-            f"{self._SPONSORED_PROJECT} cohort v{self._SPONSORED_PROJECT} "
+            f"{self._SPONSORED_PROJECT} cohort v{self.release} "
             f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}"
         )
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
@@ -1129,19 +1129,19 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # supplemental clinical file
         print("SURVIVAL")
-        # This is important because dob_first_index_ca is needed
+        # This is important because dob_first_index_ca_days is needed
         # For filtering
         infodf = pd.concat(
             [
                 infodf,
                 pd.DataFrame(
                     {
-                        "code": "dob_first_index_ca",
+                        "code": "dob_first_index_ca_days",
                         "sampleType": "SURVIVAL",
                         "dataset": "Cancer-level index dataset",
                         "cbio": "CANCER_INDEX",
                     },
-                    index=["dob_first_index_ca"],
+                    index=["dob_first_index_ca_days"],
                 ),
             ]
         )
