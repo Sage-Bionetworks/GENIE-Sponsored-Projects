@@ -461,7 +461,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         mg_release_ent = self.syn.get(self._MG_RELEASE_SYNID)
         name = f"GENIE BPC {self._SPONSORED_PROJECT} v{self.release}"
         description = (
-            f"{self._SPONSORED_PROJECT} cohort v{self._SPONSORED_PROJECT} "
+            f"{self._SPONSORED_PROJECT} cohort v{self.release} "
             f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}"
         )
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
