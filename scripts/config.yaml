@@ -25,7 +25,7 @@ synapse:
       NSCLC:
         1.1-consortium: Cbio_NSCLC_V2.1
         2.1-consortium: Cbio_NSCLC_V2.1
-        2.0-public: Cbio_NSCLC_Public
+        2.0-public: Shared for cBio NSCLC 2.0-Public Release
       PANC:
         1.1-consortium: Cbio_PANC_V1
       PROSTATE:
