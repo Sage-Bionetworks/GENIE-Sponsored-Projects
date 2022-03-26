@@ -981,7 +981,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     {
                         "code": "rt_rt_int",
                         "sampleType": "TIMELINE-TREATMENT-RT",
-                        "dataset": "Cancer-Directed Radiation Therapy dataset",
+                        "dataset": "Radiation Therapy dataset",
                         "cbio": "TEMP",
                     },
                     index=["rt_rt_int"],
