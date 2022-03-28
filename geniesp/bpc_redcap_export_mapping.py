@@ -1132,19 +1132,19 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # supplemental clinical file
         print("SURVIVAL")
-        # This is important because dob_first_index_ca_days is needed
+        # This is important because first_index_ca_days is needed
         # For filtering
         infodf = pd.concat(
             [
                 infodf,
                 pd.DataFrame(
                     {
-                        "code": "dob_first_index_ca_days",
+                        "code": "first_index_ca_days",
                         "sampleType": "SURVIVAL",
                         "dataset": "Cancer-level index dataset",
                         "cbio": "CANCER_INDEX",
                     },
-                    index=["dob_first_index_ca_days"],
+                    index=["first_index_ca_days"],
                 ),
             ]
         )
