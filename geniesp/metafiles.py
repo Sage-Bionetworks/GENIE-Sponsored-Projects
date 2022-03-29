@@ -19,7 +19,7 @@ def write_meta_file(meta_info: dict, filename: str, outdir: str) -> str:
     meta_filename = filename.replace("data", "meta")
     filepath = os.path.join(outdir, meta_filename)
     with open(filepath, "w") as meta_f:
-        yaml.dump(meta_info, meta_f)
+        yaml.dump(meta_info, meta_f, width=1000)
     return filepath
 
 
