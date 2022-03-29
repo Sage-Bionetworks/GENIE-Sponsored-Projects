@@ -405,6 +405,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # TODO: need to support this feature in rest of code, for now
     # This is added for metadata files
     _exclude_files = []
+    # cohort-generic link to documentation for BPC datasets
+    _url_bpc = "https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h"
+    # cohort-generic link to documentation for cBio files
+    _url_cbio = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
 
     def __init__(self, syn, cbiopath, release, staging=False):
         if not os.path.exists(cbiopath):
@@ -462,7 +466,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         name = f"GENIE BPC {self._SPONSORED_PROJECT} v{self.release}"
         description = (
             f"{self._SPONSORED_PROJECT} cohort v{self.release} "
-            f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}"
+            f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}. "
+            f"Several hundred different variables are collected for each of "
+            f"the BPC cohorts; consult the <a href=\"{self._url_bpc}\">Documentation</a> "
+            f"for further detail. To learn more about which variables are "
+            f"visualized in cBioPortal and how, see the cBioPortal "
+            f"<a href=\"{self._url_cbio}\">ReadMe</a>."
         )
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
@@ -978,7 +987,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     {
                         "code": "rt_rt_int",
                         "sampleType": "TIMELINE-TREATMENT-RT",
-                        "dataset": "Cancer-Directed Radiation Therapy dataset",
+                        "dataset": "Radiation Therapy dataset",
                         "cbio": "TEMP",
                     },
                     index=["rt_rt_int"],
@@ -1129,19 +1138,19 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # supplemental clinical file
         print("SURVIVAL")
-        # This is important because dob_first_index_ca_days is needed
+        # This is important because first_index_ca_days is needed
         # For filtering
         infodf = pd.concat(
             [
                 infodf,
                 pd.DataFrame(
                     {
-                        "code": "dob_first_index_ca_days",
+                        "code": "first_index_ca_days",
                         "sampleType": "SURVIVAL",
                         "dataset": "Cancer-level index dataset",
                         "cbio": "CANCER_INDEX",
                     },
-                    index=["dob_first_index_ca_days"],
+                    index=["first_index_ca_days"],
                 ),
             ]
         )

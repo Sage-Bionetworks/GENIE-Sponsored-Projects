@@ -17,6 +17,13 @@ cd GENIE-Sponsored-Projects
 docker build -t geniesp .
 ```
 
+## Synapse credentials
+
+Cache your Synapse personal access token (PAT) as an environmental variable:
+```
+export SYNAPSE_AUTH_TOKEN={your_personal_access_token_here}
+```
+
 ## Usage
 
 To view usage details, run
@@ -44,12 +51,12 @@ optional arguments:
 
 Example command line for 'PANC' (pancreas) cohort and the '1.1-consortium' release without loading files to Synapse.  Only the output to the console will be accessible.
 ```
-docker run --rm -e SYNAPSE_AUTH_TOKEN='<PAT>' geniesp PANC 1.1-consortium --staging
+docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp PANC 1.1-consortium --staging
 ```
 
 To load the files directly to Synapse, remove the --staging parameter
 ```
-docker run --rm -e SYNAPSE_AUTH_TOKEN='<PAT>' geniesp PANC 1.1-consortium
+docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp PANC 1.1-consortium
 ```
 
 ## Scripts
