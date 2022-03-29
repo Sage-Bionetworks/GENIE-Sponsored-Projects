@@ -405,8 +405,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # TODO: need to support this feature in rest of code, for now
     # This is added for metadata files
     _exclude_files = []
-    # cohort-generic link to documentation for meta_study.txt
-    _url = "https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h"
+    # cohort-generic link to documentation for BPC datasets
+    _url_bpc = "https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h"
+    # cohort-generic link to documentation for cBio files
+    _url_cbio = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
 
     def __init__(self, syn, cbiopath, release, staging=False):
         if not os.path.exists(cbiopath):
@@ -465,7 +467,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         description = (
             f"{self._SPONSORED_PROJECT} cohort v{self.release} "
             f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}. "
-            f"Variable synopsis and data guide available at the following link: {self._url}"
+            f"Several hundred different variables are collected for each of "
+            f"the BPC cohorts; consult the <a href=\"{self._url_bpc}\">Documentation</a> "
+            f"for further detail. To learn more about which variables are "
+            f"visualized in cBioPortal and how, see the cBioPortal "
+            f"<a href=\"{self._url_cbio}\">ReadMe</a>."
         )
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
