@@ -1331,23 +1331,23 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "supp_survival_treatment",
         )
         # Fill in ONCOTREE_CODE
-        final_sampledf["ONCOTREE_CODE"] = [
-            self.genie_clinicaldf["ONCOTREE_CODE"][
-                self.genie_clinicaldf["SAMPLE_ID"] == sample
-            ].values[0]
-            if sum(self.genie_clinicaldf["SAMPLE_ID"] == sample) > 0
-            else float("nan")
-            for sample in final_sampledf["SAMPLE_ID"]
-        ]
-        # Fill in SEQ_ASSAY_ID
-        final_sampledf["SEQ_ASSAY_ID"] = [
-            self.genie_clinicaldf["SEQ_ASSAY_ID"][
-                self.genie_clinicaldf["SAMPLE_ID"] == sample
-            ].values[0]
-            if sum(self.genie_clinicaldf["SAMPLE_ID"] == sample) > 0
-            else float("nan")
-            for sample in final_sampledf["SAMPLE_ID"]
-        ]
+        # final_sampledf["ONCOTREE_CODE"] = [
+        #     self.genie_clinicaldf["ONCOTREE_CODE"][
+        #         self.genie_clinicaldf["SAMPLE_ID"] == sample
+        #     ].values[0]
+        #     if sum(self.genie_clinicaldf["SAMPLE_ID"] == sample) > 0
+        #     else float("nan")
+        #     for sample in final_sampledf["SAMPLE_ID"]
+        # ]
+        # # Fill in SEQ_ASSAY_ID
+        # final_sampledf["SEQ_ASSAY_ID"] = [
+        #     self.genie_clinicaldf["SEQ_ASSAY_ID"][
+        #         self.genie_clinicaldf["SAMPLE_ID"] == sample
+        #     ].values[0]
+        #     if sum(self.genie_clinicaldf["SAMPLE_ID"] == sample) > 0
+        #     else float("nan")
+        #     for sample in final_sampledf["SAMPLE_ID"]
+        # ]
 
         subset_sampledf = final_sampledf[
             final_sampledf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
@@ -1368,11 +1368,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 subset_sampledf[col] = years
 
         # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
-        del subset_sampledf["SAMPLE_TYPE"]
+        #del subset_sampledf["SAMPLE_TYPE"]
         del subset_sampledf["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
         subset_sampledf = subset_sampledf.merge(
-            self.genie_clinicaldf[["SAMPLE_ID", "SAMPLE_TYPE", "SEQ_YEAR"]],
+            #self.genie_clinicaldf[["SAMPLE_ID", "SAMPLE_TYPE", "SEQ_YEAR"]],
+            self.genie_clinicaldf[["SAMPLE_ID", "SEQ_YEAR"]],
             on="SAMPLE_ID",
             how="left",
         )
