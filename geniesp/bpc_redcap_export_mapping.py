@@ -1360,7 +1360,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "AGE_AT_SEQ_REPORT_YEARS",
             "CPT_ORDER_INT",
             "CPT_REPORT_INT",
-            "AGE_AT_SEQUENCING",
         ]
         for col in days_to_years_col:
             # not all columns could exist, so check if column exists
