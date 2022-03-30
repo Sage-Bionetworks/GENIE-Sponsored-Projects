@@ -1368,11 +1368,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 subset_sampledf[col] = years
 
         # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
-        del subset_sampledf["SAMPLE_TYPE"]
+        #del subset_sampledf["SAMPLE_TYPE"]
         del subset_sampledf["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
         subset_sampledf = subset_sampledf.merge(
-            self.genie_clinicaldf[["SAMPLE_ID", "SAMPLE_TYPE", "SEQ_YEAR"]],
+            #self.genie_clinicaldf[["SAMPLE_ID", "SAMPLE_TYPE", "SEQ_YEAR"]],
+            self.genie_clinicaldf[["SAMPLE_ID", "SEQ_YEAR"]],
             on="SAMPLE_ID",
             how="left",
         )
