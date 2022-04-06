@@ -938,18 +938,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     os.remove(os.path.join(self._SPONSORED_PROJECT, each_file))
         # Obtain mappings
         # Create full mapping table to get the values of the data model
-        # Must use this to determine release scope!
-        data_elements = self.syn.tableQuery(
-            f"select distinct variable from {self._DATA_ELEMENT_SYN_ID} "
-            f'where "{self._SPONSORED_PROJECT}_sor" in '
-            "('project', 'consortium', 'public')"
-        )
-        data_elementsdf = data_elements.asDataFrame()
-        data_elements_str = "','".join(data_elementsdf["variable"])
         redcap_to_cbiomapping = self.syn.tableQuery(
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
-            f"(code in ('{data_elements_str}') or "
-            "cbio = 'EVENT_TYPE' or "
+            "(cbio = 'EVENT_TYPE' or "
             "sampleType in ('TIMELINE-TREATMENT', 'TIMELINE-TREATMENT-RT') and "
             f"data_type <> 'heme') and {self._SPONSORED_PROJECT} is true"
         )
