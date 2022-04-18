@@ -471,7 +471,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             f"the BPC cohorts; consult the <a href=\"{self._url_bpc}\">Documentation</a> "
             f"for further detail. To learn more about which variables are "
             f"visualized in cBioPortal and how, see the cBioPortal "
-            f"<a href=\"{self._url_cbio}\">ReadMe</a>."
+            f"<a href=\"{self._url_cbio}\">ReadMe</a>. "
+            "<font color=\"red\">Although these data are de-identified, your analysis "
+            "may require institutional review prior to publication.</font>"
         )
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
