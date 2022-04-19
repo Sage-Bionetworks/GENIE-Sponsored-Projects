@@ -78,6 +78,9 @@ def check_code_name_absent(
     query = f'SELECT id, dataset FROM {config["synapse"]["dataset"]["id"]} WHERE dataset IS NOT NULL'
     res = syn.tableQuery(query)
 
+    # only examine released codes
+    df = df[df[cohort].lower() == "Y"]
+
     for row in res:
 
         synapse_id = row[0]
