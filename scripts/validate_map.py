@@ -213,7 +213,7 @@ def check_release_status_sor_yes_map_not(
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
-    sor_codes = sor.loc[sor_status == "yes"]["VARNAME"]
+    sor_codes = sor.loc[sor_status.isin(["yes", "always"])]["VARNAME"]
 
     inter = set(sor_codes).intersection(set(df["code"]))
     sor_not_map = list(inter - set(map_codes))
