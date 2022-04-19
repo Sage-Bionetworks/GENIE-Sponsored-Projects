@@ -79,7 +79,7 @@ def check_code_name_absent(
     res = syn.tableQuery(query)
 
     # only examine released codes
-    df = df[df[cohort].str.lower() == "Y"]
+    df = df[df[cohort].str.lower() == "y"]
 
     for row in res:
 
