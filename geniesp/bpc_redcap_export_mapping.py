@@ -928,31 +928,45 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     fileEnt, used=[genomic_info_synid], executed=self._GITHUB_REPO
                 )
 
-    def run(self):
-        """Runs the redcap export to export all files"""
-        # Create folder to house release files
-        if not os.path.exists(self._SPONSORED_PROJECT):
-            os.mkdir(self._SPONSORED_PROJECT)
+    
+    def create_release_folders(cohort: str):
+        """Create local folders for release folders.
+
+        Args:
+            cohort (str): sponsored project label
+        """
+        if not os.path.exists(cohort):
+            os.mkdir(cohort)
         else:
-            filelists = os.listdir(self._SPONSORED_PROJECT)
+            filelists = os.listdir(cohort)
             for each_file in filelists:
                 if each_file != "case_lists":
-                    os.remove(os.path.join(self._SPONSORED_PROJECT, each_file))
-        # Obtain mappings
-        # Create full mapping table to get the values of the data model
+                    os.remove(os.path.join(cohort, each_file))
+
+    def run(self):
+        """Runs the redcap export to export all files"""
+        
+        # Create folder to house release files
+        self.create_release_folders(cohort=self._SPONSORED_PROJECT)
+        
+        # Get variable name to cBioPortal mapping
         redcap_to_cbiomapping = self.syn.tableQuery(
             f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
             f"{self._SPONSORED_PROJECT} is true AND sampleType <> 'TIMELINE-STATUS'"
         )
         redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
+        
+        # Get Synapse ID to dataset label mapping
         data_tables = self.syn.tableQuery(
             f"SELECT id, dataset FROM {self._DATA_TABLE_IDS} "
         )
         data_tablesdf = data_tables.asDataFrame()
 
+        # ???
         patient_sample_idx = redcap_to_cbiomappingdf["sampleType"].isin(
             ["PATIENT", "SAMPLE", "SURVIVAL"]
         )
+        
         # Patient and Sample mapping values
         infodf = redcap_to_cbiomappingdf[patient_sample_idx].merge(
             data_tablesdf, on="dataset", how="left"
@@ -965,6 +979,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             data_tablesdf, on="dataset", how="left"
         )
         regimen_infodf.index = regimen_infodf["code"]
+
         # Create timeline column mapping, merges _REDCAP_TO_CBIOMAPPING_SYNID
         # with _DATA_TABLE_IDS
         timeline_infodf = redcap_to_cbiomappingdf[
