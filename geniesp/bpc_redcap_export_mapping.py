@@ -12,6 +12,7 @@ from datetime import date
 import math
 import os
 import subprocess
+import logging
 
 import genie
 from genie import create_case_lists, process_functions
@@ -562,7 +563,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         for col in clinicaldf:
             num_missing = sum(clinicaldf[col].isnull())
             if num_missing > 0:
-                print(f"Number of missing {col}: {num_missing}")
+                logging.warning(f"Number of missing {col}: {num_missing}")
 
         return clinicaldf
 
@@ -679,7 +680,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             if "(" in agent:
                 agents.append(agent.split("(")[0].strip())
             else:
-                # print(final_timelinedf['record_id'][index])
                 agents.append(agent.split(",")[0].strip())
 
         final_timelinedf["AGENT"] = agents
@@ -1038,14 +1038,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf.index = timeline_infodf["code"]
         # TODO: Must add sample retraction here, also check against main
         # GENIE samples for timeline files...
-        print("TREATMENT")
+        logging.info("TREATMENT")
         # Create timeline treatment
         treatment_data = self.make_timeline_treatmentdf(
             timeline_infodf, "TIMELINE-TREATMENT"
         )
 
         if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
-            print("TREATMENT-RAD")
+            logging.info("TREATMENT-RAD")
             # TODO: Add rt_rt_int
             treatment_rad_data = self.create_fixed_timeline_files(
                 timeline_infodf, "TIMELINE-TREATMENT-RT"
@@ -1067,7 +1067,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Create static timeline files
         # Cancer dx
-        print("DX")
+        logging.info("DX")
         cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX")
         cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
         cancerdx_path = os.path.join(
@@ -1083,7 +1083,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # Pathology Data
-        print("PATHOLOGY")
+        logging.info("PATHOLOGY")
         pathology_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-PATHOLOGY"
         )
@@ -1103,7 +1103,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         #                   'cbio': 'TEMP'},
         #                  index=['path_num_spec'])
         # )
-        print("SAMPLE-ACQUISITION")
+        logging.info("SAMPLE-ACQUISITION")
         acquisition_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SAMPLE"
         )
@@ -1119,7 +1119,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # self.create_fixed_timeline_files
         null_dates_idx = acquisition_data["df"]["START_DATE"].isnull()
         if null_dates_idx.any():
-            print(
+            logging.warning(
                 "timeline sample with null START_DATE: {}".format(
                     ", ".join(acquisition_data["df"]["SAMPLE_ID"][null_dates_idx])
                 )
@@ -1131,7 +1131,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # Medonc
-        print("MEDONC")
+        logging.info("MEDONC")
         medonc_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-MEDONC"
         )
@@ -1141,7 +1141,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # Imaging
-        print("IMAGING")
+        logging.info("IMAGING")
 
         imaging_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-IMAGING"
@@ -1154,7 +1154,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # Sequencing
-        print("SEQUENCE")
+        logging.info("SEQUENCE")
         sequence_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SEQUENCE"
         )
@@ -1167,7 +1167,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
             # Lab test
-            print("LABTEST")
+            logging.info("LABTEST")
             lab_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
             lab_path = os.path.join(
                 self._SPONSORED_PROJECT, "data_timeline_labtest.txt"
@@ -1177,7 +1177,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
 
         # supplemental clinical file
-        print("SURVIVAL")
+        logging.info("SURVIVAL")
         # This is important because first_index_ca_days is needed
         # For filtering
         infodf = pd.concat(
@@ -1215,7 +1215,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             final_survivaldf = final_survivaldf[
                 (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
             ]
-        print("PATIENT")
+        logging.info("PATIENT")
         # Patient and sample files
         patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
         # Must get redcap_ca_index to grab only the index cancers
@@ -1245,7 +1245,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         patientdf.drop(columns="redcap_ca_index", inplace=True)
         final_patientdf = self.configure_clinicaldf(patientdf, infodf)
 
-        print("SAMPLE")
+        logging.info("SAMPLE")
         sample_infodf = infodf[infodf["sampleType"] == "SAMPLE"]
         sample_data = get_file_data(
             self.syn, sample_infodf, "SAMPLE", cohort=self._SPONSORED_PROJECT
@@ -1274,7 +1274,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         duplicated = subset_patientdf.PATIENT_ID.duplicated()
         if duplicated.any():
-            print(
+            logging.warning(
                 "DUPLICATED PATIENT_IDs: {}".format(
                     ",".join(subset_patientdf["PATIENT_ID"][duplicated])
                 )
@@ -1420,7 +1420,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
         # Make sure there are no missing sample ids
         if sum(missing_sample_idx) > 0:
-            print(
+            logging.warning(
                 "MISSING SAMPLE_ID for: {}".format(
                     ",".join(merged_clinicaldf["PATIENT_ID"][missing_sample_idx])
                 )
@@ -1429,12 +1429,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # upload samples that are not part of the main GENIE cohort
         if merged_clinicaldf.get("SAMPLE_ID") is not None:
-            print("Samples not in GENIE clinical databases (SP and normal)")
+            logging.warning("Samples not in GENIE clinical databases (SP and normal)")
             not_found_samples = merged_clinicaldf["SAMPLE_ID"][
                 ~merged_clinicaldf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
             ]
             if not not_found_samples.empty:
-                print(not_found_samples[~not_found_samples.isnull()])
+                logging.warning(not_found_samples[~not_found_samples.isnull()])
                 not_found_samples.to_csv("notfoundsamples.csv")
                 if not self.staging:
                     self.syn.store(
