@@ -78,6 +78,9 @@ def check_code_name_absent(
     query = f'SELECT id, dataset FROM {config["synapse"]["dataset"]["id"]} WHERE dataset IS NOT NULL'
     res = syn.tableQuery(query)
 
+    # only examine released codes
+    df = df[df[cohort].str.lower() == "y"]
+
     for row in res:
 
         synapse_id = row[0]
@@ -177,7 +180,7 @@ def check_release_status_map_yes_sor_not(
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
-    sor_codes = sor.loc[sor_status == "yes"]["VARNAME"]
+    sor_codes = sor.loc[sor_status.isin(["yes", "always"])]["VARNAME"]
 
     map_not_sor = list(set(map_codes) - set(sor_codes))
     code_remove = get_codes_to_remove(map_not_sor)
@@ -213,7 +216,7 @@ def check_release_status_sor_yes_map_not(
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
-    sor_codes = sor.loc[sor_status == "yes"]["VARNAME"]
+    sor_codes = sor.loc[sor_status.isin(["yes", "always"])]["VARNAME"]
 
     inter = set(sor_codes).intersection(set(df["code"]))
     sor_not_map = list(inter - set(map_codes))

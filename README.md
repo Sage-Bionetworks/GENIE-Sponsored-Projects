@@ -108,7 +108,6 @@ Variable references
 2. syn17011602: curated variable names are listed in data dictionaries for each cohort
 
 If obtaining an error that a variable cannot be found, check and update the following references on Synapse:
-1. syn21431364: GENIE BPC No PHI Data Elements Catalog
 1. syn25712693: BPC REDCap to cbio mapping
 1. syn22296821: Dataset labels in Data files for derived variables
 
