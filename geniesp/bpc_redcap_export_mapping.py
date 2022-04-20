@@ -17,7 +17,7 @@ import genie
 from genie import create_case_lists, process_functions
 import pandas as pd
 import synapseclient
-from synapseclient import File, Folder
+from synapseclient import File, Folder, Synapse
 
 from . import metafiles
 
@@ -942,6 +942,44 @@ class BpcProjectRunner(metaclass=ABCMeta):
             for each_file in filelists:
                 if each_file != "case_lists":
                     os.remove(os.path.join(cohort, each_file))
+    
+
+    def get_bpc_to_cbio_mapping_df(syn: Synapse, cohort: str, synid_table_cbio: str) -> pd.DataFrame:
+        """Extract relevant portions of the mapping table for the sponsored project
+        variables and cBioPortal variable mappings and return as a data frame.
+
+        Args:
+            syn (Synapse): Synapse connection
+            cohort (str): sponsored project label
+            synid_table_cbio (str): Synapse ID of table containing variable to cbio mapping
+
+        Returns:
+            pd.DataFrame: data frame of all mapping columns for released variables
+        """
+        redcap_to_cbiomapping = syn.tableQuery(
+            f"SELECT * FROM {synid_table_cbio} where "
+            f"{cohort} is true AND sampleType <> 'TIMELINE-STATUS'"
+        )
+        redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
+        return redcap_to_cbiomappingdf
+    
+    
+    def get_data_file_synapse_id_df(syn: Synapse, synid_table_files: str) -> pd.DataFrame:
+        """_summary_
+
+        Args:
+            syn (Synapse): Synapse connection
+            synid_table_files (str): Synapse ID of table containing data file to Synapse ID mapping
+
+        Returns:
+            pd.DataFrame: data frame with two columns representing the Synapse ID and dataset label
+        """
+        data_tables = syn.syn.tableQuery(
+            f"SELECT id, dataset FROM {synid_table_files} "
+        )
+        data_tablesdf = data_tables.asDataFrame()
+        return data_tablesdf
+    
 
     def run(self):
         """Runs the redcap export to export all files"""
@@ -950,17 +988,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.create_release_folders(cohort=self._SPONSORED_PROJECT)
         
         # Get variable name to cBioPortal mapping
-        redcap_to_cbiomapping = self.syn.tableQuery(
-            f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
-            f"{self._SPONSORED_PROJECT} is true AND sampleType <> 'TIMELINE-STATUS'"
-        )
-        redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
+        redcap_to_cbiomappingdf = self.get_bpc_to_cbio_mapping_df(self.syn, 
+            cohort=self._SPONSORED_PROJECT,
+            synid_table_cbio=self._REDCAP_TO_CBIOMAPPING_SYNID)
         
         # Get Synapse ID to dataset label mapping
-        data_tables = self.syn.tableQuery(
-            f"SELECT id, dataset FROM {self._DATA_TABLE_IDS} "
-        )
-        data_tablesdf = data_tables.asDataFrame()
+        data_tablesdf = self.get_data_file_synapse_id_df(syn=self.syn, 
+            synid_table_files=self._DATA_TABLE_IDS)
 
         # ???
         patient_sample_idx = redcap_to_cbiomappingdf["sampleType"].isin(
