@@ -1093,45 +1093,35 @@ class BpcProjectRunner(metaclass=ABCMeta):
         regimen_infodf.index = regimen_infodf["code"]
 
         logging.info("TIMELINE-TREATMENT")
-        treatment_data=self.get_timeline_treatment(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
+        treatment_data=self.get_timeline_treatment(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
             logging.info("TIMELINE-TREATMENT-RT")
-            rad_df = self.get_timeline_treatment_rad(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
+            rad_df = self.get_timeline_treatment_rad(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
             treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
         else:
             logging.info("skipping TIMELINE-TREATMENT-RT")
-        treatment_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_treatment.txt"
-        )
         self.write_and_storedf(
-            treatment_data["df"], treatment_path, used_entities=treatment_data["used"]
+            treatment_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_treatment.txt"), used_entities=treatment_data["used"]
         )
 
         logging.info("TIMELINE-DX")
-        cancerdx_data = self.get_timeline_dx(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
-        cancerdx_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"
-        )
+        cancerdx_data = self.get_timeline_dx(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         self.write_and_storedf(
-            cancerdx_data["df"], cancerdx_path, used_entities=cancerdx_data["used"]
+            cancerdx_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"), used_entities=cancerdx_data["used"]
         )
 
         # Pathology Data
         logging.info("TIMELINE-PATHOLOGY")
-        pathology_data = self.get_timeline_pathology(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
-        pathology_path = os.path.join(self._SPONSORED_PROJECT, "data_timeline_pathology.txt")
+        pathology_data = self.get_timeline_pathology(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         self.write_and_storedf(
-            pathology_data["df"], pathology_path, used_entities=pathology_data["used"]
+            pathology_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_pathology.txt"), used_entities=pathology_data["used"]
         )
 
         logging.info("TIMELINE-SAMPLE")
-        acquisition_data =  self.get_timeline_sample(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
-        acquisition_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"
-        )
+        acquisition_data =  self.get_timeline_sample(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         self.write_and_storedf(
             acquisition_data["df"],
-            acquisition_path,
+            os.path.join(self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"),
             used_entities=acquisition_data["used"],
         )
 
@@ -1140,9 +1130,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         medonc_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-MEDONC"
         )
-        medonc_path = os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt")
         self.write_and_storedf(
-            medonc_data["df"], medonc_path, used_entities=medonc_data["used"]
+            medonc_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt"), used_entities=medonc_data["used"]
         )
 
         # Imaging
