@@ -1024,6 +1024,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return rad_df
 
 
+    def get_timeline_dx(self, mappingdf, tablesdf):
+        timeline_infodf = mappingdf["sampleType"].isin(["TIMELINE-DX"]).merge(tablesdf, on="dataset", how="left")
+        cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX")
+        cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
+        cancerdx_data["df"] = cancerdx_data["df"][
+            ~cancerdx_data["df"]["START_DATE"].isnull()
+        ]
+
+        return cancerdx_data
+    
+    
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1059,15 +1070,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         logging.info("TIMELINE-TREATMENT")
         treatment_data=self.get_timeline_treatment(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
-
         if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
             logging.info("TIMELINE-TREATMENT-RT")
             rad_df = self.get_timeline_treatment_rad(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
             treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
         else:
             logging.info("skipping TIMELINE-TREATMENT-RT")
-        
-        logging.info("writing timeline treatment file...")
         treatment_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_treatment.txt"
         )
@@ -1075,19 +1083,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
             treatment_data["df"], treatment_path, used_entities=treatment_data["used"]
         )
 
-        # Create static timeline files
-        # Cancer dx
         logging.info("TIMELINE-DX")
-        cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX")
-        cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
+        cancerdx_data = self.get_timeline_dx(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         cancerdx_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"
         )
-        # There are patients >89 that don't have START_DATE.
-        # These must be removed
-        cancerdx_data["df"] = cancerdx_data["df"][
-            ~cancerdx_data["df"]["START_DATE"].isnull()
-        ]
         self.write_and_storedf(
             cancerdx_data["df"], cancerdx_path, used_entities=cancerdx_data["used"]
         )
@@ -1105,14 +1105,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # # Sample acquisition
-        # This is important because path_num_spec is needed
-        # timeline_infodf = timeline_infodf.append(
-        #     pd.DataFrame({"code": 'path_num_spec',
-        #                   'sampleType': 'TIMELINE-SAMPLE',
-        #                   'dataset': 'Pathology-report level dataset',
-        #                   'cbio': 'TEMP'},
-        #                  index=['path_num_spec'])
-        # )
         logging.info("SAMPLE-ACQUISITION")
         acquisition_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SAMPLE"
@@ -1120,10 +1112,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         acquisition_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"
         )
-        # acquisitiondf = acquisition_data['df']
-        # keep_idx = acquisitiondf['TEMP'] == acquisitiondf['PATH_PROC_NUMBER']
-        # acquisitiondf.drop(columns="TEMP", inplace=True)
-        # acquisition_data['df'] = acquisitiondf[keep_idx]
 
         # TODO: Can add getting of samples with NULL start dates in
         # self.create_fixed_timeline_files
