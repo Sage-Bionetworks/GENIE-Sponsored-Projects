@@ -1034,6 +1034,30 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         return cancerdx_data
     
+
+    def get_timeline_pathology(self, mappingdf, tablesdf):
+        timeline_infodf = mappingdf["sampleType"].isin(["TIMELINE-PATHOLOGY"]).merge(tablesdf, on="dataset", how="left")
+        pathology_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-PATHOLOGY"
+        )
+        return pathology_data
+    
+    
+    def get_timeline_sample(self, mappingdf, tablesdf):
+        timeline_infodf = mappingdf["sampleType"].isin(["TIMELINE-SAMPLE"]).merge(tablesdf, on="dataset", how="left")
+        acquisition_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-SAMPLE"
+        )
+        null_dates_idx = acquisition_data["df"]["START_DATE"].isnull()
+        if null_dates_idx.any():
+            logging.warning(
+                "timeline sample with null START_DATE: {}".format(
+                    ", ".join(acquisition_data["df"]["SAMPLE_ID"][null_dates_idx])
+                )
+            )
+            acquisition_data["df"] = acquisition_data["df"][~null_dates_idx]
+        return acquisition_data
+    
     
     def run(self):
         """Runs the redcap export to export all files"""
@@ -1093,37 +1117,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # Pathology Data
-        logging.info("PATHOLOGY")
-        pathology_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-PATHOLOGY"
-        )
-        pathology_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_pathology.txt"
-        )
+        logging.info("TIMELINE-PATHOLOGY")
+        pathology_data = self.get_timeline_pathology(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
+        pathology_path = os.path.join(self._SPONSORED_PROJECT, "data_timeline_pathology.txt")
         self.write_and_storedf(
             pathology_data["df"], pathology_path, used_entities=pathology_data["used"]
         )
 
-        # # Sample acquisition
-        logging.info("SAMPLE-ACQUISITION")
-        acquisition_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-SAMPLE"
-        )
+        logging.info("TIMELINE-SAMPLE")
+        acquisition_data =  self.get_timeline_sample(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         acquisition_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"
         )
-
-        # TODO: Can add getting of samples with NULL start dates in
-        # self.create_fixed_timeline_files
-        null_dates_idx = acquisition_data["df"]["START_DATE"].isnull()
-        if null_dates_idx.any():
-            logging.warning(
-                "timeline sample with null START_DATE: {}".format(
-                    ", ".join(acquisition_data["df"]["SAMPLE_ID"][null_dates_idx])
-                )
-            )
         self.write_and_storedf(
-            acquisition_data["df"][~null_dates_idx],
+            acquisition_data["df"],
             acquisition_path,
             used_entities=acquisition_data["used"],
         )
