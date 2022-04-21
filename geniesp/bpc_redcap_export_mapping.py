@@ -981,6 +981,49 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return data_tablesdf
     
 
+    def get_timeline_treatment(self, mappingdf, tablesdf): 
+
+        timeline_infodf = mappingdf["sampleType"].isin(["TIMELINE-TREATMENT"]).merge(tablesdf, on="dataset", how="left")
+        timeline_infodf.index = timeline_infodf["code"]
+        treatment_data = self.make_timeline_treatmentdf(
+            timeline_infodf, "TIMELINE-TREATMENT"
+        )
+
+        return treatment_data
+   
+   
+    def get_timeline_treatment_rad(self, mappingdf, tablesdf):
+        timeline_infodf = mappingdf["sampleType"].isin(["TIMELINE-TREATMENT-RAD"]).merge(tablesdf, on="dataset", how="left")
+        timeline_infodf = pd.concat(
+            [
+                timeline_infodf,
+                pd.DataFrame(
+                    {
+                        "code": "rt_rt_int",
+                        "sampleType": "TIMELINE-TREATMENT-RT",
+                        "dataset": "Radiation Therapy dataset",
+                        "cbio": "TEMP",
+                    },
+                    index=["rt_rt_int"],
+                ),
+            ]
+        )
+        timeline_infodf.index = timeline_infodf["code"]
+
+        treatment_rad_data = self.create_fixed_timeline_files(
+                timeline_infodf, "TIMELINE-TREATMENT-RT"
+            )
+        rad_df = treatment_rad_data["df"]
+        rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
+        rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
+        rad_df["EVENT_TYPE"] = "Treatment"
+        rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
+        del rad_df["INDEX_CANCER"]
+        del rad_df["TEMP"]
+
+        return rad_df
+
+
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1014,50 +1057,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         regimen_infodf.index = regimen_infodf["code"]
 
-        # Create timeline column mapping, merges _REDCAP_TO_CBIOMAPPING_SYNID
-        # with _DATA_TABLE_IDS
-        timeline_infodf = redcap_to_cbiomappingdf[
-            ~patient_sample_idx & ~regimen_idx
-        ].merge(data_tablesdf, on="dataset", how="left")
-        # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
-        timeline_infodf = pd.concat(
-            [
-                timeline_infodf,
-                pd.DataFrame(
-                    {
-                        "code": "rt_rt_int",
-                        "sampleType": "TIMELINE-TREATMENT-RT",
-                        "dataset": "Radiation Therapy dataset",
-                        "cbio": "TEMP",
-                    },
-                    index=["rt_rt_int"],
-                ),
-            ]
-        )
-        # Must do this, because index gets reset after appending
-        timeline_infodf.index = timeline_infodf["code"]
-        # TODO: Must add sample retraction here, also check against main
-        # GENIE samples for timeline files...
-        logging.info("TREATMENT")
-        # Create timeline treatment
-        treatment_data = self.make_timeline_treatmentdf(
-            timeline_infodf, "TIMELINE-TREATMENT"
-        )
+        logging.info("TIMELINE-TREATMENT")
+        treatment_data=self.get_timeline_treatment(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
 
         if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
-            logging.info("TREATMENT-RAD")
-            # TODO: Add rt_rt_int
-            treatment_rad_data = self.create_fixed_timeline_files(
-                timeline_infodf, "TIMELINE-TREATMENT-RT"
-            )
-            rad_df = treatment_rad_data["df"]
-            rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
-            rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
-            rad_df["EVENT_TYPE"] = "Treatment"
-            rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
-            del rad_df["INDEX_CANCER"]
-            del rad_df["TEMP"]
+            logging.info("TIMELINE-TREATMENT-RT")
+            rad_df = self.get_timeline_treatment_rad(self, mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
             treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
+        else:
+            logging.info("skipping TIMELINE-TREATMENT-RT")
+        
+        logging.info("writing timeline treatment file...")
         treatment_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_treatment.txt"
         )
@@ -1067,7 +1077,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Create static timeline files
         # Cancer dx
-        logging.info("DX")
+        logging.info("TIMELINE-DX")
         cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX")
         cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
         cancerdx_path = os.path.join(
