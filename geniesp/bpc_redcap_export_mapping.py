@@ -1059,6 +1059,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return acquisition_data
     
     
+    def get_timeline_medonc(self, df_map, df_file):
+        idx_timeline = df_map["sampleType"].isin(["TIMELINE-SAMPLE"])
+        df_timeline = df_map[idx_timeline].merge(df_file, on="dataset", how="left")
+        dict_medonc = self.create_fixed_timeline_files(
+            df_timeline, "TIMELINE-MEDONC"
+        )
+        return dict_medonc
+    
+    
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1099,7 +1108,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             rad_df = self.get_timeline_treatment_rad(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
             treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
         else:
-            logging.info("skipping TIMELINE-TREATMENT-RT")
+            logging.info("Skipping TIMELINE-TREATMENT-RT")
         self.write_and_storedf(
             treatment_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_treatment.txt"), used_entities=treatment_data["used"]
         )
@@ -1110,7 +1119,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             cancerdx_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"), used_entities=cancerdx_data["used"]
         )
 
-        # Pathology Data
         logging.info("TIMELINE-PATHOLOGY")
         pathology_data = self.get_timeline_pathology(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         self.write_and_storedf(
@@ -1125,18 +1133,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=acquisition_data["used"],
         )
 
-        # Medonc
-        logging.info("MEDONC")
-        medonc_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-MEDONC"
-        )
+        logging.info("TIMELINE-MEDONC")
+        medonc_data = self.get_timeline_medonc(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             medonc_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt"), used_entities=medonc_data["used"]
         )
 
-        # Imaging
-        logging.info("IMAGING")
-
+        logging.info("TIMELINE-IMAGING")
         imaging_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-IMAGING"
         )
@@ -1147,8 +1150,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             imaging_data["df"], imaging_path, used_entities=imaging_data["used"]
         )
 
-        # Sequencing
-        logging.info("SEQUENCE")
+        logging.info("TIMELINE-SEQUENCE")
         sequence_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SEQUENCE"
         )
