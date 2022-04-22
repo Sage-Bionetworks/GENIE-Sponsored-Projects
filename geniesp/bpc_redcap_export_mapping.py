@@ -1071,20 +1071,29 @@ class BpcProjectRunner(metaclass=ABCMeta):
     def get_timeline_imaging(self, df_map, df_file):
         idx_timeline = df_map["sampleType"].isin(["TIMELINE-IMAGING"])
         df_timeline = df_map[idx_timeline].merge(df_file, on="dataset", how="left")
-        dict_imaging = self.create_fixed_timeline_files(
+        dict_data = self.create_fixed_timeline_files(
             df_timeline, "TIMELINE-IMAGING"
         )
-        return dict_imaging
+        return dict_data
 
 
     def get_timeline_sequence(self, df_map, df_file):
         idx_timeline = df_map["sampleType"].isin(["TIMELINE-SEQUENCE"])
         df_timeline = df_map[idx_timeline].merge(df_file, on="dataset", how="left")
-        dict_imaging = self.create_fixed_timeline_files(
+        dict_data = self.create_fixed_timeline_files(
             df_timeline, "TIMELINE-SEQUENCE"
         )
-        return dict_imaging
+        return dict_data
 
+    
+    def get_timeline_lab(self, df_map, df_file):
+        idx_timeline = df_map["sampleType"].isin(["TIMELINE-LAB"])
+        df_timeline = df_map[idx_timeline].merge(df_file, on="dataset", how="left")
+        dict_data = self.create_fixed_timeline_files(
+            df_timeline, "TIMELINE-LAB"
+        )
+        return dict_data
+    
     
     def run(self):
         """Runs the redcap export to export all files"""
@@ -1174,14 +1183,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
-            # Lab test
             logging.info("LABTEST")
-            lab_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
-            lab_path = os.path.join(
-                self._SPONSORED_PROJECT, "data_timeline_labtest.txt"
-            )
+            lab_data = self.get_timeline_lab(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
             self.write_and_storedf(
-                lab_data["df"], lab_path, used_entities=sequence_data["used"]
+                df=lab_data["df"], 
+                filepath=os.path.join(self._SPONSORED_PROJECT, "data_timeline_labtest.txt"), 
+                used_entities=sequence_data["used"]
             )
 
         # supplemental clinical file
