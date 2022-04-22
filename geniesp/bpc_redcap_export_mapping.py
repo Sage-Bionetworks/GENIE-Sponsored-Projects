@@ -1076,6 +1076,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         return dict_imaging
 
+
+    def get_timeline_sequence(self, df_map, df_file):
+        idx_timeline = df_map["sampleType"].isin(["TIMELINE-SEQUENCE"])
+        df_timeline = df_map[idx_timeline].merge(df_file, on="dataset", how="left")
+        dict_imaging = self.create_fixed_timeline_files(
+            df_timeline, "TIMELINE-SEQUENCE"
+        )
+        return dict_imaging
+
     
     def run(self):
         """Runs the redcap export to export all files"""
@@ -1152,19 +1161,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         imaging_data = self.get_timeline_imaging(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             imaging_data["df"], 
-            imaging_path = os.path.join(self._SPONSORED_PROJECT, "data_timeline_imaging.txt"), 
+            os.path.join(self._SPONSORED_PROJECT, "data_timeline_imaging.txt"), 
             used_entities=imaging_data["used"]
         )
 
         logging.info("TIMELINE-SEQUENCE")
-        sequence_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-SEQUENCE"
-        )
-        sequence_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
-        )
+        sequence_data = self.get_timeline_sequence(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
-            sequence_data["df"], sequence_path, used_entities=sequence_data["used"]
+            df=sequence_data["df"], 
+            filepath=os.path.join(self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"), 
+            used_entities=sequence_data["used"]
         )
 
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
