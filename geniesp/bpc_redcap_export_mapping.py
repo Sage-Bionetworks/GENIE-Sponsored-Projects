@@ -1068,6 +1068,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return dict_medonc
     
     
+    def get_timeline_imaging(self, df_map, df_file):
+        idx_timeline = df_map["sampleType"].isin(["TIMELINE-IMAGING"])
+        df_timeline = df_map[idx_timeline].merge(df_file, on="dataset", how="left")
+        dict_imaging = self.create_fixed_timeline_files(
+            df_timeline, "TIMELINE-IMAGING"
+        )
+        return dict_imaging
+
+    
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1140,14 +1149,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         logging.info("TIMELINE-IMAGING")
-        imaging_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-IMAGING"
-        )
-        imaging_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_imaging.txt"
-        )
+        imaging_data = self.get_timeline_imaging(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
-            imaging_data["df"], imaging_path, used_entities=imaging_data["used"]
+            imaging_data["df"], 
+            imaging_path = os.path.join(self._SPONSORED_PROJECT, "data_timeline_imaging.txt"), 
+            used_entities=imaging_data["used"]
         )
 
         logging.info("TIMELINE-SEQUENCE")
