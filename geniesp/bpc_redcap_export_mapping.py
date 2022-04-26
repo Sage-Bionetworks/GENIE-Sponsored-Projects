@@ -1095,6 +1095,87 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return dict_data
     
     
+    def get_survival(self, df_map, df_file):
+
+        idx_survival = df_map["sampleType"].isin(
+            ["SURVIVAL"]
+        )
+        df_info = df_map[idx_survival].merge(
+            df_file, on="dataset", how="left"
+        )
+        df_info.index = df_info["code"]
+        df_info = pd.concat(
+            [
+                df_info,
+                pd.DataFrame(
+                    {
+                        "code": "first_index_ca_days",
+                        "sampleType": "SURVIVAL",
+                        "dataset": "Cancer-level index dataset",
+                        "cbio": "CANCER_INDEX",
+                    },
+                    index=["first_index_ca_days"],
+                ),
+            ]
+        )
+        df_info.index = df_info["code"]
+
+        df_info_survial = df_info[df_info["sampleType"] == "SURVIVAL"]
+        dict_data_survial = get_file_data(
+            self.syn, df_info_survial, "SURVIVAL", cohort=self._SPONSORED_PROJECT
+        )
+        df_raw_survival = dict_data_survial ["df"]
+        df_final_survival = self.configure_clinicaldf(df_raw_survival, df_info_survial)
+        # Only take rows where cancer index is null
+        df_final_survival = df_final_survival[df_final_survival["CANCER_INDEX"].isnull()]
+        # Remove cancer index column
+        del df_final_survival["CANCER_INDEX"]
+        # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
+        # tested on current survival data file and produces unique patient list
+        if "PFS_I_ADV_STATUS" in df_final_survival.columns:
+            pfs_not_null_idx = ~df_final_survival["PFS_I_ADV_STATUS"].isnull()
+            pfs_not_blank_idx = df_final_survival["PFS_I_ADV_STATUS"] != ""
+            nondup_patients_idx = ~df_final_survival["PATIENT_ID"].duplicated(keep=False)
+            df_final_survival = df_final_survival[
+                (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
+            ]
+        return df_final_survival
+    
+    
+    def get_patient(self, df_map, df_file):
+        idx_patient = df_map["sampleType"].isin(
+            ["PATIENT"]
+        )
+        df_info_patient = df_map[idx_patient].merge(
+            df_file, on="dataset", how="left"
+        )
+        df_info_patient.index = df_info_patient["code"]
+        df_info_patient = pd.concat(
+            [
+                df_info_patient,
+                pd.DataFrame(
+                    {
+                        "code": "redcap_ca_index",
+                        "sampleType": "PATIENT",
+                        "dataset": "Cancer-level dataset",
+                    },
+                    index=["redcap_ca_index"],
+                ),
+            ],
+            ignore_index=True,
+        )
+        df_info_patient.index = df_info_patient["code"]
+        
+        dict_patient = get_file_data(
+            self.syn, df_info_patient, "PATIENT", cohort=self._SPONSORED_PROJECT
+        )
+
+        df_patient = dict_patient["df"]
+        df_patient = df_patient[df_patient["redcap_ca_index"] == "Yes"]
+        df_patient.drop(columns="redcap_ca_index", inplace=True)
+        
+        return self.configure_clinicaldf(df_patient, df_info_patient)
+    
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1161,13 +1242,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         logging.info("TIMELINE-MEDONC")
-        medonc_data = self.get_timeline_medonc(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        medonc_data = self.get_timeline_medonc(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             medonc_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt"), used_entities=medonc_data["used"]
         )
 
         logging.info("TIMELINE-IMAGING")
-        imaging_data = self.get_timeline_imaging(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        imaging_data = self.get_timeline_imaging(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             imaging_data["df"], 
             os.path.join(self._SPONSORED_PROJECT, "data_timeline_imaging.txt"), 
@@ -1175,7 +1256,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         logging.info("TIMELINE-SEQUENCE")
-        sequence_data = self.get_timeline_sequence(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        sequence_data = self.get_timeline_sequence(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             df=sequence_data["df"], 
             filepath=os.path.join(self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"), 
@@ -1184,7 +1265,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
             logging.info("LABTEST")
-            lab_data = self.get_timeline_lab(self, df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+            lab_data = self.get_timeline_lab(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
             self.write_and_storedf(
                 df=lab_data["df"], 
                 filepath=os.path.join(self._SPONSORED_PROJECT, "data_timeline_labtest.txt"), 
@@ -1193,72 +1274,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # supplemental clinical file
         logging.info("SURVIVAL")
-        # This is important because first_index_ca_days is needed
-        # For filtering
-        infodf = pd.concat(
-            [
-                infodf,
-                pd.DataFrame(
-                    {
-                        "code": "first_index_ca_days",
-                        "sampleType": "SURVIVAL",
-                        "dataset": "Cancer-level index dataset",
-                        "cbio": "CANCER_INDEX",
-                    },
-                    index=["first_index_ca_days"],
-                ),
-            ]
-        )
-        # Must do this because index gets reset
-        infodf.index = infodf["code"]
-        survival_infodf = infodf[infodf["sampleType"] == "SURVIVAL"]
-        survival_data = get_file_data(
-            self.syn, survival_infodf, "SURVIVAL", cohort=self._SPONSORED_PROJECT
-        )
-        survivaldf = survival_data["df"]
-        final_survivaldf = self.configure_clinicaldf(survivaldf, survival_infodf)
-        # Only take rows where cancer index is null
-        final_survivaldf = final_survivaldf[final_survivaldf["CANCER_INDEX"].isnull()]
-        # Remove cancer index column
-        del final_survivaldf["CANCER_INDEX"]
-        # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
-        # tested on current survival data file and produces unique patient list
-        if "PFS_I_ADV_STATUS" in final_survivaldf.columns:
-            pfs_not_null_idx = ~final_survivaldf["PFS_I_ADV_STATUS"].isnull()
-            pfs_not_blank_idx = final_survivaldf["PFS_I_ADV_STATUS"] != ""
-            nondup_patients_idx = ~final_survivaldf["PATIENT_ID"].duplicated(keep=False)
-            final_survivaldf = final_survivaldf[
-                (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
-            ]
+        df_final_survival = self.get_survival(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        
         logging.info("PATIENT")
-        # Patient and sample files
-        patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
-        # Must get redcap_ca_index to grab only the index cancers
-        patient_infodf = pd.concat(
-            [
-                patient_infodf,
-                pd.DataFrame(
-                    {
-                        "code": "redcap_ca_index",
-                        "sampleType": "PATIENT",
-                        "dataset": "Cancer-level dataset",
-                    },
-                    index=["redcap_ca_index"],
-                ),
-            ],
-            ignore_index=True,
-        )
-        patient_infodf.index = patient_infodf["code"]
-        patient_data = get_file_data(
-            self.syn, patient_infodf, "PATIENT", cohort=self._SPONSORED_PROJECT
-        )
-
-        patientdf = patient_data["df"]
-        # Subset by redcap_ca_index == Yes
-        patientdf = patientdf[patientdf["redcap_ca_index"] == "Yes"]
-        # remove columns after done with it
-        patientdf.drop(columns="redcap_ca_index", inplace=True)
-        final_patientdf = self.configure_clinicaldf(patientdf, infodf)
+        df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
 
         logging.info("SAMPLE")
         sample_infodf = infodf[infodf["sampleType"] == "SAMPLE"]
@@ -1273,11 +1292,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
 
-        to_keep_patient_idx = final_patientdf["PATIENT_ID"].isin(
+        to_keep_patient_idx = df_patient_final["PATIENT_ID"].isin(
             self.genie_clinicaldf["PATIENT_ID"]
         )
-        subset_patientdf = final_patientdf[
-            final_patientdf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+        subset_patientdf = df_patient_final[
+            df_patient_final["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
 
         # Fix patient duplicated values due to cancer index DOB
@@ -1340,8 +1359,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         survival_info = pd.concat([infodf, regimens_data["info"]])
 
         # Create survival data
-        subset_survivaldf = final_survivaldf[
-            final_survivaldf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+        subset_survivaldf = df_final_survival[
+            df_final_survival["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
         del subset_survivaldf["SP"]
         # subset_survivaldf = subset_survivaldf.merge(
