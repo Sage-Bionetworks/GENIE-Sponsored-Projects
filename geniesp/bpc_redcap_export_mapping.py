@@ -1176,6 +1176,25 @@ class BpcProjectRunner(metaclass=ABCMeta):
         
         return self.configure_clinicaldf(df_patient, df_info_patient)
     
+    
+    def get_sample(self, df_map, df_file):
+        idx_sample = df_map["sampleType"].isin(
+            ["SAMPLE"]
+        )
+        df_info_sample = df_map[idx_sample].merge(
+            df_file, on="dataset", how="left"
+        )
+        df_info_sample.index = df_info_sample["code"]
+        dict_sample = get_file_data(
+            self.syn, df_info_sample, "SAMPLE", cohort=self._SPONSORED_PROJECT
+        )
+        
+        df_sample = dict_sample["df"]
+        del df_sample["path_proc_number"]
+       
+        return self.configure_clinicaldf(df_sample, df_info_sample)
+    
+    
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1280,14 +1299,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
 
         logging.info("SAMPLE")
-        sample_infodf = infodf[infodf["sampleType"] == "SAMPLE"]
-        sample_data = get_file_data(
-            self.syn, sample_infodf, "SAMPLE", cohort=self._SPONSORED_PROJECT
-        )
-        sampledf = sample_data["df"]
-        del sampledf["path_proc_number"]
-        # SAMPLE FILE
-        final_sampledf = self.configure_clinicaldf(sampledf, infodf)
+        final_sampledf = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
 
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
