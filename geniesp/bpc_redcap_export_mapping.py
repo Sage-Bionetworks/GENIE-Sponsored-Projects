@@ -745,7 +745,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             timeline_infodf: Timeline column mapping dataframe
             timeline_type: Type of timeline
             filter_start: if True, remove rows with null START_DATE; 
-                            otherwise, replace with zero
+                            otherwise, retain
 
         Returns:
             dict: mapped dataframe,
@@ -778,8 +778,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Remove all null START_DATEs or replace with zero
         if filter_start:
             timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
-        else:
-            timelinedf[timelinedf["START_DATE"].isnull()] = 0
         return {
             "df": timelinedf[cols_to_order].drop_duplicates(),
             "used": used_entities,
