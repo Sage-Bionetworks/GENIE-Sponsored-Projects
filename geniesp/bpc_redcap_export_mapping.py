@@ -738,12 +738,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ent = File(filepath, parent=self._SP_SYN_ID)
             self.syn.store(ent, executed=self._GITHUB_REPO, used=used_entities)
 
-    def create_fixed_timeline_files(self, timeline_infodf, timeline_type):
+    def create_fixed_timeline_files(self, timeline_infodf, timeline_type, filter_start=True):
         """Create timeline files straight from derived variables
 
         Args:
             timeline_infodf: Timeline column mapping dataframe
             timeline_type: Type of timeline
+            filter_start: if True, remove rows with null START_DATE; 
+                            otherwise, replace with zero
 
         Returns:
             dict: mapped dataframe,
@@ -773,8 +775,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(timelinedf.columns.drop(cols_to_order).tolist())
         timelinedf = self.filter_df(timelinedf)
-        # Remove all null START_DATEs
-        timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
+        # Remove all null START_DATEs or replace with zero
+        if filter_start:
+            timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
+        else:
+            timelinedf[timelinedf["START_DATE"].isnull()] = 0
         return {
             "df": timelinedf[cols_to_order].drop_duplicates(),
             "used": used_entities,
@@ -1019,7 +1024,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Create static timeline files
         # Cancer dx
         print("DX")
-        cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX")
+        cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX", filter_start=False)
         cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
         cancerdx_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"
