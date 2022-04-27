@@ -1322,36 +1322,36 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
 
         logging.info("SAMPLE")
-        final_sampledf = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        df_sample_final = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
 
-        subset_patientdf = df_patient_final[
+        df_patient_subset = df_patient_final[
             df_patient_final["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
 
         # Fix patient duplicated values due to cancer index DOB
         # Take the larger DX_LASTALIVE_INT_MOS value for all records
         # TODO: check if its fine to drop this column
-        # subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
+        # df_patient_subset.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
         #                              ascending=False)
-        subset_patientdf.drop_duplicates("PATIENT_ID", inplace=True)
+        df_patient_subset.drop_duplicates("PATIENT_ID", inplace=True)
 
-        duplicated = subset_patientdf.PATIENT_ID.duplicated()
+        duplicated = df_patient_subset.PATIENT_ID.duplicated()
         if duplicated.any():
             logging.warning(
                 "DUPLICATED PATIENT_IDs: {}".format(
-                    ",".join(subset_patientdf["PATIENT_ID"][duplicated])
+                    ",".join(df_patient_subset["PATIENT_ID"][duplicated])
                 )
             )
 
-        del subset_patientdf["SP"]
+        del df_patient_subset["SP"]
         cols_to_order = ["PATIENT_ID"]
-        cols_to_order.extend(subset_patientdf.columns.drop(cols_to_order).tolist())
-        
-        subset_patientdf = self.hack_remap_laterality(df_patient_subset=subset_patientdf)
+        cols_to_order.extend(df_patient_subset.columns.drop(cols_to_order).tolist())
+
+        df_patient_subset = self.hack_remap_laterality(df_patient_subset=df_patient_subset)
 
         # Write patient file out
         patient_path = self.write_clinical_file(
-            subset_patientdf[cols_to_order], infodf, "patient"
+            df_patient_subset[cols_to_order], infodf, "patient"
         )
         # Create regimens data for patient file
         drug_mapping = get_drug_mapping(
@@ -1417,8 +1417,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "supp_survival_treatment",
         )
 
-        subset_sampledf = final_sampledf[
-            final_sampledf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+        subset_sampledf = df_sample_final[
+            df_sample_final["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
         ]
         del subset_sampledf["SP"]
         # TODO: add YEARS
@@ -1461,7 +1461,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Remove oncotree code here, because no longer need it
         merged_clinicaldf = subset_sampledf.merge(
-            subset_patientdf, on="PATIENT_ID", how="outer"
+            df_patient_subset, on="PATIENT_ID", how="outer"
         )
         missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
         # Make sure there are no missing sample ids
