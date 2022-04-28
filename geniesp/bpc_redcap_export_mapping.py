@@ -1486,7 +1486,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # Remove oncotree code here, because no longer need it
-        merged_clinicaldf = subset_sampledf.merge(
+        merged_clinicaldf = df_sample_final.merge(
             df_patient_final, on="PATIENT_ID", how="outer"
         )
         missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
@@ -1573,15 +1573,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
             survival_treatment_fileent = self.syn.store(
                 survival_treatment_fileent, used=used, executed=self._GITHUB_REPO
             )
-        self.create_maf(subset_sampledf["SAMPLE_ID"])
+        self.create_maf(df_sample_final["SAMPLE_ID"])
 
-        cna_samples = self.create_cna(subset_sampledf["SAMPLE_ID"])
+        cna_samples = self.create_cna(df_sample_final["SAMPLE_ID"])
 
-        self.create_genematrixdf(subset_sampledf, cna_samples)
+        self.create_genematrixdf(df_sample_final, cna_samples)
 
-        self.create_fusion(subset_sampledf["SAMPLE_ID"])
+        self.create_fusion(df_sample_final["SAMPLE_ID"])
 
-        self.create_seg(subset_sampledf["SAMPLE_ID"])
+        self.create_seg(df_sample_final["SAMPLE_ID"])
 
         # Create case lists
         case_list_path = os.path.join(self._SPONSORED_PROJECT, "case_lists")
@@ -1617,7 +1617,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 )
 
         # Create gene panel files
-        self.create_gene_panels(subset_sampledf["SEQ_ASSAY_ID"].unique())
+        self.create_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
         # Create metadata files
         metadata_files = self.create_bpc_cbio_metafiles()
         # must store metadata files if not staging
