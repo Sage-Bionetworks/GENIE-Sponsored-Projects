@@ -436,6 +436,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 Folder("case_lists", parent=self._SP_SYN_ID)
             )
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
+        
 
     def get_main_genie_clinicaldf(self) -> dict:
         """Get main GENIE clinical dataframe and perform retraction along
@@ -506,7 +507,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         meta_files.append(study_file)
         return meta_files
 
-    def create_genematrixdf(self, clinicaldf, cna_samples, used_ent=None):
+    def create_and_write_genematrix(self, clinicaldf, cna_samples, used_ent=None):
         """
         Create gene matrix dataframe
         """
@@ -799,7 +800,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 return synid_child["id"]
         raise ValueError(f"file '{file_name}' not found in {synid_folder}")
 
-    def create_maf(self, keep_samples):
+    def create_and_write_maf(self, keep_samples):
         """Create maf file from release maf
 
         Args:
@@ -831,7 +832,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             file_ent = File(mafpath, parent=self._SP_SYN_ID)
             self.syn.store(file_ent, used=[maf_synid], executed=self._GITHUB_REPO)
 
-    def create_cna(self, keep_samples):
+    def create_and_write_cna(self, keep_samples):
         """Create CNA file
 
         Args:
@@ -862,7 +863,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             self.syn.store(file_ent, used=[cna_synid], executed=self._GITHUB_REPO)
         return cnadf.columns.tolist()
 
-    def create_fusion(self, keep_samples):
+    def create_and_write_fusion(self, keep_samples):
         """Create fusion file
 
         Args:
@@ -878,7 +879,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         fusion_path = os.path.join(self._SPONSORED_PROJECT, file_name)
         self.write_and_storedf(fusiondf, fusion_path, used_entities=[fusion_synid])
 
-    def create_seg(self, keep_samples):
+    def create_and_write_seg(self, keep_samples):
         """Create seg file
 
         Args:
@@ -894,7 +895,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         self.write_and_storedf(segdf, seg_path, used_entities=[seg_synid])
 
-    def create_gene_panels(self, keep_seq_assay_ids):
+    def create_and_write_gene_panels(self, keep_seq_assay_ids):
         """Create gene panels"""
         file_name = "genomic_information.txt"
         genomic_info_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
@@ -1367,6 +1368,41 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return df_sample_subset
     
     
+    def create_and_write_case_lists(self):
+        # Create case lists
+        case_list_path = os.path.join(self._SPONSORED_PROJECT, "case_lists")
+
+        if not os.path.exists(case_list_path):
+            os.mkdir(case_list_path)
+        else:
+            caselists = os.listdir(case_list_path)
+            for caselist in caselists:
+                os.remove(os.path.join(case_list_path, caselist))
+
+        # Write out cases sequenced so people can tell
+        # which samples were sequenced
+        assay_info = self.syn.tableQuery(
+            "select * from syn17009222", includeRowIdAndRowVersion=False, separator="\t"
+        )
+        create_case_lists.main(
+            os.path.join(self._SPONSORED_PROJECT, "data_clinical.txt"),
+            assay_info.filepath,
+            case_list_path,
+            f"{self._SPONSORED_PROJECT.lower()}_genie_bpc",
+        )
+
+        case_list_files = os.listdir(case_list_path)
+        for casepath in case_list_files:
+            casepath = os.path.join(case_list_path, casepath)
+            if not self.staging:
+                file_ent = File(casepath, parent=self._CASE_LIST_SYN_ID)
+                self.syn.store(
+                    file_ent,
+                    used=[patient_ent.id, sample_ent.id],
+                    executed=self._GITHUB_REPO,
+                )
+    
+    
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1466,17 +1502,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         survival_path = self.write_clinical_file(
             df_final_survival, redcap_to_cbiomappingdf, "supp_survival"
         )
-        
-        logging.info("PATIENT")
-        df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
-        patient_path = self.write_clinical_file(
-            df_patient_final, redcap_to_cbiomappingdf, "patient"
-        )
 
-        logging.info("SAMPLE")
-        df_sample_final = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
-        sample_path = self.write_clinical_file(df_sample_final, redcap_to_cbiomappingdf, "sample")
-        
         logging.info("SURVIVAL-TREATMENT")
         df_survival_treatment = self.get_survival_treatment(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         surv_treatment_path = self.write_clinical_file(
@@ -1485,69 +1511,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "supp_survival_treatment",
         )
 
-        # Remove oncotree code here, because no longer need it
-        merged_clinicaldf = df_sample_final.merge(
-            df_patient_final, on="PATIENT_ID", how="outer"
+        logging.info("SAMPLE")
+        df_sample_final = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        sample_path = self.write_clinical_file(df_sample_final, redcap_to_cbiomappingdf, "sample")
+        
+        logging.info("PATIENT")
+        df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        patient_path = self.write_clinical_file(
+            df_patient_final, redcap_to_cbiomappingdf, "patient"
         )
-        missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
-        # Make sure there are no missing sample ids
-        if sum(missing_sample_idx) > 0:
-            logging.warning(
-                "MISSING SAMPLE_ID for: {}".format(
-                    ",".join(merged_clinicaldf["PATIENT_ID"][missing_sample_idx])
-                )
-            )
-            merged_clinicaldf = merged_clinicaldf[~missing_sample_idx]
 
-        # upload samples that are not part of the main GENIE cohort
-        if merged_clinicaldf.get("SAMPLE_ID") is not None:
-            logging.warning("Samples not in GENIE clinical databases (SP and normal)")
-            not_found_samples = merged_clinicaldf["SAMPLE_ID"][
-                ~merged_clinicaldf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
-            ]
-            if not not_found_samples.empty:
-                logging.warning(not_found_samples[~not_found_samples.isnull()])
-                not_found_samples.to_csv("notfoundsamples.csv")
-                if not self.staging:
-                    self.syn.store(
-                        synapseclient.File(
-                            "notfoundsamples.csv", parent=self._SP_REDCAP_EXPORTS_SYNID
-                        )
-                    )
-
-        # Hard coded most up to date oncotree version
-        oncotreelink = self.syn.get("syn13890902").externalURL
-        # Use the old oncotree link for now
-        oncotreelink = (
-            "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
-        )
-        oncotree_dict = genie.process_functions.get_oncotree_code_mappings(oncotreelink)
-        # Map cancer type and cancer type detailed
-        # This is to create case list files
-        merged_clinicaldf["CANCER_TYPE"] = [
-            oncotree_dict[code.upper()].get("CANCER_TYPE", float("nan"))
-            for code in merged_clinicaldf["ONCOTREE_CODE"]
-        ]
-        merged_clinicaldf["CANCER_TYPE_DETAILED"] = [
-            oncotree_dict[code.upper()].get("CANCER_TYPE_DETAILED", float("nan"))
-            for code in merged_clinicaldf["ONCOTREE_CODE"]
-        ]
-        merged_clinicaldf["ONCOTREE_PRIMARY_NODE"] = [
-            oncotree_dict[code.upper()].get("ONCOTREE_PRIMARY_NODE", float("nan"))
-            for code in merged_clinicaldf["ONCOTREE_CODE"]
-        ]
-        merged_clinicaldf["ONCOTREE_SECONDARY_NODE"] = [
-            oncotree_dict[code.upper()].get("ONCOTREE_SECONDARY_NODE", float("nan"))
-            for code in merged_clinicaldf["ONCOTREE_CODE"]
-        ]
-        # Remove duplicated sample ids (there shouldn't be any)
-        merged_clinicaldf = merged_clinicaldf.drop_duplicates("SAMPLE_ID")
-        merged_clinicaldf.to_csv(
-            os.path.join(self._SPONSORED_PROJECT, "data_clinical.txt"),
-            index=False,
-            sep="\t",
-        )
         if not self.staging:
+
+            logging.info("uploading clinical data files to Synapse...")
+
             patient_fileent = File(patient_path, parent=self._SP_SYN_ID)
             patient_ent = self.syn.store(
                 patient_fileent, used=patient_data["used"], executed=self._GITHUB_REPO
@@ -1573,54 +1550,19 @@ class BpcProjectRunner(metaclass=ABCMeta):
             survival_treatment_fileent = self.syn.store(
                 survival_treatment_fileent, used=used, executed=self._GITHUB_REPO
             )
-        self.create_maf(df_sample_final["SAMPLE_ID"])
-
-        cna_samples = self.create_cna(df_sample_final["SAMPLE_ID"])
-
-        self.create_genematrixdf(df_sample_final, cna_samples)
-
-        self.create_fusion(df_sample_final["SAMPLE_ID"])
-
-        self.create_seg(df_sample_final["SAMPLE_ID"])
-
-        # Create case lists
-        case_list_path = os.path.join(self._SPONSORED_PROJECT, "case_lists")
-
-        if not os.path.exists(case_list_path):
-            os.mkdir(case_list_path)
-        else:
-            caselists = os.listdir(case_list_path)
-            for caselist in caselists:
-                os.remove(os.path.join(case_list_path, caselist))
-
-        # Write out cases sequenced so people can tell
-        # which samples were sequenced
-        assay_info = self.syn.tableQuery(
-            "select * from syn17009222", includeRowIdAndRowVersion=False, separator="\t"
-        )
-        create_case_lists.main(
-            os.path.join(self._SPONSORED_PROJECT, "data_clinical.txt"),
-            assay_info.filepath,
-            case_list_path,
-            f"{self._SPONSORED_PROJECT.lower()}_genie_bpc",
-        )
-
-        case_list_files = os.listdir(case_list_path)
-        for casepath in case_list_files:
-            casepath = os.path.join(case_list_path, casepath)
-            if not self.staging:
-                file_ent = File(casepath, parent=self._CASE_LIST_SYN_ID)
-                self.syn.store(
-                    file_ent,
-                    used=[patient_ent.id, sample_ent.id],
-                    executed=self._GITHUB_REPO,
-                )
-
-        # Create gene panel files
-        self.create_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
-        # Create metadata files
+        
+        
+        logging.info("creating genomic data files...")
+        self.create_and_write_maf(df_sample_final["SAMPLE_ID"])
+        cna_samples = self.create_and_write_cna(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_genematrix(df_sample_final, cna_samples)
+        self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_seg(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_case_lists()
+        self.create_and_write_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
+        
+        logging.info("creating metadata files...")
         metadata_files = self.create_bpc_cbio_metafiles()
-        # must store metadata files if not staging
         if not self.staging:
             for metadata_file in metadata_files:
                 file_ent = File(metadata_file, parent=self._SP_SYN_ID)
@@ -1629,6 +1571,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     executed=self._GITHUB_REPO,
                 )
 
+        logging.info("cBioPortal validation")
         cmd = [
             "python",
             os.path.join(
