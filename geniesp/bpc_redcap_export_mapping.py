@@ -1142,9 +1142,94 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_final_survival = df_final_survival[
                 (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
             ]
-        return df_final_survival
+
+
+        # Patient and Sample mapping values
+        patient_sample_idx = df_map["sampleType"].isin(
+            ["PATIENT", "SAMPLE", "SURVIVAL"]
+        )
+        infodf = df_map[patient_sample_idx].merge(
+            df_file, on="dataset", how="left"
+        )
+        infodf.index = infodf["code"]
+
+        # Regimen mapping values
+        regimen_idx = df_map["sampleType"].isin(["REGIMEN"])
+        regimen_infodf = df_map[regimen_idx].merge(
+            df_file, on="dataset", how="left"
+        )
+        regimen_infodf.index = regimen_infodf["code"]
+
+        drug_mapping = get_drug_mapping(
+            syn=self.syn,
+            cohort=self._SPONSORED_PROJECT,
+            synid_file_grs=self._GRS_SYNID,
+            synid_table_prissmm=self._PRISSMM_SYNID,
+        )
+        regimens_data = create_regimens(
+            self.syn,
+            regimen_infodf,
+            mapping=drug_mapping,
+            top_x_regimens=20,
+            cohort=self._SPONSORED_PROJECT,
+        )
+
+        survival_info = pd.concat([infodf, regimens_data["info"]])
+
+        # Create survival data
+        subset_survivaldf = df_final_survival[
+            df_final_survival["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+        ]
+        del subset_survivaldf["SP"]
+        os_pfs_cols = [
+            col
+            for col in subset_survivaldf.columns
+            if col.startswith(("OS", "PFS")) and col.endswith("STATUS")
+        ]
+        remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"} for col in os_pfs_cols}
+        subset_survivaldf.replace(remap_os_values, inplace=True)
+        cols_to_order = ["PATIENT_ID"]
+        cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
+
+        return subset_survivaldf[cols_to_order]
     
-    
+        
+    def get_survival_treatment(self, df_map, df_file):
+
+        # Regimen mapping values
+        regimen_idx = df_map["sampleType"].isin(["REGIMEN"])
+        regimen_infodf = df_map[regimen_idx].merge(
+            df_file, on="dataset", how="left"
+        )
+        regimen_infodf.index = regimen_infodf["code"]
+
+        drug_mapping = get_drug_mapping(
+            syn=self.syn,
+            cohort=self._SPONSORED_PROJECT,
+            synid_file_grs=self._GRS_SYNID,
+            synid_table_prissmm=self._PRISSMM_SYNID,
+        )
+        regimens_data = create_regimens(
+            self.syn,
+            regimen_infodf,
+            mapping=drug_mapping,
+            top_x_regimens=20,
+            cohort=self._SPONSORED_PROJECT,
+        )
+
+        df_survival_treatment = regimens_data["df"]
+        os_pfs_cols = [
+            col
+            for col in df_survival_treatment.columns
+            if col.startswith(("OS", "PFS")) and col.endswith("STATUS")
+        ]
+        remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"} for col in os_pfs_cols}
+        df_survival_treatment.replace(remap_os_values, inplace=True)
+        cols_to_order = ["PATIENT_ID"]
+        cols_to_order.extend(df_survival_treatment.columns.drop(cols_to_order).tolist())
+        return(df_survival_treatment[cols_to_order])
+   
+   
     def hack_remap_laterality(df_patient_subset):
         # HACK: Temporary remapping of specific values in a column
         laterality_mapping = {
@@ -1250,8 +1335,36 @@ class BpcProjectRunner(metaclass=ABCMeta):
         
         df_sample = dict_sample["df"]
         del df_sample["path_proc_number"]
+        df_sample_final = self.configure_clinicaldf(df_sample, df_info_sample)
+
+        df_sample_subset = df_sample_final[
+            df_sample_final["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+        ]
+        del df_sample_subset["SP"]
+        days_to_years_col = [
+            "AGE_AT_SEQ_REPORT_YEARS",
+            "CPT_ORDER_INT",
+            "CPT_REPORT_INT",
+        ]
+        for col in days_to_years_col:
+            # not all columns could exist, so check if column exists
+            if col in df_sample_subset:
+                years = df_sample_subset[col].apply(change_days_to_years)
+                df_sample_subset[col] = years
+
+        # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
+        del df_sample_subset["CPT_SEQ_DATE"]
+        # Obtain this information from the main GENIE cohort
+        df_sample_subset = df_sample_subset.merge(
+            self.genie_clinicaldf[["SAMPLE_ID", "SEQ_YEAR"]],
+            on="SAMPLE_ID",
+            how="left",
+        )
+        df_sample_subset.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
+        df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
+        df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
        
-        return self.configure_clinicaldf(df_sample, df_info_sample)
+        return df_sample_subset
     
     
     def run(self):
@@ -1339,8 +1452,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=sequence_data["used"]
         )
 
+        logging.info("LABTEST")
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
-            logging.info("LABTEST")
             lab_data = self.get_timeline_lab(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
             self.write_and_storedf(
                 df=lab_data["df"], 
@@ -1350,6 +1463,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         logging.info("SURVIVAL")
         df_final_survival = self.get_survival(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        survival_path = self.write_clinical_file(
+            df_final_survival, redcap_to_cbiomappingdf, "supp_survival"
+        )
         
         logging.info("PATIENT")
         df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
@@ -1359,103 +1475,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         logging.info("SAMPLE")
         df_sample_final = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        sample_path = self.write_clinical_file(df_sample_final, redcap_to_cbiomappingdf, "sample")
         
-        # Create regimens data for patient file
-        drug_mapping = get_drug_mapping(
-            syn=self.syn,
-            cohort=self._SPONSORED_PROJECT,
-            synid_file_grs=self._GRS_SYNID,
-            synid_table_prissmm=self._PRISSMM_SYNID,
-        )
-        regimens_data = create_regimens(
-            self.syn,
-            regimen_infodf,
-            mapping=drug_mapping,
-            top_x_regimens=20,
-            cohort=self._SPONSORED_PROJECT,
-        )
-
-        survival_info = pd.concat([infodf, regimens_data["info"]])
-
-        # Create survival data
-        subset_survivaldf = df_final_survival[
-            df_final_survival["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
-        ]
-        del subset_survivaldf["SP"]
-        os_pfs_cols = [
-            col
-            for col in subset_survivaldf.columns
-            if col.startswith(("OS", "PFS")) and col.endswith("STATUS")
-        ]
-        remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"} for col in os_pfs_cols}
-        subset_survivaldf.replace(remap_os_values, inplace=True)
-        cols_to_order = ["PATIENT_ID"]
-        cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
-        survival_path = self.write_clinical_file(
-            subset_survivaldf[cols_to_order], survival_info, "supp_survival"
-        )
-        # survival treatment
-        survival_treatmentdf = regimens_data["df"]
-        os_pfs_cols = [
-            col
-            for col in survival_treatmentdf.columns
-            if col.startswith(("OS", "PFS")) and col.endswith("STATUS")
-        ]
-        remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"} for col in os_pfs_cols}
-        survival_treatmentdf.replace(remap_os_values, inplace=True)
-        cols_to_order = ["PATIENT_ID"]
-        cols_to_order.extend(survival_treatmentdf.columns.drop(cols_to_order).tolist())
-
-        # Order is maintained in the derived variables file so just drop
-        # Duplicates
-        # survival_treatmentdf.drop_duplicates("PATIENT_ID", inplace=True)
+        logging.info("SURVIVAL-TREATMENT")
+        df_survival_treatment = self.get_survival_treatment(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         surv_treatment_path = self.write_clinical_file(
-            survival_treatmentdf[cols_to_order],
-            survival_info,
+            df_survival_treatment,
+            redcap_to_cbiomappingdf,
             "supp_survival_treatment",
         )
-
-        subset_sampledf = df_sample_final[
-            df_sample_final["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
-        ]
-        del subset_sampledf["SP"]
-        # TODO: add YEARS
-        # days_to_years_col = ['AGE_AT_SEQ_REPORT_YEARS',
-        #                      'CPT_ORDER_INT', 'CPT_REPORT_INT']
-        days_to_years_col = [
-            "AGE_AT_SEQ_REPORT_YEARS",
-            "CPT_ORDER_INT",
-            "CPT_REPORT_INT",
-        ]
-        for col in days_to_years_col:
-            # not all columns could exist, so check if column exists
-            if col in subset_sampledf:
-                years = subset_sampledf[col].apply(change_days_to_years)
-                subset_sampledf[col] = years
-
-        # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
-        del subset_sampledf["CPT_SEQ_DATE"]
-        # Obtain this information from the main GENIE cohort
-        subset_sampledf = subset_sampledf.merge(
-            self.genie_clinicaldf[["SAMPLE_ID", "SEQ_YEAR"]],
-            on="SAMPLE_ID",
-            how="left",
-        )
-        subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
-        # Remove duplicated samples due to PDL1
-        # Keep only one sample in this priority
-        # PDL1_POSITIVE_ANY: Yes
-        # PDL1_POSITIVE_ANY: No
-        # PDL1_POSITIVE_ANY: <blank>
-        subset_sampledf.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
-        subset_sampledf.drop_duplicates("SAMPLE_ID", inplace=True)
-        # duplicated = subset_sampledf.SAMPLE_ID.duplicated()
-        # if duplicated.any():
-        #     # TODO: Add in duplicated ids
-        #     print("DUPLICATED SAMPLE_IDs")
-        # There are duplicated samples
-        # subset_sampledf = subset_sampledf[~duplicated]
-        sample_path = self.write_clinical_file(subset_sampledf, infodf, "sample")
 
         # Remove oncotree code here, because no longer need it
         merged_clinicaldf = subset_sampledf.merge(
