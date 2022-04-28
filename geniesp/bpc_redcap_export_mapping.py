@@ -738,12 +738,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ent = File(filepath, parent=self._SP_SYN_ID)
             self.syn.store(ent, executed=self._GITHUB_REPO, used=used_entities)
 
-    def create_fixed_timeline_files(self, timeline_infodf, timeline_type):
+    def create_fixed_timeline_files(self, timeline_infodf, timeline_type,  filter_start=True):
         """Create timeline files straight from derived variables
 
         Args:
             timeline_infodf: Timeline column mapping dataframe
             timeline_type: Type of timeline
+            filter_start: if True, remove rows with null START_DATE; 
+                            otherwise, retain
 
         Returns:
             dict: mapped dataframe,
@@ -773,8 +775,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(timelinedf.columns.drop(cols_to_order).tolist())
         timelinedf = self.filter_df(timelinedf)
-        # Remove all null START_DATEs
-        timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
+        # Remove all null START_DATE rows if requested
+        if filter_start:
+            timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         return {
             "df": timelinedf[cols_to_order].drop_duplicates(),
             "used": used_entities,
@@ -1026,7 +1029,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def get_timeline_dx(self, mappingdf, tablesdf):
         timeline_infodf = mappingdf["sampleType"].isin(["TIMELINE-DX"]).merge(tablesdf, on="dataset", how="left")
-        cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX")
+        cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX", filter_start=False)
         cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
         cancerdx_data["df"] = cancerdx_data["df"][
             ~cancerdx_data["df"]["START_DATE"].isnull()
@@ -1142,7 +1145,43 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return df_final_survival
     
     
-    def get_patient(self, df_map, df_file):
+    def hack_remap_laterality(df_patient_subset):
+        # HACK: Temporary remapping of specific values in a column
+        laterality_mapping = {
+            "0": "Not a paired site",
+            "1": "Right: origin of primary",
+            "2": "Left: origin of primary",
+            "3": "Only one side involved, right or left origin unspecified",
+            "4": "Bilateral involvement at time of diagnosis, lateral origin "
+            "unknown for a single primary; or both ovaries involved "
+            "simultaneously, single histology; bilateral retinoblastomas; "
+            "bilateral Wilms' tumors",
+            "5": "Paired site: midline tumor",
+            "9": "Paired site, but no information concerning laterality",
+            "Not paired": "Not a paired site",
+        }
+        if df_patient_subset.get("NAACCR_LATERALITY_CD") is not None:
+            remapped_values = df_patient_subset["NAACCR_LATERALITY_CD"].astype(str).map(
+                laterality_mapping
+            )
+            df_patient_subset["NAACCR_LATERALITY_CD"] = remapped_values
+
+        return df_patient_subset
+        
+    
+    def get_patient(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
+        """Patient data file. 
+        
+        Custom rule: Fix patient duplicated values due to cancer index DOB
+        (CONFIRM: Take the larger DX_LASTALIVE_INT_MOS value for all records)
+
+        Args:
+            df_map (pd.DataFrame): _description_
+            df_file (pd.DataFrame): _description_
+
+        Returns:
+            pd.DataFrame: _description_
+        """
         idx_patient = df_map["sampleType"].isin(
             ["PATIENT"]
         )
@@ -1173,8 +1212,28 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_patient = dict_patient["df"]
         df_patient = df_patient[df_patient["redcap_ca_index"] == "Yes"]
         df_patient.drop(columns="redcap_ca_index", inplace=True)
+        df_patient_final = self.configure_clinicaldf(df_patient, df_info_patient)
+
+        df_patient_subset = df_patient_final[
+            df_patient_final["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+        ]
+
+        df_patient_subset.drop_duplicates("PATIENT_ID", inplace=True)
+        duplicated = df_patient_subset.PATIENT_ID.duplicated()
+        if duplicated.any():
+            logging.warning(
+                "DUPLICATED PATIENT_IDs: {}".format(
+                    ",".join(df_patient_subset["PATIENT_ID"][duplicated])
+                )
+            )
+
+        del df_patient_subset["SP"]
+        cols_to_order = ["PATIENT_ID"]
+        cols_to_order.extend(df_patient_subset.columns.drop(cols_to_order).tolist())
+
+        df_patient_subset = self.hack_remap_laterality(df_patient_subset=df_patient_subset)
         
-        return self.configure_clinicaldf(df_patient, df_info_patient)
+        return df_patient_subset[cols_to_order]
     
     
     def get_sample(self, df_map, df_file):
@@ -1195,30 +1254,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return self.configure_clinicaldf(df_sample, df_info_sample)
     
     
-    def hack_remap_laterality(df_patient_subset):
-        # HACK: Temporary remapping of specific values in a column
-        laterality_mapping = {
-            "0": "Not a paired site",
-            "1": "Right: origin of primary",
-            "2": "Left: origin of primary",
-            "3": "Only one side involved, right or left origin unspecified",
-            "4": "Bilateral involvement at time of diagnosis, lateral origin "
-            "unknown for a single primary; or both ovaries involved "
-            "simultaneously, single histology; bilateral retinoblastomas; "
-            "bilateral Wilms' tumors",
-            "5": "Paired site: midline tumor",
-            "9": "Paired site, but no information concerning laterality",
-            "Not paired": "Not a paired site",
-        }
-        if df_patient_subset.get("NAACCR_LATERALITY_CD") is not None:
-            remapped_values = df_patient_subset["NAACCR_LATERALITY_CD"].astype(str).map(
-                laterality_mapping
-            )
-            df_patient_subset["NAACCR_LATERALITY_CD"] = remapped_values
-
-        return df_patient_subset
-    
-    
     def run(self):
         """Runs the redcap export to export all files"""
         
@@ -1234,12 +1269,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         data_tablesdf = self.get_data_file_synapse_id_df(syn=self.syn, 
             synid_table_files=self._DATA_TABLE_IDS)
 
-        # ???
+        # Patient and Sample mapping values
         patient_sample_idx = redcap_to_cbiomappingdf["sampleType"].isin(
             ["PATIENT", "SAMPLE", "SURVIVAL"]
         )
-        
-        # Patient and Sample mapping values
         infodf = redcap_to_cbiomappingdf[patient_sample_idx].merge(
             data_tablesdf, on="dataset", how="left"
         )
@@ -1320,39 +1353,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         
         logging.info("PATIENT")
         df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
+        patient_path = self.write_clinical_file(
+            df_patient_final, redcap_to_cbiomappingdf, "patient"
+        )
 
         logging.info("SAMPLE")
         df_sample_final = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
-
-        df_patient_subset = df_patient_final[
-            df_patient_final["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
-        ]
-
-        # Fix patient duplicated values due to cancer index DOB
-        # Take the larger DX_LASTALIVE_INT_MOS value for all records
-        # TODO: check if its fine to drop this column
-        # df_patient_subset.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
-        #                              ascending=False)
-        df_patient_subset.drop_duplicates("PATIENT_ID", inplace=True)
-
-        duplicated = df_patient_subset.PATIENT_ID.duplicated()
-        if duplicated.any():
-            logging.warning(
-                "DUPLICATED PATIENT_IDs: {}".format(
-                    ",".join(df_patient_subset["PATIENT_ID"][duplicated])
-                )
-            )
-
-        del df_patient_subset["SP"]
-        cols_to_order = ["PATIENT_ID"]
-        cols_to_order.extend(df_patient_subset.columns.drop(cols_to_order).tolist())
-
-        df_patient_subset = self.hack_remap_laterality(df_patient_subset=df_patient_subset)
-
-        # Write patient file out
-        patient_path = self.write_clinical_file(
-            df_patient_subset[cols_to_order], infodf, "patient"
-        )
+        
         # Create regimens data for patient file
         drug_mapping = get_drug_mapping(
             syn=self.syn,
@@ -1375,12 +1382,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_final_survival["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
         del subset_survivaldf["SP"]
-        # subset_survivaldf = subset_survivaldf.merge(
-        #     regimens_data['df'], on="PATIENT_ID", how="left"
-        # )
-        # Must change the values in OS and PFS columns from
-        # integer to (status:label)
-        # TODO: put remapping of os values in helper function
         os_pfs_cols = [
             col
             for col in subset_survivaldf.columns
@@ -1390,9 +1391,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_survivaldf.replace(remap_os_values, inplace=True)
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
-        # Order is maintained in the derived variables file so just drop
-        # Duplicates
-        # subset_survivaldf.drop_duplicates("PATIENT_ID", inplace=True)
         survival_path = self.write_clinical_file(
             subset_survivaldf[cols_to_order], survival_info, "supp_survival"
         )
@@ -1461,7 +1459,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Remove oncotree code here, because no longer need it
         merged_clinicaldf = subset_sampledf.merge(
-            df_patient_subset, on="PATIENT_ID", how="outer"
+            df_patient_final, on="PATIENT_ID", how="outer"
         )
         missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
         # Make sure there are no missing sample ids
