@@ -128,29 +128,8 @@ def get_file_data(syn, mappingdf, sampletype, cohort="NSCLC"):
                 del finaldf["path_rep_number"]
             else:
                 finaldf = finaldf.merge(tabledf, on="record_id")
-    # This is to map values (sample acquisition, samples)
-    # duplicated_codes_idx = mappingdf['code'].duplicated()
-    # if duplicated_codes_idx.any():
-    #     duplicated = mappingdf['code'][duplicated_codes_idx].values[0]
-    #     finaldf = finaldf[finaldf[f'{duplicated}_x'] == finaldf[f'{duplicated}_y']]
-    #     del finaldf[f'{duplicated}_x']
-    #     finaldf[duplicated] = finaldf[f'{duplicated}_y']
-    #     del finaldf[f'{duplicated}_y']
 
     return {"df": finaldf, "used": used_entities}
-
-
-# def _remap_os_pfs_values(clinicaldf):
-#     """Remap numerical values to string values
-#     0 -> 0:LIVING
-#     1 -> 1:DECEASED
-#     """
-#     os_pfs_cols = [col for col in clinicaldf.columns
-#                    if col.startswith(('OS', 'PFS')) and
-#                    col.endswith("STATUS")]
-#     remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"}
-#                        for col in os_pfs_cols}
-#     return clinicaldf.replace(remap_os_values)
 
 
 def fill_cancer_dx_start_date(finaldf):
@@ -167,23 +146,6 @@ def fill_cancer_dx_start_date(finaldf):
     # Make all time0 points 0
     finaldf["diagnosis_int"] = finaldf["START_DATE"]
     finaldf["START_DATE"][time0_dates_idx] = 0
-    # finaldf['START_DATE'][~time0_dates_idx] = 1
-
-    # records = finaldf['PATIENT_ID'].unique()
-    # for record in records:
-    #     df = finaldf[finaldf['PATIENT_ID'] == record]
-    #     # Grab the time 0 START_DATE and calculate the other start times
-    #     time0_idx = df['START_DATE'] == 0
-    #     values = df['CA_DOB_DX_INT'][time0_idx].unique()
-    #     # Sometimes there are more than one index cancers, so must take
-    #     # the first value which is the minimum value
-    #     time0 = min(values)
-    #     # time0 = df['CA_DOB_DX_INT'][time0_idx].values[0]
-    #     finaldf.loc[df.index[~time0_idx],
-    #                 'START_DATE'] = df['CA_DOB_DX_INT'][~time0_idx]-time0
-    #     missing_idx = df['CA_DOB_DX_INT'].isnull()
-    #     finaldf.loc[df.index[missing_idx],
-    #                 'START_DATE'] = df['diagnosis_int'][missing_idx]-time0
     # Remove unused variable
     del finaldf["diagnosis_int"]
     return finaldf
@@ -436,7 +398,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 Folder("case_lists", parent=self._SP_SYN_ID)
             )
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
-        
+
 
     def get_main_genie_clinicaldf(self) -> dict:
         """Get main GENIE clinical dataframe and perform retraction along
