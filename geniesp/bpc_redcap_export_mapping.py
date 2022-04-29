@@ -1385,59 +1385,43 @@ class BpcProjectRunner(metaclass=ABCMeta):
     def run(self):
         """Runs the redcap export to export all files"""
         
-        # Create folder to house release files
+        logging.info("creating release folders...")
         self.create_release_folders(cohort=self._SPONSORED_PROJECT)
         
-        # Get variable name to cBioPortal mapping
+        logging.info("reading variable to cBio mapping...")
         redcap_to_cbiomappingdf = self.get_bpc_to_cbio_mapping_df(self.syn, 
             cohort=self._SPONSORED_PROJECT,
             synid_table_cbio=self._REDCAP_TO_CBIOMAPPING_SYNID)
-        
-        # Get Synapse ID to dataset label mapping
+
+        logging.info("reading and dataset label mappings...")
         data_tablesdf = self.get_data_file_synapse_id_df(syn=self.syn, 
             synid_table_files=self._DATA_TABLE_IDS)
 
-        # Patient and Sample mapping values
-        patient_sample_idx = redcap_to_cbiomappingdf["sampleType"].isin(
-            ["PATIENT", "SAMPLE", "SURVIVAL"]
-        )
-        infodf = redcap_to_cbiomappingdf[patient_sample_idx].merge(
-            data_tablesdf, on="dataset", how="left"
-        )
-        infodf.index = infodf["code"]
-
-        # Regimen mapping values
-        regimen_idx = redcap_to_cbiomappingdf["sampleType"].isin(["REGIMEN"])
-        regimen_infodf = redcap_to_cbiomappingdf[regimen_idx].merge(
-            data_tablesdf, on="dataset", how="left"
-        )
-        regimen_infodf.index = regimen_infodf["code"]
-
-        logging.info("TIMELINE-TREATMENT")
+        logging.info("writing TIMELINE-TREATMENT...")
         treatment_data=self.get_timeline_treatment(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
-            logging.info("TIMELINE-TREATMENT-RT")
+            logging.info("writing TIMELINE-TREATMENT-RT...")
             rad_df = self.get_timeline_treatment_rad(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
             treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
         else:
-            logging.info("Skipping TIMELINE-TREATMENT-RT")
+            logging.info("skipping TIMELINE-TREATMENT-RT")
         self.write_and_storedf(
             treatment_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_treatment.txt"), used_entities=treatment_data["used"]
         )
 
-        logging.info("TIMELINE-DX")
+        logging.info("writing TIMELINE-DX...")
         cancerdx_data = self.get_timeline_dx(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         self.write_and_storedf(
             cancerdx_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"), used_entities=cancerdx_data["used"]
         )
 
-        logging.info("TIMELINE-PATHOLOGY")
+        logging.info("writing TIMELINE-PATHOLOGY...")
         pathology_data = self.get_timeline_pathology(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         self.write_and_storedf(
             pathology_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_pathology.txt"), used_entities=pathology_data["used"]
         )
 
-        logging.info("TIMELINE-SAMPLE")
+        logging.info("writing TIMELINE-SAMPLE...")
         acquisition_data =  self.get_timeline_sample(mappingdf=redcap_to_cbiomappingdf, tablesdf=data_tablesdf)
         self.write_and_storedf(
             acquisition_data["df"],
@@ -1445,13 +1429,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=acquisition_data["used"],
         )
 
-        logging.info("TIMELINE-MEDONC")
+        logging.info("writing TIMELINE-MEDONC...")
         medonc_data = self.get_timeline_medonc(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             medonc_data["df"], os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt"), used_entities=medonc_data["used"]
         )
 
-        logging.info("TIMELINE-IMAGING")
+        logging.info("writing TIMELINE-IMAGING...")
         imaging_data = self.get_timeline_imaging(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             imaging_data["df"], 
@@ -1459,7 +1443,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=imaging_data["used"]
         )
 
-        logging.info("TIMELINE-SEQUENCE")
+        logging.info("writing TIMELINE-SEQUENCE...")
         sequence_data = self.get_timeline_sequence(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         self.write_and_storedf(
             df=sequence_data["df"], 
@@ -1467,22 +1451,24 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=sequence_data["used"]
         )
 
-        logging.info("LABTEST")
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
+            logging.info("writing LABTEST...")
             lab_data = self.get_timeline_lab(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
             self.write_and_storedf(
                 df=lab_data["df"], 
                 filepath=os.path.join(self._SPONSORED_PROJECT, "data_timeline_labtest.txt"), 
                 used_entities=sequence_data["used"]
             )
+        else:
+            logging.info("skipping LABTEST...")
 
-        logging.info("SURVIVAL")
+        logging.info("writing SURVIVAL...")
         df_final_survival = self.get_survival(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         survival_path = self.write_clinical_file(
             df_final_survival, redcap_to_cbiomappingdf, "supp_survival"
         )
 
-        logging.info("SURVIVAL-TREATMENT")
+        logging.info("writing SURVIVAL-TREATMENT...")
         df_survival_treatment = self.get_survival_treatment(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         surv_treatment_path = self.write_clinical_file(
             df_survival_treatment,
@@ -1490,11 +1476,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "supp_survival_treatment",
         )
 
-        logging.info("SAMPLE")
+        logging.info("writing SAMPLE...")
         df_sample_final = self.get_sample(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         sample_path = self.write_clinical_file(df_sample_final, redcap_to_cbiomappingdf, "sample")
         
-        logging.info("PATIENT")
+        logging.info("writing PATIENT...")
         df_patient_final = self.get_patient(df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf)
         patient_path = self.write_clinical_file(
             df_patient_final, redcap_to_cbiomappingdf, "patient"
@@ -1538,7 +1524,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 survival_treatment_fileent, used=survival_used, executed=self._GITHUB_REPO
             )
         
-        logging.info("creating genomic data files...")
+        logging.info("writing genomic data files...")
         self.create_and_write_maf(df_sample_final["SAMPLE_ID"])
         cna_samples = self.create_and_write_cna(df_sample_final["SAMPLE_ID"])
         self.create_and_write_genematrix(df_sample_final, cna_samples)
@@ -1550,7 +1536,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                                             cohort=self._SPONSORED_PROJECT))
         self.create_and_write_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
         
-        logging.info("creating metadata files...")
+        logging.info("writing metadata files...")
         metadata_files = self.create_bpc_cbio_metafiles()
         if not self.staging:
             for metadata_file in metadata_files:
