@@ -297,7 +297,6 @@ def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCL
         dataframe: New regimen mappings for clinical headers
     """
     regimen_synid = regimen_infodf["id"].unique()[0]
-    # regimen_synid = "syn22296818"
     regimens_to_exclude = ["Investigational Drug"]
     regimen_ent = syn.get(regimen_synid)
     regimendf = pd.read_csv(regimen_ent.path, low_memory=False)
@@ -362,18 +361,12 @@ def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCL
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = ""
-    # BPC No PHI Data element catalog
-    # Version 6 no longer has releaseScope, it has {SP}_sor
-    # version 6 doesnt have MSI variables
-    _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = None
     # Mapping from Synapse Table to derived variables
     _DATA_TABLE_IDS = None
-    # Storage of not found samples
-    _SP_REDCAP_EXPORTS_SYNID = None
     # main GENIE release folder (8.1-public)
     _MG_RELEASE_SYNID = "syn22228642"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
@@ -382,6 +375,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
     _GRS_SYNID = "syn24184523"
+    # main GENIE sample clinical database
+    _CLINICAL_SYNID="syn7517674"
+    # BPC sample retraction table
+    _RETRACTION_SYNID="syn25779833"
+    # main GENIE assay information table
+    _ASSAY_SYNID="syn17009222"
     # exclude files to be created for cbioportal
     # TODO: need to support this feature in rest of code, for now
     # This is added for metadata files
@@ -427,13 +426,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # need to use clinical database because SEQ_YEAR is not released in
         # public data
         genie_clinicaldb = self.syn.tableQuery(
-            "select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, "
-            "SAMPLE_TYPE, SEQ_YEAR from syn7517674"
+            f"select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, "
+            f"SAMPLE_TYPE, SEQ_YEAR from {self._CLINICAL_SYNID}"
         )
         genie_clinicaldf = genie_clinicaldb.asDataFrame()
         # BPC retraction database
         bpc_retraction_db = self.syn.tableQuery(
-            "select SAMPLE_ID from syn25779833 where "
+            f"select SAMPLE_ID from {self._RETRACTION_SYNID} where "
             f"{self._SPONSORED_PROJECT} is true"
         )
         bpc_retractiondf = bpc_retraction_db.asDataFrame()
@@ -1362,7 +1361,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Write out cases sequenced so people can tell
         # which samples were sequenced
         assay_info = self.syn.tableQuery(
-            "select * from syn17009222", includeRowIdAndRowVersion=False, separator="\t"
+            f"select * from {self._ASSAY_SYNID}", includeRowIdAndRowVersion=False, separator="\t"
         )
         create_case_lists.main(
             os.path.join(self._SPONSORED_PROJECT, "data_clinical.txt"),
