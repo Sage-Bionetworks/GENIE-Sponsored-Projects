@@ -13,11 +13,10 @@ import math
 import os
 import subprocess
 import logging
+from typing import List
 
-import genie
 from genie import create_case_lists, process_functions
 import pandas as pd
-import synapseclient
 from synapseclient import File, Folder, Synapse
 
 from . import metafiles
@@ -130,6 +129,25 @@ def get_file_data(syn, mappingdf, sampletype, cohort="NSCLC"):
                 finaldf = finaldf.merge(tabledf, on="record_id")
 
     return {"df": finaldf, "used": used_entities}
+
+
+def get_synid_data(syn: Synapse, df_map: pd.DataFrame, df_file: pd.DataFrame, sampletype: list, cohort: str) -> List:
+    """Get Synapse IDs of data files used to create the corresponding
+    sample type data frames.
+
+    Args:
+        syn (Synapse): Synapse connection
+        df_map (pd.DataFrame): REDCap to cBioPortal mapping data frame
+        df_file (pd.DataFrame): Synapse ID to dataset label data frame
+        sampletype (list): list of sample type labels
+        cohort (str): cohort label
+
+    Returns:
+        List: _description_
+    """
+    datasets = df_map[df_map["sampleType"].isin(sampletype) and df_map[cohort] == "true"]["dataset"].unique() 
+    used = df_file[df_file["dataset"].isin(datasets)]["id"]
+    return list(used)
 
 
 def fill_cancer_dx_start_date(finaldf):
@@ -1330,7 +1348,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return df_sample_subset
     
     
-    def create_and_write_case_lists(self):
+    def create_and_write_case_lists(self, used):
         # Create case lists
         case_list_path = os.path.join(self._SPONSORED_PROJECT, "case_lists")
 
@@ -1360,7 +1378,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 file_ent = File(casepath, parent=self._CASE_LIST_SYN_ID)
                 self.syn.store(
                     file_ent,
-                    used=[patient_ent.id, sample_ent.id],
+                    used=used,
                     executed=self._GITHUB_REPO,
                 )
     
@@ -1488,31 +1506,38 @@ class BpcProjectRunner(metaclass=ABCMeta):
             logging.info("uploading clinical data files to Synapse...")
 
             patient_fileent = File(patient_path, parent=self._SP_SYN_ID)
+            patient_used = get_synid_data(df_map=redcap_to_cbiomappingdf, 
+                                            df_file=data_tablesdf, 
+                                            sampletype=["PATIENT"], 
+                                            cohort=self._SPONSORED_PROJECT)
             patient_ent = self.syn.store(
-                patient_fileent, used=patient_data["used"], executed=self._GITHUB_REPO
+                patient_fileent, used=patient_used, executed=self._GITHUB_REPO
             )
 
             sample_fileent = File(sample_path, parent=self._SP_SYN_ID)
+            sample_used = get_synid_data(df_map=redcap_to_cbiomappingdf, 
+                                            df_file=data_tablesdf, 
+                                            sampletype=["SAMPLE"], 
+                                            cohort=self._SPONSORED_PROJECT)
             sample_ent = self.syn.store(
-                sample_fileent, used=sample_data["used"], executed=self._GITHUB_REPO
+                sample_fileent, used=sample_used, executed=self._GITHUB_REPO
             )
 
             survival_fileent = File(survival_path, parent=self._SP_SYN_ID)
-            used = survival_data["used"]
-            used.append(regimens_data["used"])
+            survival_used = get_synid_data(df_map=redcap_to_cbiomappingdf, 
+                                            df_file=data_tablesdf, 
+                                            sampletype=["SURVIVAL", "REGIMEN"], 
+                                            cohort=self._SPONSORED_PROJECT)
             survival_ent = self.syn.store(
-                survival_fileent, used=used, executed=self._GITHUB_REPO
+                survival_fileent, used=survival_used, executed=self._GITHUB_REPO
             )
 
             survival_treatment_fileent = File(
                 surv_treatment_path, parent=self._SP_SYN_ID
             )
-            used = survival_data["used"]
-            used.append(regimens_data["used"])
             survival_treatment_fileent = self.syn.store(
-                survival_treatment_fileent, used=used, executed=self._GITHUB_REPO
+                survival_treatment_fileent, used=survival_used, executed=self._GITHUB_REPO
             )
-        
         
         logging.info("creating genomic data files...")
         self.create_and_write_maf(df_sample_final["SAMPLE_ID"])
@@ -1520,7 +1545,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.create_and_write_genematrix(df_sample_final, cna_samples)
         self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
         self.create_and_write_seg(df_sample_final["SAMPLE_ID"])
-        self.create_and_write_case_lists()
+        self.create_and_write_case_lists(used = get_synid_data(df_map=redcap_to_cbiomappingdf, 
+                                            df_file=data_tablesdf, 
+                                            sampletype=["PATIENT", "SAMPLE"], 
+                                            cohort=self._SPONSORED_PROJECT))
         self.create_and_write_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
         
         logging.info("creating metadata files...")
