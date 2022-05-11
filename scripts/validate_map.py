@@ -35,9 +35,9 @@ def get_sor_column_name(syn: Synapse, synid_table_rel: str, cohort: str, release
 
     release_version = release.split("-")[0]
     release_type = release.split("-")[1]
-    query = f"SELECT sor_column FROM {synid_table_rel} WHERE cohort = '{cohort}' AND release_version = '{release_version}' AND release_type = '{release_type}'"
+    query = f"SELECT sor_cbio_column FROM {synid_table_rel} WHERE cohort = '{cohort}' AND release_version = '{release_version}' AND release_type = '{release_type}'"
     df = syn.tableQuery(query).asDataFrame()
-    return df["sor_column"][0]
+    return df["sor_cbio_column"][0]
 
 
 def get_codes_to_remove(codes: List) -> List:
