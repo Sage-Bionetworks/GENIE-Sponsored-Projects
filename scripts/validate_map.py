@@ -350,7 +350,7 @@ def validate_map(
 
     for check_no in config["check"]:
 
-        logging.info(f"Check {check_no}...")
+        logging.info(f"Check {check_no} ({config['check'][check_no]['description']})...")
 
         if (
             config["check"][check_no]["implemented"]
