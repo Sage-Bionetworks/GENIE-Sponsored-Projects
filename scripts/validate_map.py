@@ -20,6 +20,28 @@ from synapseclient.core.exceptions import (
 import yaml
 
 
+def get_sor_column_name(
+    syn: Synapse, synid_table_rel: str, cohort: str, release: str
+) -> str:
+    """Get Scope of Release column name for requested cohort and release pair.
+
+    Args:
+        syn (Synapse): Synapse object
+        synid_table_rel (str): Synapse ID of BPC release info table
+        cohort (str): cohort label
+        release (str): release label
+
+    Returns:
+        str: SOR column for cohort and release
+    """
+
+    release_version = release.split("-")[0]
+    release_type = release.split("-")[1]
+    query = f"SELECT sor_cbio_column FROM {synid_table_rel} WHERE cohort = '{cohort}' AND release_version = '{release_version}' AND release_type = '{release_type}'"
+    df = syn.tableQuery(query).asDataFrame()
+    return df["sor_cbio_column"][0]
+
+
 def get_codes_to_remove(codes: List) -> List:
     """Remove codes with wildcards or nan.
 
@@ -176,7 +198,9 @@ def check_release_status_map_yes_sor_not(
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = config["synapse"]["sor"]["column_name"][cohort][release]
+    column_name = get_sor_column_name(
+        syn, config["synapse"]["release"]["id"], cohort, release
+    )
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
@@ -212,7 +236,9 @@ def check_release_status_sor_yes_map_not(
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = config["synapse"]["sor"]["column_name"][cohort][release]
+    column_name = get_sor_column_name(
+        syn, config["synapse"]["release"]["id"], cohort, release
+    )
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
@@ -330,7 +356,9 @@ def validate_map(
 
     for check_no in config["check"]:
 
-        logging.info(f"Check {check_no}...")
+        logging.info(
+            f"Check {check_no} ({config['check'][check_no]['description']})..."
+        )
 
         if (
             config["check"][check_no]["implemented"]
@@ -417,36 +445,38 @@ def build_parser(cohorts: List, releases: List):
     return parser
 
 
-def get_cohorts(config: Dict) -> List:
+def get_cohorts(syn: Synapse, config: Dict) -> List:
     """Get sorted list of cohort options.
 
     Args:
+        syn (Synapse): Synapse object
         config (dict): configuration file contents
 
     Returns:
         list: sorted list of possible cohort labels
     """
-    opts = list(config["synapse"]["sor"]["column_name"].keys())
-    opts.sort()
-    return opts
+    synid_table_rel = config["synapse"]["release"]["id"]
+    df = syn.tableQuery(
+        f"SELECT DISTINCT UPPER(cohort) AS cohort FROM {synid_table_rel} ORDER BY cohort"
+    ).asDataFrame()
+    return df["cohort"].values.tolist()
 
 
-def get_releases(config: Dict) -> List:
+def get_releases(syn: Synapse, config: Dict) -> List:
     """Get sorted list of release options.
 
     Args:
+        syn (Synapse): Synapse object
         config (dict): configuration file contents
 
     Returns:
         list: sorted list of possible release labels
     """
-    releases = set()
-    dict = config["synapse"]["sor"]["column_name"]
-    for cohort in dict:
-        releases.update(list(dict[cohort].keys()))
-    opts = list(releases)
-    opts.sort()
-    return opts
+    synid_table_rel = config["synapse"]["release"]["id"]
+    df = syn.tableQuery(
+        f"SELECT DISTINCT CONCAT(release_version, '-', release_type) AS rel FROM {synid_table_rel} ORDER BY rel"
+    ).asDataFrame()
+    return df["rel"].values.tolist()
 
 
 def read_config(file: str) -> Dict:
@@ -488,11 +518,11 @@ def synapse_login(synapse_config=synapseclient.client.CONFIG_FILE):
 
 def main():
 
+    syn = synapse_login()
     config = read_config("config.yaml")
     args = build_parser(
-        cohorts=get_cohorts(config), releases=get_releases(config)
+        cohorts=get_cohorts(syn, config), releases=get_releases(syn, config)
     ).parse_args()
-    syn = synapse_login()
 
     numeric_level = getattr(logging, args.log.upper(), None)
     if not isinstance(numeric_level, int):
