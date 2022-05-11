@@ -232,7 +232,7 @@ def check_release_status_sor_yes_map_not(
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = get_sor_column_name(syn, cohort, release)
+    column_name = get_sor_column_name(syn, config["synapse"]["release"]["id"], cohort, release)
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
