@@ -174,7 +174,7 @@ def check_release_status_ambiguous(
     return codes
 
 
-def check_release_status_map_yes_sor_not(self,
+def check_release_status_map_yes_sor_not(
     df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
     """Check for codes where release status in mapping file is yes
@@ -196,7 +196,7 @@ def check_release_status_map_yes_sor_not(self,
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = self.get_sor_column_name(syn, config["synapse"]["release"]["id"], cohort, release)
+    column_name = get_sor_column_name(syn, config["synapse"]["release"]["id"], cohort, release)
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
@@ -210,7 +210,7 @@ def check_release_status_map_yes_sor_not(self,
     return map_not_sor
 
 
-def check_release_status_sor_yes_map_not(self,
+def check_release_status_sor_yes_map_not(
     df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
     """Check for codes where release status in scope of release is yes
@@ -232,7 +232,7 @@ def check_release_status_sor_yes_map_not(self,
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = self.get_sor_column_name(syn, cohort, release)
+    column_name = get_sor_column_name(syn, cohort, release)
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
