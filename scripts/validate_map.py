@@ -448,7 +448,7 @@ def get_cohorts(syn: Synapse, config: Dict) -> List:
         list: sorted list of possible cohort labels
     """
     synid_table_rel = config["synapse"]["release"]["id"]
-    df = syn.tableQuery(f"SELECT DISTINCT cohort AS cohort FROM {synid_table_rel} ORDER BY cohort").asDataFrame()
+    df = syn.tableQuery(f"SELECT DISTINCT UPPER(cohort) AS cohort FROM {synid_table_rel} ORDER BY cohort").asDataFrame()
     return df["cohort"].values.tolist()
 
 
