@@ -506,12 +506,12 @@ def synapse_login(synapse_config=synapseclient.client.CONFIG_FILE):
 
 def main():
 
+    syn = synapse_login()
     config = read_config("config.yaml")
     args = build_parser(
-        cohorts=get_cohorts(config), releases=get_releases(config)
+        cohorts=get_cohorts(syn, config), releases=get_releases(syn, config)
     ).parse_args()
-    syn = synapse_login()
-
+    
     numeric_level = getattr(logging, args.log.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError("Invalid log level: %s" % args.log)
