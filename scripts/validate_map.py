@@ -20,7 +20,9 @@ from synapseclient.core.exceptions import (
 import yaml
 
 
-def get_sor_column_name(syn: Synapse, synid_table_rel: str, cohort: str, release: str) -> str:
+def get_sor_column_name(
+    syn: Synapse, synid_table_rel: str, cohort: str, release: str
+) -> str:
     """Get Scope of Release column name for requested cohort and release pair.
 
     Args:
@@ -196,7 +198,9 @@ def check_release_status_map_yes_sor_not(
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = get_sor_column_name(syn, config["synapse"]["release"]["id"], cohort, release)
+    column_name = get_sor_column_name(
+        syn, config["synapse"]["release"]["id"], cohort, release
+    )
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
@@ -232,7 +236,9 @@ def check_release_status_sor_yes_map_not(
         ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
-    column_name = get_sor_column_name(syn, config["synapse"]["release"]["id"], cohort, release)
+    column_name = get_sor_column_name(
+        syn, config["synapse"]["release"]["id"], cohort, release
+    )
     file_sor = syn.get(config["synapse"]["sor"]["id"])["path"]
     sor = pd.read_excel(file_sor, engine="openpyxl", sheet_name=1)
     sor_status = sor[column_name].str.lower()
@@ -350,7 +356,9 @@ def validate_map(
 
     for check_no in config["check"]:
 
-        logging.info(f"Check {check_no} ({config['check'][check_no]['description']})...")
+        logging.info(
+            f"Check {check_no} ({config['check'][check_no]['description']})..."
+        )
 
         if (
             config["check"][check_no]["implemented"]
@@ -448,7 +456,9 @@ def get_cohorts(syn: Synapse, config: Dict) -> List:
         list: sorted list of possible cohort labels
     """
     synid_table_rel = config["synapse"]["release"]["id"]
-    df = syn.tableQuery(f"SELECT DISTINCT UPPER(cohort) AS cohort FROM {synid_table_rel} ORDER BY cohort").asDataFrame()
+    df = syn.tableQuery(
+        f"SELECT DISTINCT UPPER(cohort) AS cohort FROM {synid_table_rel} ORDER BY cohort"
+    ).asDataFrame()
     return df["cohort"].values.tolist()
 
 
@@ -463,7 +473,9 @@ def get_releases(syn: Synapse, config: Dict) -> List:
         list: sorted list of possible release labels
     """
     synid_table_rel = config["synapse"]["release"]["id"]
-    df = syn.tableQuery(f"SELECT DISTINCT CONCAT(release_version, '-', release_type) AS rel FROM {synid_table_rel} ORDER BY rel").asDataFrame()
+    df = syn.tableQuery(
+        f"SELECT DISTINCT CONCAT(release_version, '-', release_type) AS rel FROM {synid_table_rel} ORDER BY rel"
+    ).asDataFrame()
     return df["rel"].values.tolist()
 
 
@@ -511,7 +523,7 @@ def main():
     args = build_parser(
         cohorts=get_cohorts(syn, config), releases=get_releases(syn, config)
     ).parse_args()
-    
+
     numeric_level = getattr(logging, args.log.upper(), None)
     if not isinstance(numeric_level, int):
         raise ValueError("Invalid log level: %s" % args.log)
