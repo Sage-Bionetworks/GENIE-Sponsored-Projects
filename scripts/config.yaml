@@ -14,24 +14,11 @@ synapse:
     name: GENIE_BPC_Release_Scope.xlsx
     type: file
     description: stats team Scope of Release for GENIE BPC
-    column_name:
-      BLADDER:
-        1.1-consortium: Cbio_Bladder_V1_1_Pharma
-      BRCA:
-        1.1-consortium: Cbio_BrCa_V1
-        2.0-public: Cbio Breast Public Release
-      CRC:
-        1.1-consortium: Cbio_CRC_V1
-        1.2-consortium: Cbio_CRC_V1.2
-        2.0-public: Cbio CRC Public Release
-      NSCLC:
-        1.1-consortium: Cbio_NSCLC_V2.1
-        2.1-consortium: Cbio_NSCLC_V2.1
-        2.0-public: Shared for cBio NSCLC 2.0-Public Release
-      PANC:
-        1.1-consortium: Cbio_PANC_V1_1_Pharma
-      PROSTATE:
-        1.1-consortium: Cbio_Prostate_V1_1_Pharma
+  release:
+    id: syn27628075
+    name: Release Information
+    type: table
+    description: BPC release information by cohort and release
 check:
   1: 
     function: check_code_name_empty
