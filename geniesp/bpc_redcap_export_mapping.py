@@ -36,6 +36,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_clinical_sample.txt",
     "data_clinical_patient.txt",
     "data_mutations_extended.txt",
+    "data_gene_matrix.txt",
     "data_fusions.txt",
     "data_CNA.txt",
 ]
@@ -518,6 +519,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ].unique()
         data_gene_panel["cna"] = data_gene_panel["mutations"]
         data_gene_panel["cna"][~data_gene_panel["cna"].isin(cna_seqids)] = "NA"
+        data_gene_panel.fillna("NA", inplace=True)
         gene_matrix_filepath = os.path.join(
             self._SPONSORED_PROJECT, "data_gene_matrix.txt"
         )
@@ -1212,9 +1214,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
 
-        to_keep_patient_idx = final_patientdf["PATIENT_ID"].isin(
-            self.genie_clinicaldf["PATIENT_ID"]
-        )
+        # to_keep_patient_idx = final_patientdf["PATIENT_ID"].isin(
+        #     self.genie_clinicaldf["PATIENT_ID"]
+        # )
         subset_patientdf = final_patientdf[
             final_patientdf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
@@ -1400,6 +1402,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Hard coded most up to date oncotree version
         oncotreelink = self.syn.get("syn13890902").externalURL
         # Use the old oncotree link for now
+        # TODO: need to update oncotree link for 11.0 public
         oncotreelink = (
             "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
         )
