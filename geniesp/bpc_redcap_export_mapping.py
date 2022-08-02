@@ -566,6 +566,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             clinicaldf["SAMPLE_ID"] = [
                 sample.strip() for sample in clinicaldf["SAMPLE_ID"]
             ]
+        # JIRA: GEN-10- Must standardize SEQ_ASSAY_ID values to be uppercase
+        if clinicaldf.get("SEQ_ASSAY_ID") is not None:
+            clinicaldf['SEQ_ASSAY_ID'] = clinicaldf['SEQ_ASSAY_ID'].str.upper()
 
         clinicaldf["SP"] = self._SPONSORED_PROJECT
 
