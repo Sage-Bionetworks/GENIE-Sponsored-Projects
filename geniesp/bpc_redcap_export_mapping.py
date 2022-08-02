@@ -309,6 +309,14 @@ def get_regimen_abbr(regimen, mapping):
     return abbr
 
 
+def get_git_sha() -> str:
+    """get git sha digest """
+    text = subprocess.run(
+        ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True
+    )
+    return text.stdout.rstrip('\n')
+
+
 def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCLC"):
     """Create regimens to merge into the patient file
 
@@ -389,15 +397,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # version 6 doesnt have MSI variables
     _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = None
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.33"
     # Mapping from Synapse Table to derived variables
-    _DATA_TABLE_IDS = None
+    # TODO: Make versioned
+    _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
-    _SP_REDCAP_EXPORTS_SYNID = None
-    # main GENIE release folder (8.1-public)
-    _MG_RELEASE_SYNID = "syn22228642"
-    # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
-    _GITHUB_REPO = None
+    _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # main GENIE release folder (12.0-public)
+    _MG_RELEASE_SYNID = "syn32309524"
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
@@ -436,6 +443,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 Folder("case_lists", parent=self._SP_SYN_ID)
             )
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
+        self._GITHUB_REPO = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
     def get_main_genie_clinicaldf(self) -> dict:
         """Get main GENIE clinical dataframe and perform retraction along
@@ -558,6 +566,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             clinicaldf["SAMPLE_ID"] = [
                 sample.strip() for sample in clinicaldf["SAMPLE_ID"]
             ]
+        # JIRA: GEN-10- Must standardize SEQ_ASSAY_ID values to be uppercase
+        if clinicaldf.get("SEQ_ASSAY_ID") is not None:
+            clinicaldf['SEQ_ASSAY_ID'] = clinicaldf['SEQ_ASSAY_ID'].str.upper()
 
         clinicaldf["SP"] = self._SPONSORED_PROJECT
 
