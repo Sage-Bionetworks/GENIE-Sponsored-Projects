@@ -309,6 +309,14 @@ def get_regimen_abbr(regimen, mapping):
     return abbr
 
 
+def get_git_sha() -> str:
+    """get git sha digest """
+    text = subprocess.run(
+        ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True
+    )
+    return text.stdout.rstrip('\n')
+
+
 def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCLC"):
     """Create regimens to merge into the patient file
 
@@ -396,8 +404,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _SP_REDCAP_EXPORTS_SYNID = None
     # main GENIE release folder (8.1-public)
     _MG_RELEASE_SYNID = "syn22228642"
-    # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
-    _GITHUB_REPO = None
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
@@ -436,6 +442,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 Folder("case_lists", parent=self._SP_SYN_ID)
             )
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
+        self._GITHUB_REPO = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
     def get_main_genie_clinicaldf(self) -> dict:
         """Get main GENIE clinical dataframe and perform retraction along
