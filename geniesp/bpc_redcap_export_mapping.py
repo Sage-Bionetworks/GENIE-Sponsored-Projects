@@ -397,13 +397,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # version 6 doesnt have MSI variables
     _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = None
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.33"
     # Mapping from Synapse Table to derived variables
-    _DATA_TABLE_IDS = None
+    # TODO: Make versioned
+    _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
-    _SP_REDCAP_EXPORTS_SYNID = None
-    # main GENIE release folder (8.1-public)
-    _MG_RELEASE_SYNID = "syn22228642"
+    _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
+    # main GENIE release folder (12.0-public)
+    _MG_RELEASE_SYNID = "syn32309524"
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
