@@ -28,7 +28,6 @@ class Nsclc(BpcProjectRunner):
 
 class Panc(BpcProjectRunner):
     """PANC BPC sponsored project"""
-
     # Sponsored project name
     _SPONSORED_PROJECT = "PANC"
 
