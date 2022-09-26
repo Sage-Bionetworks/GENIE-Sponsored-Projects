@@ -1355,7 +1355,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             if col in subset_sampledf:
                 years = subset_sampledf[col].apply(change_days_to_years)
                 subset_sampledf[col] = years
-
+        subset_sampledf['AGE_AT_SEQUENCING'] = subset_sampledf['AGE_AT_SEQUENCING'].apply(
+            math.floor
+        )
         # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
         del subset_sampledf["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
