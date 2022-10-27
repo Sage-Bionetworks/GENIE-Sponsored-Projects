@@ -6,5 +6,3 @@ COPY . .
 RUN pip install ./
 
 RUN git clone https://github.com/cBioPortal/cbioportal.git ../cbioportal
-
-ENTRYPOINT [ "geniesp" ]
