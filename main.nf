@@ -27,10 +27,9 @@ process cBioPortalExport {
 
    script:
    """
-   geniesp $cohort $release --staging
+   geniesp $cohort $release --staging --cbioportal /usr/src/cbioportal
    """
 }
-
 
 workflow {
    cBioPortalExport(ch_cohort, ch_release)
