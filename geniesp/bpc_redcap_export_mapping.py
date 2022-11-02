@@ -12,6 +12,7 @@ from datetime import date
 import math
 import os
 import subprocess
+from typing import List
 
 import genie
 from genie import create_case_lists, process_functions
@@ -891,6 +892,26 @@ class BpcProjectRunner(metaclass=ABCMeta):
         fusion_path = os.path.join(self._SPONSORED_PROJECT, file_name)
         self.write_and_storedf(fusiondf, fusion_path, used_entities=[fusion_synid])
 
+    def create_genomic_info(self, seq_assay_ids: List[str]):
+        """Create genomic information file
+
+        Args:
+            seq_assay_ids: List of samples to keep
+        """
+        file_name = "genomic_information.txt"
+        genomic_info_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
+        genomic_info_ent = self.syn.get(genomic_info_synid)
+        genomic_info_df = pd.read_table(genomic_info_ent.path, low_memory=False)
+        genomic_info_df = genomic_info_df[
+            genomic_info_df["SEQ_ASSAY_ID"].isin(seq_assay_ids)
+        ]
+        genomic_info_path = os.path.join(self._SPONSORED_PROJECT, file_name)
+        self.write_and_storedf(
+            genomic_info_df,
+            genomic_info_path,
+            used_entities=[genomic_info_synid]
+        )
+
     def create_seg(self, keep_samples):
         """Create seg file
 
@@ -1480,6 +1501,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.create_fusion(subset_sampledf["SAMPLE_ID"])
 
         self.create_seg(subset_sampledf["SAMPLE_ID"])
+
+        self.create_genomic_info(subset_sampledf["SEQ_ASSAY_ID"])
 
         # Create case lists
         case_list_path = os.path.join(self._SPONSORED_PROJECT, "case_lists")
