@@ -446,8 +446,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self._GITHUB_REPO = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
     def get_main_genie_clinicaldf(self) -> dict:
-        """Get main GENIE clinical dataframe and perform retraction along
-        the way
+        """Get main GENIE clinical samples and perform retraction
+        against BPC sample and patient database. It's important that I use the
+        sample database, because if a sample from a patient with multiple samples
+        is retracted from the main GENIE clinical samples, the patient
+        will still exist. (Jira: GEN-260)
         """
         # Get all the samples/patients that should be uploaded to SP projects
         # Hard coded clinical database
@@ -464,8 +467,32 @@ class BpcProjectRunner(metaclass=ABCMeta):
             f"{self._SPONSORED_PROJECT} is true"
         )
         bpc_retractiondf = bpc_retraction_db.asDataFrame()
+
+        # TODO: add patient retraction database...
+        bpc_patient_retraction_db = self.syn.tableQuery(
+            "select record_id from syn25998970 where "
+            f"{self._SPONSORED_PROJECT} is true"
+        )
+        bpc_patient_retraction_df = bpc_patient_retraction_db.asDataFrame()
+
+        bpc_temp_patient_retraction_db = self.syn.tableQuery(
+            "select record_id from syn29266682 where "
+            f"cohort == '{self._SPONSORED_PROJECT}'"
+        )
+        bpc_temp_patient_retraction_df = bpc_temp_patient_retraction_db.asDataFrame()
+        # Retract samples from sample retraction db
         keep_clinicaldf = genie_clinicaldf[
             ~genie_clinicaldf["SAMPLE_ID"].isin(bpc_retractiondf["SAMPLE_ID"])
+        ]
+        # Retract patients from patient retraction db
+        keep_clinicaldf = genie_clinicaldf[
+            ~genie_clinicaldf["PATIENT_ID"].isin(bpc_patient_retraction_df["record_id"])
+        ]
+        # Retract patients from temporary patient retraction db
+        keep_clinicaldf = genie_clinicaldf[
+            ~genie_clinicaldf["PATIENT_ID"].isin(
+                bpc_temp_patient_retraction_df["record_id"]
+            )
         ]
         return keep_clinicaldf
 
@@ -1328,7 +1355,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         survival_treatmentdf.replace(remap_os_values, inplace=True)
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(survival_treatmentdf.columns.drop(cols_to_order).tolist())
-
+        # Retract samples from survival treatment file
+        survival_treatmentdf = survival_treatmentdf[
+            survival_treatmentdf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+        ]
         # Order is maintained in the derived variables file so just drop
         # Duplicates
         # survival_treatmentdf.drop_duplicates("PATIENT_ID", inplace=True)
