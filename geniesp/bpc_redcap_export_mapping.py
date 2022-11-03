@@ -486,11 +486,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ]
         # Retract patients from patient retraction db
         keep_clinicaldf = keep_clinicaldf[
-            ~genie_clinicaldf["PATIENT_ID"].isin(bpc_patient_retraction_df["record_id"])
+            ~keep_clinicaldf["PATIENT_ID"].isin(bpc_patient_retraction_df["record_id"])
         ]
         # Retract patients from temporary patient retraction db
         keep_clinicaldf = keep_clinicaldf[
-            ~genie_clinicaldf["PATIENT_ID"].isin(
+            ~keep_clinicaldf["PATIENT_ID"].isin(
                 bpc_temp_patient_retraction_df["record_id"]
             )
         ]
