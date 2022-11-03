@@ -477,7 +477,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         bpc_temp_patient_retraction_db = self.syn.tableQuery(
             "select record_id from syn29266682 where "
-            f"cohort == '{self._SPONSORED_PROJECT}'"
+            f"cohort = '{self._SPONSORED_PROJECT}'"
         )
         bpc_temp_patient_retraction_df = bpc_temp_patient_retraction_db.asDataFrame()
         # Retract samples from sample retraction db
@@ -1355,9 +1355,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         survival_treatmentdf.replace(remap_os_values, inplace=True)
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(survival_treatmentdf.columns.drop(cols_to_order).tolist())
-        # Retract samples from survival treatment file
+        # Retract patients from survival treatment file
         survival_treatmentdf = survival_treatmentdf[
-            survival_treatmentdf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+            survival_treatmentdf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
         # Order is maintained in the derived variables file so just drop
         # Duplicates
