@@ -17,6 +17,11 @@ def write_meta_file(meta_info: dict, filename: str, outdir: str) -> str:
         str: meta file path
     """
     meta_filename = filename.replace("data", "meta")
+    # The seg file is special because it ends with a .seg
+    # extension, so this would create a metadata file
+    # without the seg extension without if statement
+    if meta_filename.endswith(".seg"):
+        meta_filename = meta_filename + ".txt"
     filepath = os.path.join(outdir, meta_filename)
     with open(filepath, "w") as meta_f:
         yaml.dump(meta_info, meta_f, width=1000)
@@ -246,6 +251,7 @@ def create_cbio_metafiles(
         "data_timeline_sequencing.txt",
         "data_timeline_treatment.txt",
         "data_timeline_labtest.txt",
+        "data_cna_hg19.seg",
         "data_CNA.txt",
         "data_fusions.txt",
         "data_mutations_extended.txt",

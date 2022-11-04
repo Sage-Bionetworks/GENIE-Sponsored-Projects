@@ -37,6 +37,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_clinical_patient.txt",
     "data_mutations_extended.txt",
     "data_gene_matrix.txt",
+    "data_cna_hg19.seg",
     "data_fusions.txt",
     "data_CNA.txt",
 ]
@@ -515,11 +516,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
         # Get list of files to create cBioPortal metadata files for
         to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exclude_files))
-        # HACK: manually add seg file into list of cbioportal files because of
-        # seg filename
-        to_create_meta.append(
-            f"genie_{self._SPONSORED_PROJECT.lower()}_data_cna_hg19.seg"
-        )
+
         meta_files = metafiles.create_cbio_metafiles(
             study_identifier=study_identifier,
             outdir=self._SPONSORED_PROJECT,
@@ -929,9 +926,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         seg_ent = self.syn.get(seg_synid)
         segdf = pd.read_table(seg_ent.path, low_memory=False)
         segdf = segdf[segdf["ID"].isin(keep_samples)]
-        seg_path = "{}/genie_{}_data_cna_hg19.seg".format(
-            self._SPONSORED_PROJECT, self._SPONSORED_PROJECT.lower()
-        )
+        seg_path = os.path.join(self._SPONSORED_PROJECT, "data_cna_hg19.seg")
         self.write_and_storedf(segdf, seg_path, used_entities=[seg_synid])
 
     def create_gene_panels(self, keep_seq_assay_ids):
