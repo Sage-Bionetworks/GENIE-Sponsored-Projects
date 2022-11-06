@@ -37,6 +37,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_clinical_patient.txt",
     "data_mutations_extended.txt",
     "data_gene_matrix.txt",
+    "data_cna_hg19.seg",
     "data_fusions.txt",
     "data_CNA.txt",
 ]
@@ -310,11 +311,9 @@ def get_regimen_abbr(regimen, mapping):
 
 
 def get_git_sha() -> str:
-    """get git sha digest """
-    text = subprocess.run(
-        ['git', 'rev-parse', 'HEAD'], capture_output=True, text=True
-    )
-    return text.stdout.rstrip('\n')
+    """get git sha digest"""
+    text = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+    return text.stdout.rstrip("\n")
 
 
 def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCLC"):
@@ -504,22 +503,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
             f"{self._SPONSORED_PROJECT} cohort v{self.release} "
             f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}. "
             f"Several hundred different variables are collected for each of "
-            f"the BPC cohorts; consult the <a href=\"{self._url_bpc}\">Documentation</a> "
+            f'the BPC cohorts; consult the <a href="{self._url_bpc}">Documentation</a> '
             f"for further detail. To learn more about which variables are "
             f"visualized in cBioPortal and how, see the cBioPortal "
-            f"<a href=\"{self._url_cbio}\">ReadMe</a>. "
-            "<font color=\"red\">Although these data are de-identified, your analysis "
+            f'<a href="{self._url_cbio}">ReadMe</a>. '
+            '<font color="red">Although these data are de-identified, your analysis '
             "may require institutional review prior to publication.</font>"
         )
         short_name = f"{self._SPONSORED_PROJECT} GENIE"
         study_identifier = f"{self._SPONSORED_PROJECT.lower()}_genie_bpc"
         # Get list of files to create cBioPortal metadata files for
         to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self._exclude_files))
-        # HACK: manually add seg file into list of cbioportal files because of
-        # seg filename
-        to_create_meta.append(
-            f"genie_{self._SPONSORED_PROJECT.lower()}_data_cna_hg19.seg"
-        )
+
         meta_files = metafiles.create_cbio_metafiles(
             study_identifier=study_identifier,
             outdir=self._SPONSORED_PROJECT,
@@ -595,7 +590,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ]
         # JIRA: GEN-10- Must standardize SEQ_ASSAY_ID values to be uppercase
         if clinicaldf.get("SEQ_ASSAY_ID") is not None:
-            clinicaldf['SEQ_ASSAY_ID'] = clinicaldf['SEQ_ASSAY_ID'].str.upper()
+            clinicaldf["SEQ_ASSAY_ID"] = clinicaldf["SEQ_ASSAY_ID"].str.upper()
 
         clinicaldf["SP"] = self._SPONSORED_PROJECT
 
@@ -778,13 +773,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ent = File(filepath, parent=self._SP_SYN_ID)
             self.syn.store(ent, executed=self._GITHUB_REPO, used=used_entities)
 
-    def create_fixed_timeline_files(self, timeline_infodf, timeline_type, filter_start=True):
+    def create_fixed_timeline_files(
+        self, timeline_infodf, timeline_type, filter_start=True
+    ):
         """Create timeline files straight from derived variables
 
         Args:
             timeline_infodf: Timeline column mapping dataframe
             timeline_type: Type of timeline
-            filter_start: if True, remove rows with null START_DATE; 
+            filter_start: if True, remove rows with null START_DATE;
                             otherwise, retain
 
         Returns:
@@ -924,14 +921,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Args:
             keep_samples: List of samples to keep
         """
+        # TODO: the seg filename will change this release.
         file_name = "genie_data_cna_hg19.seg"
         seg_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         seg_ent = self.syn.get(seg_synid)
         segdf = pd.read_table(seg_ent.path, low_memory=False)
         segdf = segdf[segdf["ID"].isin(keep_samples)]
-        seg_path = "{}/genie_{}_data_cna_hg19.seg".format(
-            self._SPONSORED_PROJECT, self._SPONSORED_PROJECT.lower()
-        )
+        seg_path = os.path.join(self._SPONSORED_PROJECT, "data_cna_hg19.seg")
         self.write_and_storedf(segdf, seg_path, used_entities=[seg_synid])
 
     def create_gene_panels(self, keep_seq_assay_ids):
@@ -1062,7 +1058,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Create static timeline files
         # Cancer dx
         print("DX")
-        cancerdx_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-DX", filter_start=False)
+        cancerdx_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-DX", filter_start=False
+        )
         cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
         cancerdx_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"
@@ -1292,8 +1290,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "Not paired": "Not a paired site",
         }
         if subset_patientdf.get("NAACCR_LATERALITY_CD") is not None:
-            remapped_values = subset_patientdf["NAACCR_LATERALITY_CD"].astype(str).map(
-                laterality_mapping
+            remapped_values = (
+                subset_patientdf["NAACCR_LATERALITY_CD"]
+                .astype(str)
+                .map(laterality_mapping)
             )
             subset_patientdf["NAACCR_LATERALITY_CD"] = remapped_values
 
@@ -1385,9 +1385,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             if col in subset_sampledf:
                 years = subset_sampledf[col].apply(change_days_to_years)
                 subset_sampledf[col] = years
-        subset_sampledf['AGE_AT_SEQUENCING'] = subset_sampledf['AGE_AT_SEQUENCING'].apply(
-            math.floor
-        )
+        subset_sampledf["AGE_AT_SEQUENCING"] = subset_sampledf[
+            "AGE_AT_SEQUENCING"
+        ].apply(math.floor)
         # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
         del subset_sampledf["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
