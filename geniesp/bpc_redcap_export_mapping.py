@@ -921,6 +921,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Args:
             keep_samples: List of samples to keep
         """
+        # TODO: the seg filename will change this release.
         file_name = "genie_data_cna_hg19.seg"
         seg_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         seg_ent = self.syn.get(seg_synid)
