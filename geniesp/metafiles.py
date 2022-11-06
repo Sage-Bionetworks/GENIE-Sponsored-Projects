@@ -276,7 +276,8 @@ def create_cbio_metafiles(
             study_identifier=study_identifier, cbio_filename=cbio_file
         )
         if meta_dict is not None:
-            meta_filepath = write_meta_file(meta_info=meta_dict, filename=cbio_file,
-                                            outdir=outdir)
+            meta_filepath = write_meta_file(
+                meta_info=meta_dict, filename=cbio_file, outdir=outdir
+            )
             meta_filepaths.append(meta_filepath)
     return meta_filepaths
