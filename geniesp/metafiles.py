@@ -21,7 +21,7 @@ def write_meta_file(meta_info: dict, filename: str, outdir: str) -> str:
     # extension, so this would create a metadata file
     # without the seg extension without if statement
     if meta_filename.endswith(".seg"):
-        meta_filename = meta_filename + ".txt"
+        meta_filename = meta_filename.replace(".seg", "_seg.txt")
     filepath = os.path.join(outdir, meta_filename)
     with open(filepath, "w") as meta_f:
         yaml.dump(meta_info, meta_f, width=1000)
