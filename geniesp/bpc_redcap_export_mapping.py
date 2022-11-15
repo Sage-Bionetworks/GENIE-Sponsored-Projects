@@ -396,7 +396,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # version 6 doesnt have MSI variables
     _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.33"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Mapping from Synapse Table to derived variables
     # TODO: Make versioned
     _DATA_TABLE_IDS = "syn22296821"
