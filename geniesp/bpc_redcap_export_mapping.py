@@ -120,7 +120,6 @@ def get_file_data(syn, mappingdf, sampletype, cohort="NSCLC"):
             # The pathology report dataset mapping info isn't first.
             # This also assumes that the TIMELINE-PATHOLOGY file only
             # uses columns from the pathology-report dataset
-            print(df['dataset'])
             if df["dataset"].iloc[0] == "Pathology-report level dataset":
                 finaldf = finaldf.merge(
                     tabledf,
@@ -807,15 +806,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         used_entities = timeline_data["used"]
 
         timelinedf["EVENT_TYPE"] = portal_value
-        print(subset_infodf)
         mapping = subset_infodf["cbio"].to_dict()
-        print(mapping)
         # Must add in PATIENT_ID
         mapping["record_id"] = "PATIENT_ID"
         timelinedf = timelinedf.rename(columns=mapping)
         timelinedf["STOP_DATE"] = ""
-        print(timelinedf)
-        print(timelinedf.columns)
         # timeline file must be in this order
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(timelinedf.columns.drop(cols_to_order).tolist())
@@ -1157,37 +1152,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         print("SEQUENCE")
         # GEN-94: Add these cancer level dataset fields to get the
         # index cancer dob_ca_dx_days value to calculate START_DATE
-        # test = pd.DataFrame([
-        #             {
-        #                 "code": "redcap_ca_index",
-        #                 "sampleType": "TIMELINE-SEQUENCE",
-        #                 "dataset": "Cancer-level dataset",
-        #                 "data_type": "",
-        #                 "cbio": "",
-        #                 "id": "syn22296816",  # HACK: hard coded synapse id
-        #             },
-        #             {
-        #                 "code": "dob_ca_dx_days",
-        #                 "sampleType": "TIMELINE-SEQUENCE",
-        #                 "dataset": "Cancer-level dataset",
-        #                 "data_type": "",
-        #                 "cbio": "",
-        #                 "id": "syn22296816",  # HACK: hard coded synapse id
-        #             },
-        #             {
-        #                 "code": "record_id",
-        #                 "sampleType": "TIMELINE-SEQUENCE",
-        #                 "dataset": "Cancer-level dataset",
-        #                 "data_type": "",
-        #                 "cbio": "",
-        #                 "id": "syn22296816",  # HACK: hard coded synapse id
-        #             }],
-        #             index=["redcap_ca_index", "dob_ca_dx_days", "record_id"],
-        #         )
-        # test_data = self.create_fixed_timeline_files(
-        #     test, "TIMELINE-SEQUENCE"
-        # )
-        # print(test_data['df'])
+        # and dob_cpt_report_days value
         timeline_infodf = pd.concat(
             [
                 timeline_infodf,
@@ -1223,12 +1188,24 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # HACK: Manually calculate the START_DATE based on criteria defined
         # in GEN-94
         sequence_data['df']['START_DATE']
-
+        seq_df = sequence_data['df']
+        index_seq_df = seq_df[seq_df['INDEX_CANCER'] == "Yes"]
+        index_seq_df['START_DATE'] = index_seq_df['DPT_REPORT_DAYS'] - index_seq_df['CA_DX_DAYS']
+        del seq_df['START_DATE']
+        seq_df = seq_df.merge(index_seq_df[['SAMPLE_ID', 'START_DATE']], on="SAMPLE_ID")
+        # Delete unneeded columns
+        del seq_df['DPT_REPORT_DAYS']
+        del seq_df['INDEX_CANCER']
+        del seq_df['CA_DX_DAYS']
+        # reorder Columns to match requirement
+        cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
+        cols_to_order.extend(seq_df.columns.drop(cols_to_order).tolist())
+        seq_df = seq_df[cols_to_order]
         sequence_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
         )
         self.write_and_storedf(
-            sequence_data["df"], sequence_path, used_entities=sequence_data["used"]
+            seq_df, sequence_path, used_entities=sequence_data["used"]
         )
         raise ValueError("test")
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
