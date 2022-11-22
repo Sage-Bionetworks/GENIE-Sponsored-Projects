@@ -120,7 +120,7 @@ def get_file_data(syn, mappingdf, sampletype, cohort="NSCLC"):
             # The pathology report dataset mapping info isn't first.
             # This also assumes that the TIMELINE-PATHOLOGY file only
             # uses columns from the pathology-report dataset
-            if df["dataset"][0] == "Pathology-report level dataset":
+            if df["dataset"].iloc[0] == "Pathology-report level dataset":
                 finaldf = finaldf.merge(
                     tabledf,
                     on=["record_id", "path_proc_number", "path_rep_number"],
@@ -792,17 +792,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_infodf = timeline_infodf[timeline_infodf["sampleType"] == timeline_type]
         # Obtain portal value (EVENT_TYPE)
         portal_value_idx = subset_infodf["data_type"] == "portal_value"
+        # HACK: Passing in data mapping without portal_values should
+        # still generate a file.
+        #if sum(portal_value_idx) > 0:
         portal_value = subset_infodf["code"][portal_value_idx].values[0]
+        #else:
+        #    portal_value = ""
         subset_infodf = subset_infodf[subset_infodf["data_type"] != "portal_value"]
         timeline_data = get_file_data(
             self.syn, subset_infodf, timeline_type, cohort=self._SPONSORED_PROJECT
         )
         timelinedf = timeline_data["df"]
-
         used_entities = timeline_data["used"]
 
         timelinedf["EVENT_TYPE"] = portal_value
-
         mapping = subset_infodf["cbio"].to_dict()
         # Must add in PATIENT_ID
         mapping["record_id"] = "PATIENT_ID"
@@ -1096,9 +1099,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
         #                  index=['path_num_spec'])
         # )
         print("SAMPLE-ACQUISITION")
+        # GEN-94: Test new mapping works
+        # TODO: This won't be necesary once we update to the new mapping
+        # file
+        test = timeline_infodf[timeline_infodf['sampleType'] == "TIMELINE-SAMPLE"]
+        test['code'][test['cbio'] == "START_DATE"] = 'dx_path_proc_days'
+        test['dataset'][test['cbio'] == "START_DATE"] = 'Pathology-report level dataset'
+        test['id'][test['cbio'] == "START_DATE"] = "syn22296820"
+        test.index = test['code']
         acquisition_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-SAMPLE"
+            test, "TIMELINE-SAMPLE"
         )
+
         acquisition_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"
         )
@@ -1121,7 +1133,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             acquisition_path,
             used_entities=acquisition_data["used"],
         )
-
         # Medonc
         print("MEDONC")
         medonc_data = self.create_fixed_timeline_files(
@@ -1147,16 +1158,63 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # Sequencing
         print("SEQUENCE")
+        # GEN-94: Add these cancer level dataset fields to get the
+        # index cancer dob_ca_dx_days value to calculate START_DATE
+        # and dob_cpt_report_days value
+        timeline_infodf = pd.concat(
+            [
+                timeline_infodf,
+                pd.DataFrame([
+                    {
+                        "code": "redcap_ca_index",
+                        "sampleType": "TIMELINE-SEQUENCE",
+                        "dataset": "Cancer-level dataset",
+                        "cbio": "INDEX_CANCER",
+                        "id": "syn22296816",  # HACK: hard coded synapse id
+                    },
+                    {
+                        "code": "dob_ca_dx_days",
+                        "sampleType": "TIMELINE-SEQUENCE",
+                        "dataset": "Cancer-level dataset",
+                        "cbio": "CA_DX_DAYS",
+                        "id": "syn22296816",  # HACK: hard coded synapse id
+                    },
+                    {
+                        "code": "dob_cpt_report_days",
+                        "sampleType": "TIMELINE-SEQUENCE",
+                        "dataset": "Cancer panel test level dataset",
+                        "cbio": "DPT_REPORT_DAYS",
+                        "id": "syn22296816",  # HACK: hard coded synapse id
+                    }],
+                    index=["redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days"],
+                ),
+            ]
+        )
         sequence_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SEQUENCE"
         )
+        # HACK: Manually calculate the START_DATE based on criteria defined
+        # in GEN-94
+        sequence_data['df']['START_DATE']
+        seq_df = sequence_data['df']
+        index_seq_df = seq_df[seq_df['INDEX_CANCER'] == "Yes"]
+        index_seq_df['START_DATE'] = index_seq_df['DPT_REPORT_DAYS'] - index_seq_df['CA_DX_DAYS']
+        del seq_df['START_DATE']
+        seq_df = seq_df.merge(index_seq_df[['SAMPLE_ID', 'START_DATE']], on="SAMPLE_ID")
+        # Delete unneeded columns
+        del seq_df['DPT_REPORT_DAYS']
+        del seq_df['INDEX_CANCER']
+        del seq_df['CA_DX_DAYS']
+        # reorder Columns to match requirement
+        cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
+        cols_to_order.extend(seq_df.columns.drop(cols_to_order).tolist())
+        seq_df = seq_df[cols_to_order]
         sequence_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
         )
         self.write_and_storedf(
-            sequence_data["df"], sequence_path, used_entities=sequence_data["used"]
+            seq_df, sequence_path, used_entities=sequence_data["used"]
         )
-
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
             # Lab test
             print("LABTEST")
