@@ -396,7 +396,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # version 6 doesnt have MSI variables
     _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.38"
     # Mapping from Synapse Table to derived variables
     # TODO: Make versioned
     _DATA_TABLE_IDS = "syn22296821"
@@ -770,6 +770,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             file_f.write(df_text)
 
         if not self.staging:
+            # Add the mapping file to the release file provenance
+            used_entities.append(self._REDCAP_TO_CBIOMAPPING_SYNID)
             ent = File(filepath, parent=self._SP_SYN_ID)
             self.syn.store(ent, executed=self._GITHUB_REPO, used=used_entities)
 
@@ -1099,16 +1101,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         #                  index=['path_num_spec'])
         # )
         print("SAMPLE-ACQUISITION")
-        # GEN-94: Test new mapping works
-        # TODO: This won't be necesary once we update to the new mapping
-        # file
-        test = timeline_infodf[timeline_infodf['sampleType'] == "TIMELINE-SAMPLE"]
-        test['code'][test['cbio'] == "START_DATE"] = 'dx_path_proc_days'
-        test['dataset'][test['cbio'] == "START_DATE"] = 'Pathology-report level dataset'
-        test['id'][test['cbio'] == "START_DATE"] = "syn22296820"
-        test.index = test['code']
         acquisition_data = self.create_fixed_timeline_files(
-            test, "TIMELINE-SAMPLE"
+            timeline_infodf, "TIMELINE-SAMPLE"
         )
 
         acquisition_path = os.path.join(
@@ -1209,6 +1203,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(seq_df.columns.drop(cols_to_order).tolist())
         seq_df = seq_df[cols_to_order]
+        seq_df.drop_duplicates(inplace=True)
+
         sequence_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
         )
