@@ -396,7 +396,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # version 6 doesnt have MSI variables
     _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.38"
     # Mapping from Synapse Table to derived variables
     # TODO: Make versioned
     _DATA_TABLE_IDS = "syn22296821"
@@ -770,6 +770,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             file_f.write(df_text)
 
         if not self.staging:
+            # Add the mapping file to the release file provenance
+            used_entities.append(self._REDCAP_TO_CBIOMAPPING_SYNID)
             ent = File(filepath, parent=self._SP_SYN_ID)
             self.syn.store(ent, executed=self._GITHUB_REPO, used=used_entities)
 
