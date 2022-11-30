@@ -1102,13 +1102,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # GEN-94: Test new mapping works
         # TODO: This won't be necesary once we update to the new mapping
         # file
-        test = timeline_infodf[timeline_infodf['sampleType'] == "TIMELINE-SAMPLE"]
-        test['code'][test['cbio'] == "START_DATE"] = 'dx_path_proc_days'
-        test['dataset'][test['cbio'] == "START_DATE"] = 'Pathology-report level dataset'
-        test['id'][test['cbio'] == "START_DATE"] = "syn22296820"
-        test.index = test['code']
+        # test = timeline_infodf[timeline_infodf['sampleType'] == "TIMELINE-SAMPLE"]
+        # test['code'][test['cbio'] == "START_DATE"] = 'dx_path_proc_days'
+        # test['dataset'][test['cbio'] == "START_DATE"] = 'Pathology-report level dataset'
+        # test['id'][test['cbio'] == "START_DATE"] = "syn22296820"
+        # test.index = test['code']
         acquisition_data = self.create_fixed_timeline_files(
-            test, "TIMELINE-SAMPLE"
+            timeline_infodf, "TIMELINE-SAMPLE"
         )
 
         acquisition_path = os.path.join(
@@ -1209,6 +1209,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(seq_df.columns.drop(cols_to_order).tolist())
         seq_df = seq_df[cols_to_order]
+        seq_df.drop_duplicates(inplace=True)
+
         sequence_path = os.path.join(
             self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
         )
