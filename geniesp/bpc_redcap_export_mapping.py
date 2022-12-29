@@ -942,6 +942,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             keep_samples: List of samples to keep
         """
         file_name = "data_sv.txt"
+        # TODO: remove try except after using main genie release >= 13
         try:
             sv_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         except ValueError:
