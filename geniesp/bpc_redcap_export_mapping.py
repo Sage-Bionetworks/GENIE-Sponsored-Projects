@@ -926,7 +926,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Args:
             keep_samples: List of samples to keep
         """
-        # TODO: the seg filename will change this release.
+        # TODO: the seg filename will change 13.X release.
         file_name = "genie_data_cna_hg19.seg"
         seg_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         seg_ent = self.syn.get(seg_synid)
@@ -934,6 +934,26 @@ class BpcProjectRunner(metaclass=ABCMeta):
         segdf = segdf[segdf["ID"].isin(keep_samples)]
         seg_path = os.path.join(self._SPONSORED_PROJECT, "data_cna_hg19.seg")
         self.write_and_storedf(segdf, seg_path, used_entities=[seg_synid])
+
+    def create_sv(self, keep_samples):
+        """Create sv file
+
+        Args:
+            keep_samples: List of samples to keep
+        """
+        file_name = "data_sv.txt"
+        # TODO: remove try except after using main genie release >= 13
+        try:
+            sv_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
+        except ValueError:
+            sv_synid = None
+            print(f"data_sv.txt doesn't exist in main genie release: {self._MG_RELEASE_SYNID}")
+        if sv_synid is not None:
+            sv_ent = self.syn.get(sv_synid)
+            svdf = pd.read_table(sv_ent.path, low_memory=False)
+            svdf = svdf[svdf["Sample_ID"].isin(keep_samples)]
+            sv_path = os.path.join(self._SPONSORED_PROJECT, "data_sv.txt")
+            self.write_and_storedf(svdf, sv_path, used_entities=[sv_synid])
 
     def create_gene_panels(self, keep_seq_assay_ids):
         """Create gene panels"""
@@ -1565,6 +1585,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         self.create_seg(subset_sampledf["SAMPLE_ID"])
 
+        self.create_sv(subset_sampledf["SAMPLE_ID"])
         # Create case lists
         case_list_path = os.path.join(self._SPONSORED_PROJECT, "case_lists")
 
