@@ -44,6 +44,11 @@ def main():
         default="info",
         help="Set logging output level " "(default: %(default)s)",
     )
+    parser.add_argument(
+        "--cbioportal",
+        type=str,
+        help="Optional parameter to specify cbioportal folder location",
+    )
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.log.upper(), None)
@@ -53,8 +58,13 @@ def main():
 
     syn = synapseclient.login()
 
+    if args.cbioportal is None:
+        cbiopath = "../cbioportal"
+    else:
+        cbiopath = args.cbioportal
+
     BPC_MAPPING[args.sp](
-        syn, "../cbioportal", release=args.release, staging=args.staging
+        syn, cbiopath, release=args.release, staging=args.staging
     ).run()
 
 
