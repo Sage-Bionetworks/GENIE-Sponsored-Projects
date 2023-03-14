@@ -1,5 +1,6 @@
 """GENIE SP/BPC cBioPortal exporter CLI"""
 import argparse
+import logging
 
 import synapseclient
 
@@ -36,11 +37,24 @@ def main():
         help="If true, files aren't uploaded onto synapse",
     )
     parser.add_argument(
+        "--log",
+        "-l",
+        type=str,
+        choices=["debug", "info", "warning", "error"],
+        default="info",
+        help="Set logging output level " "(default: %(default)s)",
+    )
+    parser.add_argument(
         "--cbioportal",
         type=str,
         help="Optional parameter to specify cbioportal folder location",
     )
     args = parser.parse_args()
+
+    numeric_level = getattr(logging, args.log.upper(), None)
+    if not isinstance(numeric_level, int):
+        raise ValueError("Invalid log level: %s" % args.log)
+    logging.basicConfig(level=numeric_level)
 
     syn = synapseclient.login()
 

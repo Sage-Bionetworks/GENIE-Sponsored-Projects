@@ -8,16 +8,17 @@
   REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
 """
 from abc import ABCMeta
+from csv import DictReader
 from datetime import date
 import math
 import os
 import subprocess
+import logging
+from typing import List
 
-import genie
 from genie import create_case_lists, process_functions
 import pandas as pd
-import synapseclient
-from synapseclient import File, Folder
+from synapseclient import File, Folder, Synapse
 
 from . import metafiles
 
@@ -43,48 +44,22 @@ CBIO_FILEFORMATS_ALL = [
 ]
 
 
-def get_data(syn, mappingdf, sampletype):
-    """Extracts the sample, patient and timeline df
+def get_file_data(
+    syn: Synapse, mappingdf: pd.DataFrame, sampletype: str, cohort: str = "NSCLC"
+) -> dict:
+    """Extracts the sample, patient and timeline data frame
 
     Args:
-        syn: Synapse connection
-        mappingdf: Mapping dataframe
-        sampletype: sample type
+        syn (Synapse): Synapse connection
+        mappingdf (pd.DataFrame): Mapping dataframe
+        sampletype (str): sample type label
+        cohort (str, optional): cohort label. Defaults to "NSCLC".
 
     Returns:
-        df
+        dict: dictionary with two keys ('df' and 'used') corresponding to data frame
+        of data for sample type and a list of Synapse IDs used
     """
-    synids = mappingdf["id"][mappingdf["sampleType"] == sampletype].unique()
-    finaldf = pd.DataFrame()
-    for synid in synids:
-        table = syn.tableQuery(f"select * from {synid}")
-        tabledf = table.asDataFrame()
-        if finaldf.empty:
-            finaldf = pd.concat([finaldf, tabledf])
-        else:
-            # must remove this or else columns will be duplicated
-            del tabledf["redcap_data_access_group"]
-            finaldf = finaldf.merge(tabledf, on="record_id")
-    # Subset needed columns
-    cols = mappingdf["code"][mappingdf["sampleType"] == sampletype]
-    cols = cols.tolist()
-    cols.extend(["redcap_data_access_group", "record_id"])
-    finaldf = finaldf[cols]
-    return finaldf
 
-
-def get_file_data(syn, mappingdf, sampletype, cohort="NSCLC"):
-    """Extracts the sample, patient and timeline df
-
-    Args:
-        syn: Synapse connection
-        mappingdf: Mapping dataframe
-        sampletype: sample type
-
-    Returns:
-        dict: mapped dataframe,
-              list of used entities
-    """
     # Group by dataset because different datasets could have the
     # same variable
     datasets = mappingdf.groupby("dataset")
@@ -129,77 +104,66 @@ def get_file_data(syn, mappingdf, sampletype, cohort="NSCLC"):
                 del finaldf["path_rep_number"]
             else:
                 finaldf = finaldf.merge(tabledf, on="record_id")
-    # This is to map values (sample acquisition, samples)
-    # duplicated_codes_idx = mappingdf['code'].duplicated()
-    # if duplicated_codes_idx.any():
-    #     duplicated = mappingdf['code'][duplicated_codes_idx].values[0]
-    #     finaldf = finaldf[finaldf[f'{duplicated}_x'] == finaldf[f'{duplicated}_y']]
-    #     del finaldf[f'{duplicated}_x']
-    #     finaldf[duplicated] = finaldf[f'{duplicated}_y']
-    #     del finaldf[f'{duplicated}_y']
 
     return {"df": finaldf, "used": used_entities}
 
 
-# def _remap_os_pfs_values(clinicaldf):
-#     """Remap numerical values to string values
-#     0 -> 0:LIVING
-#     1 -> 1:DECEASED
-#     """
-#     os_pfs_cols = [col for col in clinicaldf.columns
-#                    if col.startswith(('OS', 'PFS')) and
-#                    col.endswith("STATUS")]
-#     remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"}
-#                        for col in os_pfs_cols}
-#     return clinicaldf.replace(remap_os_values)
-
-
-def fill_cancer_dx_start_date(finaldf):
-    """Fills in cancer dx start date for those missing pathology dates
+def get_synid_data(
+    syn: Synapse,
+    df_map: pd.DataFrame,
+    df_file: pd.DataFrame,
+    sampletype: list,
+    cohort: str,
+) -> List:
+    """Get Synapse IDs of data files used to create the corresponding
+    sample type data frames.
 
     Args:
-        finaldf: Mapped cancer diagnosis timeline dataframe
+        syn (Synapse): Synapse connection
+        df_map (pd.DataFrame): REDCap to cBioPortal mapping data frame
+        df_file (pd.DataFrame): Synapse ID to dataset label data frame
+        sampletype (list): list of sample type labels
+        cohort (str): cohort label
 
     Returns:
-        dataframe with filled START_DATEs
+        List: _description_
+    """
+    datasets = df_map[
+        df_map["sampleType"].isin(sampletype) and df_map[cohort] == "true"
+    ]["dataset"].unique()
+    used = df_file[df_file["dataset"].isin(datasets)]["id"]
+    return list(used)
+
+
+def fill_cancer_dx_start_date(finaldf: pd.DataFrame) -> pd.DataFrame:
+    """Fills in cancer dx start date for those missing start dates
+    with zero.
+
+    Args:
+        finaldf (pd.DataFrame): Mapped cancer diagnosis timeline dataframe
+
+    Returns:
+        pd.DataFrame: dataframe with filled START_DATEs
     """
     # Get all time0 points for all records
     time0_dates_idx = finaldf["INDEX_CANCER"] == "Yes"
     # Make all time0 points 0
     finaldf["diagnosis_int"] = finaldf["START_DATE"]
     finaldf["START_DATE"][time0_dates_idx] = 0
-    # finaldf['START_DATE'][~time0_dates_idx] = 1
-
-    # records = finaldf['PATIENT_ID'].unique()
-    # for record in records:
-    #     df = finaldf[finaldf['PATIENT_ID'] == record]
-    #     # Grab the time 0 START_DATE and calculate the other start times
-    #     time0_idx = df['START_DATE'] == 0
-    #     values = df['CA_DOB_DX_INT'][time0_idx].unique()
-    #     # Sometimes there are more than one index cancers, so must take
-    #     # the first value which is the minimum value
-    #     time0 = min(values)
-    #     # time0 = df['CA_DOB_DX_INT'][time0_idx].values[0]
-    #     finaldf.loc[df.index[~time0_idx],
-    #                 'START_DATE'] = df['CA_DOB_DX_INT'][~time0_idx]-time0
-    #     missing_idx = df['CA_DOB_DX_INT'].isnull()
-    #     finaldf.loc[df.index[missing_idx],
-    #                 'START_DATE'] = df['diagnosis_int'][missing_idx]-time0
     # Remove unused variable
     del finaldf["diagnosis_int"]
     return finaldf
 
 
-def configure_mafdf(mafdf, keep_samples):
+def configure_mafdf(mafdf: pd.DataFrame, keep_samples: list) -> pd.DataFrame:
     """Configures a maf dataframe
 
     Args:
-        mafdf: Chunk of maf dataframe
-        keep_samples:  Samples to keep in the maf file
+        mafdf (pd.DataFrame): Chunk of maf dataframe
+        keep_samples (list):  Samples to keep in the maf file
 
     Returns:
-        Configured maf dataframe
-
+        pd.DataFrame: Configured maf dataframe
     """
     keep_mafdf = mafdf[mafdf["Tumor_Sample_Barcode"].isin(keep_samples.tolist())]
     if not keep_mafdf.empty:
@@ -217,24 +181,32 @@ def configure_mafdf(mafdf, keep_samples):
     return keep_mafdf
 
 
-def change_days_to_months(days):
-    """Changes date fields to months"""
-    if math.isnan(days):
-        return float("nan")
-    else:
-        return math.floor(days / 30.4)
+def change_days_to_years(days: int) -> int:
+    """Convert days into years.
 
+    Args:
+        days (int): number of days
 
-def change_days_to_years(days):
-    """Changes date fields to years"""
+    Returns:
+        int: number of years or nan, if applicable
+    """
     if math.isnan(days):
         return float("nan")
     else:
         return math.floor(days / 365.25)
 
 
-def _get_synid_dd(syn, cohort, synid_table_prissmm):
-    """Get Synapse ID of the most current PRISSMM non-PHI data dictionary for the BPC cohort."""
+def _get_synid_dd(syn: Synapse, cohort: str, synid_table_prissmm: str) -> str:
+    """Get Synapse ID of the most current PRISSMM non-PHI data dictionary for the BPC cohort.
+
+    Args:
+        syn (Synapse): Synapse connection
+        cohort (str): cohort label
+        synid_table_prissmm (str): Synapse ID of PRISSMM documentation table
+
+    Returns:
+        str: Synapse ID of cohort PRISSMM data dictionary
+    """
 
     query = f"SELECT id FROM {synid_table_prissmm} WHERE cohort = '{cohort}' ORDER BY name DESC LIMIT 1"
     query_results = syn.tableQuery(query)
@@ -249,14 +221,21 @@ def _get_synid_dd(syn, cohort, synid_table_prissmm):
     return None
 
 
-def get_drug_mapping(syn, cohort, synid_file_grs, synid_table_prissmm):
-    """
-    Get a mapping between drug short names and NCIT code from BPC data dictionary
+def get_drug_mapping(
+    syn: Synapse, cohort: str, synid_file_grs: str, synid_table_prissmm: str
+) -> dict:
+    """Get a mapping between drug short names and NCIT code from BPC data dictionary
     and BPC global response set for a given BPC cohort.
 
+    Args:
+        syn (Synapse): Synapse connection
+        cohort (str): cohort label
+        synid_file_grs (str): Synapse ID of REDCap global response set file.
+        synid_table_prissmm (str): Synapse ID of PRISSMM documentation table
+
     Returns:
-      dictionary: map where keys are BPC drug short names and value is the
-        corresponding NCIT drug code
+        dict: map where keys are BPC drug short names and value is the
+                corresponding NCIT drug code
     """
 
     mapping = {}
@@ -295,11 +274,19 @@ def get_drug_mapping(syn, cohort, synid_file_grs, synid_table_prissmm):
     return mapping
 
 
-def get_regimen_abbr(regimen, mapping):
+def get_regimen_abbr(regimen: str, mapping: dict) -> str:
+    """Given a BPC regimen and mapping between drug names and NCIT codes,
+    return the regimen abbreviation consisting of NCIT codes.
+
+    Args:
+        regimen (str): string representing a comma delimited list of drug names in the regimen
+        mapping (dict): map where keys are BPC drug short names and value is the
+                corresponding NCIT drug code
+
+    Returns:
+        str: regimen abbreviation with NCIT codes
     """
-    Given a BPC regimen and mapping between drug names and NCIT codes,
-    return the regimen abbreviation consisting of NCIT codes
-    """
+
     abbr = ""
     drugs = regimen.split(",")
     for drug in drugs:
@@ -316,15 +303,28 @@ def get_git_sha() -> str:
     return text.stdout.rstrip("\n")
 
 
-def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCLC"):
-    """Create regimens to merge into the patient file
+def create_regimens(
+    syn: Synapse,
+    regimen_infodf: pd.DataFrame,
+    mapping: dict,
+    top_x_regimens: int = 5,
+    cohort: str = "NSCLC",
+) -> dict:
+    """Create regimens to merge into the patient file.
+
+    Args:
+        syn (Synapse): Synapse connection
+        regimen_infodf (pd.DataFrame): data frame containing regimen info
+        mapping (dict): map where keys are BPC drug short names and value is the
+                corresponding NCIT drug code
+        top_x_regimens (int, optional): number of regimens to catalog. Defaults to 5.
+        cohort (str, optional): cohort label. Defaults to "NSCLC".
 
     Returns:
-        dataframe: Expanded regimen data in patient file format
-        dataframe: New regimen mappings for clinical headers
+        dict: dictionary with three keys ('df', 'used', 'info')
     """
+
     regimen_synid = regimen_infodf["id"].unique()[0]
-    # regimen_synid = "syn22296818"
     regimens_to_exclude = ["Investigational Drug"]
     regimen_ent = syn.get(regimen_synid)
     regimendf = pd.read_csv(regimen_ent.path, low_memory=False)
@@ -386,17 +386,101 @@ def create_regimens(syn, regimen_infodf, mapping, top_x_regimens=5, cohort="NSCL
     return {"df": final_regimendf, "info": new_regimen_info, "used": regimen_synid}
 
 
+def get_bpc_to_cbio_mapping_df(
+    syn: Synapse, cohort: str, synid_table_cbio: str
+) -> pd.DataFrame:
+    """Extract relevant portions of the mapping table for the sponsored project
+    variables and cBioPortal variable mappings and return as a data frame.
+
+    Args:
+        syn (Synapse): Synapse connection
+        cohort (str): sponsored project label
+        synid_table_cbio (str): Synapse ID of table containing variable to cbio mapping
+
+    Returns:
+        pd.DataFrame: data frame of all mapping columns for released variables
+    """
+    redcap_to_cbiomapping = syn.tableQuery(
+        f"SELECT * FROM {synid_table_cbio} where "
+        f"{cohort} is true AND sampleType <> 'TIMELINE-STATUS'"
+    )
+    redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
+    return redcap_to_cbiomappingdf
+
+
+def get_data_file_synapse_id_df(syn: Synapse, synid_table_files: str) -> pd.DataFrame:
+    """Get mapping of dataset files to Synapse IDs.
+
+    Args:
+        syn (Synapse): Synapse connection
+        synid_table_files (str): Synapse ID of table containing data file to Synapse ID mapping
+
+    Returns:
+        pd.DataFrame: data frame with two columns representing the Synapse ID and dataset label
+    """
+    data_tables = syn.tableQuery(f"SELECT id, dataset FROM {synid_table_files} ")
+    data_tablesdf = data_tables.asDataFrame()
+    return data_tablesdf
+
+
+def create_release_folders(cohort: str) -> None:
+    """Create local folders for release folders.
+
+    Args:
+        cohort (str): sponsored project label
+    """
+    if not os.path.exists(cohort):
+        os.mkdir(cohort)
+    else:
+        filelists = os.listdir(cohort)
+        for each_file in filelists:
+            if each_file != "case_lists":
+                os.remove(os.path.join(cohort, each_file))
+
+
+def hack_remap_laterality(df_patient_subset: pd.DataFrame) -> pd.DataFrame:
+    """Temporary (?) remapping of specific values in a column.
+
+    Args:
+        df_patient_subset (pd.DataFrame): patient data
+
+    Returns:
+        pd.DataFrame: patient data wtih column remapped
+    """
+
+    laterality_mapping = {
+        "0": "Not a paired site",
+        "1": "Right: origin of primary",
+        "2": "Left: origin of primary",
+        "3": "Only one side involved, right or left origin unspecified",
+        "4": "Bilateral involvement at time of diagnosis, lateral origin "
+        "unknown for a single primary; or both ovaries involved "
+        "simultaneously, single histology; bilateral retinoblastomas; "
+        "bilateral Wilms' tumors",
+        "5": "Paired site: midline tumor",
+        "9": "Paired site, but no information concerning laterality",
+        "Not paired": "Not a paired site",
+    }
+    if df_patient_subset.get("NAACCR_LATERALITY_CD") is not None:
+        remapped_values = (
+            df_patient_subset["NAACCR_LATERALITY_CD"]
+            .astype(str)
+            .map(laterality_mapping)
+        )
+        df_patient_subset["NAACCR_LATERALITY_CD"] = remapped_values
+
+    return df_patient_subset
+
+
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
 
-    # Sponsorted project name
+    # Sponsored project name
     _SPONSORED_PROJECT = ""
-    # BPC No PHI Data element catalog
-    # Version 6 no longer has releaseScope, it has {SP}_sor
-    # version 6 doesnt have MSI variables
-    _DATA_ELEMENT_SYN_ID = "syn21431364"
     # Redcap codes to cbioportal mapping synid and form key is in
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.38"
+    # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
+    _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
     # TODO: Make versioned
     _DATA_TABLE_IDS = "syn22296821"
@@ -408,6 +492,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
     _GRS_SYNID = "syn24184523"
+    # main GENIE sample clinical database
+    _CLINICAL_SYNID = "syn7517674"
+    # BPC sample retraction table
+    _RETRACTION_SYNID = "syn25779833"
+    # main GENIE assay information table
+    _ASSAY_SYNID = "syn17009222"
     # exclude files to be created for cbioportal
     # TODO: need to support this feature in rest of code, for now
     # This is added for metadata files
@@ -444,25 +534,25 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
         self._GITHUB_REPO = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
-    def get_main_genie_clinicaldf(self) -> dict:
+    def get_main_genie_clinicaldf(self) -> pd.DataFrame:
         """Get main GENIE clinical samples and perform retraction
         against BPC sample and patient database. It's important that I use the
         sample database, because if a sample from a patient with multiple samples
         is retracted from the main GENIE clinical samples, the patient
         will still exist. (Jira: GEN-260)
+
+        Returns:
+            pd.DataFrame: main GENIE information for sponsored project samples
         """
-        # Get all the samples/patients that should be uploaded to SP projects
-        # Hard coded clinical database
-        # need to use clinical database because SEQ_YEAR is not released in
-        # public data
+
         genie_clinicaldb = self.syn.tableQuery(
-            "select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, "
-            "SAMPLE_TYPE, SEQ_YEAR from syn7517674"
+            f"select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, "
+            f"SAMPLE_TYPE, SEQ_YEAR from {self._CLINICAL_SYNID}"
         )
         genie_clinicaldf = genie_clinicaldb.asDataFrame()
         # BPC retraction database
         bpc_retraction_db = self.syn.tableQuery(
-            "select SAMPLE_ID from syn25779833 where "
+            f"select SAMPLE_ID from {self._RETRACTION_SYNID} where "
             f"{self._SPONSORED_PROJECT} is true"
         )
         bpc_retractiondf = bpc_retraction_db.asDataFrame()
@@ -495,8 +585,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ]
         return keep_clinicaldf
 
-    def create_bpc_cbio_metafiles(self):
-        """Create BPC cBioPortal meta* files"""
+    def create_bpc_cbio_metafiles(self) -> List:
+        """Create BPC cBioPortal meta* files.
+
+        Returns:
+            List: file paths of meta files.
+        """
+
         mg_release_ent = self.syn.get(self._MG_RELEASE_SYNID)
         name = f"GENIE BPC {self._SPONSORED_PROJECT} v{self.release}"
         description = (
@@ -536,10 +631,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
         meta_files.append(study_file)
         return meta_files
 
-    def create_genematrixdf(self, clinicaldf, cna_samples, used_ent=None):
+    def create_and_write_genematrix(
+        self, clinicaldf: pd.DataFrame, cna_samples: list, used_ent: list = None
+    ) -> None:
+        """Create gene matrix dataframe.
+
+        Args:
+            clinicaldf (pd.DataFrame): sample information
+            cna_samples (list): sample IDs with CNA data
+            used_ent (list, optional): Synapse IDs used. Defaults to None.
         """
-        Create gene matrix dataframe
-        """
+
         data_gene_panel = clinicaldf[["SAMPLE_ID", "SEQ_ASSAY_ID"]]
         data_gene_panel = data_gene_panel.rename(columns={"SEQ_ASSAY_ID": "mutations"})
         data_gene_panel = data_gene_panel[data_gene_panel["SAMPLE_ID"] != ""]
@@ -558,14 +660,22 @@ class BpcProjectRunner(metaclass=ABCMeta):
             file_ent = File(gene_matrix_filepath, parent=self._SP_SYN_ID)
             self.syn.store(file_ent, used=used_ent, executed=self._GITHUB_REPO)
 
-    def configure_clinicaldf(self, clinicaldf, redcap_to_cbiomappingdf):
-        """
-        Create clinical file from sponsored project mapped dataframe
+    def configure_clinicaldf(
+        self, clinicaldf: pd.DataFrame, redcap_to_cbiomappingdf: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Create clinical file from sponsored project mapped dataframe
 
         Args:
-            clinicaldf:  Can be patient or clinical dataframe
-            redcap_to_cbiomappingdf: Synapse Table with the mapping
-                                     between redcap and cbioportal
+            clinicaldf (pd.DataFrame): clinical information
+            redcap_to_cbiomappingdf (pd.DataFrame): cBio mapping info
+
+        Raises:
+            ValueError: All column names must be in mapping dataframe
+            ValueError: Must have no null patient ids
+            ValueError: Must have no null sample ids
+
+        Returns:
+            pd.DataFrame: configured clinical information
         """
 
         if not clinicaldf.columns.isin(redcap_to_cbiomappingdf["code"]).all():
@@ -597,19 +707,30 @@ class BpcProjectRunner(metaclass=ABCMeta):
         for col in clinicaldf:
             num_missing = sum(clinicaldf[col].isnull())
             if num_missing > 0:
-                print(f"Number of missing {col}: {num_missing}")
+                logging.warning(f"Number of missing {col}: {num_missing}")
 
         return clinicaldf
 
-    def write_clinical_file(self, clinicaldf, redcap_to_cbiomappingdf, filetype):
+    def write_clinical_file(
+        self,
+        clinicaldf: pd.DataFrame,
+        redcap_to_cbiomappingdf: pd.DataFrame,
+        filetype: str,
+    ) -> str:
         """Writes out the clinical file
 
-        params:
-            clinicaldf: Can be patient or sample clinical dataframe
-            redcap_to_cbiomappingdf: mapping dataframe between redcap
-                                     and cbioportal
-            filetype: "patient" or "sample"
+        Args:
+            clinicaldf (pd.DataFrame): clinical information
+            redcap_to_cbiomappingdf (pd.DataFrame): cBio mapping info
+            filetype (str): file type label
+
+        Raises:
+            ValueError: sample type must be patient, sample, supp_survival or supp_survival_treatment
+
+        Returns:
+            str: file path to clinical info
         """
+
         if filetype not in [
             "patient",
             "sample",
@@ -656,8 +777,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
         return clin_path
 
-    def make_timeline_treatmentdf(self, infodf, sample_type):
-        """Make timeline treatment dataframe"""
+    def make_timeline_treatmentdf(self, infodf: pd.DataFrame, sample_type: str) -> dict:
+        """Make timeline treatment data frame.
+
+        Args:
+            infodf (pd.DataFrame): cBioPortal mapping merged with data file Synapse IDs
+            sample_type (str): sample type label
+
+        Returns:
+            dict: dictionary with two keys ('df', 'used')
+        """
+
         subset_infodf = infodf[infodf["sampleType"] == sample_type]
         # Exclude heme onc columns
         subset_infodf = subset_infodf[
@@ -714,7 +844,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             if "(" in agent:
                 agents.append(agent.split("(")[0].strip())
             else:
-                # print(final_timelinedf['record_id'][index])
                 agents.append(agent.split(",")[0].strip())
 
         final_timelinedf["AGENT"] = agents
@@ -740,11 +869,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "used": [used_entity],
         }
 
-    def filter_df(self, df):
+    def filter_df(self, df: pd.DataFrame) -> pd.DataFrame:
         """Make sure samples and patients exist in the main genie
         clinical samples with the exception of the removal of
         retraction database samples
+
+        Args:
+            df (pd.DataFrame): GENIE data with a patient or sample ID column
+
+        Returns:
+            pd.DataFrame: GENIE data with retracted patients or samples removed.
         """
+
         if df.get("SAMPLE_ID") is not None:
             to_keep_samples_idx = df["SAMPLE_ID"].isin(
                 self.genie_clinicaldf["SAMPLE_ID"]
@@ -757,14 +893,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df = df[to_keep_patient_idx]
         return df
 
-    def write_and_storedf(self, df, filepath, used_entities=[]):
-        """Write and store dataframe
+    def write_and_storedf(
+        self, df: pd.DataFrame, filepath: str, used_entities: list = []
+    ):
+        """Write and, if applicable, store data frame.
 
         Args:
-            df: Dataframe to store
-            filepath: Path to store dataframe
-            used_entities: Used entities
+            df (pd.DataFrame): data frame to store
+            filepath (str): path to written file
+            used_entities (list, optional): Synapse IDs used to generate the file. Defaults to [].
         """
+
         df_text = process_functions.removePandasDfFloat(df)
         with open(filepath, "w") as file_f:
             file_f.write(df_text)
@@ -776,19 +915,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
             self.syn.store(ent, executed=self._GITHUB_REPO, used=used_entities)
 
     def create_fixed_timeline_files(
-        self, timeline_infodf, timeline_type, filter_start=True
-    ):
-        """Create timeline files straight from derived variables
+        self,
+        timeline_infodf: pd.DataFrame,
+        timeline_type: str,
+        filter_start: bool = True,
+    ) -> dict:
+        """Create timeline files straight from derived variables.
 
         Args:
-            timeline_infodf: Timeline column mapping dataframe
-            timeline_type: Type of timeline
-            filter_start: if True, remove rows with null START_DATE;
-                            otherwise, retain
+            timeline_infodf (pd.DataFrame): cBio mapping information relevant to the timeline
+            timeline_type (str): timeline label
+            filter_start (bool, optional): whether to filter out rows with null START_DATEs. Defaults to True.
 
         Returns:
-            dict: mapped dataframe,
-                  list of used entities
+            dict: 'df' mapped dataframe, 'used' list of entities
         """
         # Remove portal values
         subset_infodf = timeline_infodf[timeline_infodf["sampleType"] == timeline_type]
@@ -796,9 +936,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         portal_value_idx = subset_infodf["data_type"] == "portal_value"
         # HACK: Passing in data mapping without portal_values should
         # still generate a file.
-        #if sum(portal_value_idx) > 0:
+        # if sum(portal_value_idx) > 0:
         portal_value = subset_infodf["code"][portal_value_idx].values[0]
-        #else:
+        # else:
         #    portal_value = ""
         subset_infodf = subset_infodf[subset_infodf["data_type"] != "portal_value"]
         timeline_data = get_file_data(
@@ -817,7 +957,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(timelinedf.columns.drop(cols_to_order).tolist())
         timelinedf = self.filter_df(timelinedf)
-        # Remove all null START_DATEs or replace with zero
+        # Remove all null START_DATE rows if requested
         if filter_start:
             timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         return {
@@ -841,11 +981,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 return synid_child["id"]
         raise ValueError(f"file '{file_name}' not found in {synid_folder}")
 
-    def create_maf(self, keep_samples):
+    def create_and_write_maf(self, keep_samples: list) -> str:
         """Create maf file from release maf
 
         Args:
-            keep_samples: List of samples to keep
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            str: file path to written data
         """
         file_name = "data_mutations_extended.txt"
         mafpath = os.path.join(self._SPONSORED_PROJECT, file_name)
@@ -873,11 +1016,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
             file_ent = File(mafpath, parent=self._SP_SYN_ID)
             self.syn.store(file_ent, used=[maf_synid], executed=self._GITHUB_REPO)
 
-    def create_cna(self, keep_samples):
+        return mafpath
+
+    def create_and_write_cna(self, keep_samples: list) -> dict:
         """Create CNA file
 
         Args:
-            keep_samples: List of samples to keep
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            dict: "filepath" with path to written file
+                    "cna_sample" list of CNA sample IDs
         """
         file_name = "data_CNA.txt"
         cna_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
@@ -902,13 +1051,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         if not self.staging:
             file_ent = File(cna_path, parent=self._SP_SYN_ID)
             self.syn.store(file_ent, used=[cna_synid], executed=self._GITHUB_REPO)
-        return cnadf.columns.tolist()
+        return {"filepath": cna_file, "cna_samples": cnadf.columns.tolist()}
 
-    def create_fusion(self, keep_samples):
+    def create_and_write_fusion(self, keep_samples: list) -> str:
         """Create fusion file
 
         Args:
-            keep_samples: List of samples to keep
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            str: file path to written data
         """
         file_name = "data_fusions.txt"
         fusion_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
@@ -919,12 +1071,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         fusiondf = fusiondf[~fusiondf["Hugo_Symbol"].isnull()]
         fusion_path = os.path.join(self._SPONSORED_PROJECT, file_name)
         self.write_and_storedf(fusiondf, fusion_path, used_entities=[fusion_synid])
+        return fusion_path
 
-    def create_seg(self, keep_samples):
+    def create_and_write_seg(self, keep_samples: list) -> str:
         """Create seg file
 
         Args:
-            keep_samples: List of samples to keep
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            str: file path to written data
         """
         # TODO: the seg filename will change 13.X release.
         file_name = "genie_data_cna_hg19.seg"
@@ -934,8 +1090,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         segdf = segdf[segdf["ID"].isin(keep_samples)]
         seg_path = os.path.join(self._SPONSORED_PROJECT, "data_cna_hg19.seg")
         self.write_and_storedf(segdf, seg_path, used_entities=[seg_synid])
+        return seg_path
 
-    def create_sv(self, keep_samples):
+    def create_and_write_sv(self, keep_samples):
         """Create sv file
 
         Args:
@@ -947,7 +1104,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             sv_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         except ValueError:
             sv_synid = None
-            print(f"data_sv.txt doesn't exist in main genie release: {self._MG_RELEASE_SYNID}")
+            logging.warning(
+                f"data_sv.txt doesn't exist in main genie release: {self._MG_RELEASE_SYNID}"
+            )
         if sv_synid is not None:
             sv_ent = self.syn.get(sv_synid)
             svdf = pd.read_table(sv_ent.path, low_memory=False)
@@ -955,8 +1114,17 @@ class BpcProjectRunner(metaclass=ABCMeta):
             sv_path = os.path.join(self._SPONSORED_PROJECT, "data_sv.txt")
             self.write_and_storedf(svdf, sv_path, used_entities=[sv_synid])
 
-    def create_gene_panels(self, keep_seq_assay_ids):
-        """Create gene panels"""
+    def create_and_write_gene_panels(self, keep_seq_assay_ids: list) -> List:
+        """Create gene panels.
+
+        Args:
+            keep_seq_assay_ids (list): list of sequence assay IDs
+
+        Returns:
+            list: file paths of written data
+        """
+
+        gene_panel_paths = []
         file_name = "genomic_information.txt"
         genomic_info_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         genomic_info_ent = self.syn.get(genomic_info_synid)
@@ -984,6 +1152,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
             gene_panel_name = f"data_gene_panel_{seq_assay_id}.txt"
             gene_panel_path = os.path.join(self._SPONSORED_PROJECT, gene_panel_name)
+            gene_panel_paths.append(gene_panel_path)
             with open(gene_panel_path, "w+") as f:
                 f.write(gene_panel_text)
             if not self.staging:
@@ -991,50 +1160,47 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 self.syn.store(
                     fileEnt, used=[genomic_info_synid], executed=self._GITHUB_REPO
                 )
+        return gene_panel_paths
 
-    def run(self):
-        """Runs the redcap export to export all files"""
-        # Create folder to house release files
-        if not os.path.exists(self._SPONSORED_PROJECT):
-            os.mkdir(self._SPONSORED_PROJECT)
-        else:
-            filelists = os.listdir(self._SPONSORED_PROJECT)
-            for each_file in filelists:
-                if each_file != "case_lists":
-                    os.remove(os.path.join(self._SPONSORED_PROJECT, each_file))
-        # Obtain mappings
-        # Create full mapping table to get the values of the data model
-        redcap_to_cbiomapping = self.syn.tableQuery(
-            f"SELECT * FROM {self._REDCAP_TO_CBIOMAPPING_SYNID} where "
-            f"{self._SPONSORED_PROJECT} is true AND sampleType <> 'TIMELINE-STATUS'"
-        )
-        redcap_to_cbiomappingdf = redcap_to_cbiomapping.asDataFrame()
-        data_tables = self.syn.tableQuery(
-            f"SELECT id, dataset FROM {self._DATA_TABLE_IDS} "
-        )
-        data_tablesdf = data_tables.asDataFrame()
+    def get_timeline_treatment(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-TREATMENT file data.
 
-        patient_sample_idx = redcap_to_cbiomappingdf["sampleType"].isin(
-            ["PATIENT", "SAMPLE", "SURVIVAL"]
-        )
-        # Patient and Sample mapping values
-        infodf = redcap_to_cbiomappingdf[patient_sample_idx].merge(
-            data_tablesdf, on="dataset", how="left"
-        )
-        infodf.index = infodf["code"]
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
 
-        # Regimen mapping values
-        regimen_idx = redcap_to_cbiomappingdf["sampleType"].isin(["REGIMEN"])
-        regimen_infodf = redcap_to_cbiomappingdf[regimen_idx].merge(
-            data_tablesdf, on="dataset", how="left"
+        Returns:
+            dict: TIMELINE-TREATMENT data
+        """
+
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-TREATMENT"').merge(
+            df_file, on="dataset", how="left"
         )
-        regimen_infodf.index = regimen_infodf["code"]
-        # Create timeline column mapping, merges _REDCAP_TO_CBIOMAPPING_SYNID
-        # with _DATA_TABLE_IDS
-        timeline_infodf = redcap_to_cbiomappingdf[
-            ~patient_sample_idx & ~regimen_idx
-        ].merge(data_tablesdf, on="dataset", how="left")
-        # Add in rt_rt_int for TIMELINE-TREATMENT-RT STOP_DATE
+        timeline_infodf.index = timeline_infodf["code"]
+        treatment_data = self.make_timeline_treatmentdf(
+            timeline_infodf, "TIMELINE-TREATMENT"
+        )
+
+        return treatment_data
+
+    def get_timeline_treatment_rad(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-TREATMENT-RAD file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-TREATMENT-RAD data
+        """
+
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-TREATMENT-RT"').merge(
+            df_file, on="dataset", how="left"
+        )
         timeline_infodf = pd.concat(
             [
                 timeline_infodf,
@@ -1049,85 +1215,86 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 ),
             ]
         )
-        # Must do this, because index gets reset after appending
         timeline_infodf.index = timeline_infodf["code"]
-        # TODO: Must add sample retraction here, also check against main
-        # GENIE samples for timeline files...
-        print("TREATMENT")
-        # Create timeline treatment
-        treatment_data = self.make_timeline_treatmentdf(
-            timeline_infodf, "TIMELINE-TREATMENT"
-        )
 
-        if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
-            print("TREATMENT-RAD")
-            # TODO: Add rt_rt_int
-            treatment_rad_data = self.create_fixed_timeline_files(
-                timeline_infodf, "TIMELINE-TREATMENT-RT"
-            )
-            rad_df = treatment_rad_data["df"]
-            rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
-            rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
-            rad_df["EVENT_TYPE"] = "Treatment"
-            rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
-            del rad_df["INDEX_CANCER"]
-            del rad_df["TEMP"]
-            treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
-        treatment_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_treatment.txt"
+        treatment_rad_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-TREATMENT-RT"
         )
-        self.write_and_storedf(
-            treatment_data["df"], treatment_path, used_entities=treatment_data["used"]
-        )
+        rad_df = treatment_rad_data["df"]
+        rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
+        rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
+        rad_df["EVENT_TYPE"] = "Treatment"
+        rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
+        del rad_df["INDEX_CANCER"]
+        del rad_df["TEMP"]
 
-        # Create static timeline files
-        # Cancer dx
-        print("DX")
+        return rad_df
+
+    def get_timeline_dx(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> dict:
+        """Get TIMELINE-DX file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-DX data
+        """
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-DX"').merge(
+            df_file, on="dataset", how="left"
+        )
+        timeline_infodf.index = timeline_infodf["code"]
         cancerdx_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-DX", filter_start=False
         )
         cancerdx_data["df"] = fill_cancer_dx_start_date(cancerdx_data["df"])
-        cancerdx_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"
-        )
-        # There are patients >89 that don't have START_DATE.
-        # These must be removed
         cancerdx_data["df"] = cancerdx_data["df"][
             ~cancerdx_data["df"]["START_DATE"].isnull()
         ]
-        self.write_and_storedf(
-            cancerdx_data["df"], cancerdx_path, used_entities=cancerdx_data["used"]
-        )
+        return cancerdx_data
 
-        # Pathology Data
-        print("PATHOLOGY")
+    def get_timeline_pathology(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-PATHOLOGY file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-PATHOLOGY data
+        """
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-PATHOLOGY"').merge(
+            df_file, on="dataset", how="left"
+        )
+        timeline_infodf.index = timeline_infodf["code"]
         pathology_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-PATHOLOGY"
         )
-        pathology_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_pathology.txt"
-        )
-        self.write_and_storedf(
-            pathology_data["df"], pathology_path, used_entities=pathology_data["used"]
-        )
+        return pathology_data
 
-        # # Sample acquisition
-        # This is important because path_num_spec is needed
-        # timeline_infodf = timeline_infodf.append(
-        #     pd.DataFrame({"code": 'path_num_spec',
-        #                   'sampleType': 'TIMELINE-SAMPLE',
-        #                   'dataset': 'Pathology-report level dataset',
-        #                   'cbio': 'TEMP'},
-        #                  index=['path_num_spec'])
-        # )
-        print("SAMPLE-ACQUISITION")
+    def get_timeline_sample(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> dict:
+        """Get TIMELINE-SAMPLE file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-SAMPLE data
+        """
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-SAMPLE"').merge(
+            df_file, on="dataset", how="left"
+        )
+        timeline_infodf.index = timeline_infodf["code"]
         acquisition_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-SAMPLE"
         )
 
-        acquisition_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"
-        )
+        # acquisition_path = os.path.join(
+        #     self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"
+        # )
         # acquisitiondf = acquisition_data['df']
         # keep_idx = acquisitiondf['TEMP'] == acquisitiondf['PATH_PROC_NUMBER']
         # acquisitiondf.drop(columns="TEMP", inplace=True)
@@ -1137,118 +1304,174 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # self.create_fixed_timeline_files
         null_dates_idx = acquisition_data["df"]["START_DATE"].isnull()
         if null_dates_idx.any():
-            print(
+            logging.warning(
                 "timeline sample with null START_DATE: {}".format(
                     ", ".join(acquisition_data["df"]["SAMPLE_ID"][null_dates_idx])
                 )
             )
-        self.write_and_storedf(
-            acquisition_data["df"][~null_dates_idx],
-            acquisition_path,
-            used_entities=acquisition_data["used"],
+            acquisition_data["df"] = acquisition_data["df"][~null_dates_idx]
+        return acquisition_data
+
+    def get_timeline_medonc(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-MEDONC file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-MEDONC data
+        """
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-MEDONC"').merge(
+            df_file, on="dataset", how="left"
         )
-        # Medonc
-        print("MEDONC")
-        medonc_data = self.create_fixed_timeline_files(
+        timeline_infodf.index = timeline_infodf["code"]
+        dict_medonc = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-MEDONC"
         )
-        medonc_path = os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt")
-        self.write_and_storedf(
-            medonc_data["df"], medonc_path, used_entities=medonc_data["used"]
+        return dict_medonc
+
+    def get_timeline_imaging(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-IMAGING file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-IMAGING data
+        """
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-IMAGING"').merge(
+            df_file, on="dataset", how="left"
         )
-
-        # Imaging
-        print("IMAGING")
-
-        imaging_data = self.create_fixed_timeline_files(
+        timeline_infodf.index = timeline_infodf["code"]
+        dict_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-IMAGING"
         )
-        imaging_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_imaging.txt"
-        )
-        self.write_and_storedf(
-            imaging_data["df"], imaging_path, used_entities=imaging_data["used"]
-        )
+        return dict_data
 
-        # Sequencing
-        print("SEQUENCE")
+    def get_timeline_sequence(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-SEQUENCE file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-SEQUENCE data
+        """
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-SEQUENCE"').merge(
+            df_file, on="dataset", how="left"
+        )
+        timeline_infodf.index = timeline_infodf["code"]
         # GEN-94: Add these cancer level dataset fields to get the
         # index cancer dob_ca_dx_days value to calculate START_DATE
         # and dob_cpt_report_days value
-        timeline_infodf = pd.concat(
+        df_timeline = pd.concat(
             [
                 timeline_infodf,
-                pd.DataFrame([
-                    {
-                        "code": "redcap_ca_index",
-                        "sampleType": "TIMELINE-SEQUENCE",
-                        "dataset": "Cancer-level dataset",
-                        "cbio": "INDEX_CANCER",
-                        "id": "syn22296816",  # HACK: hard coded synapse id
-                    },
-                    {
-                        "code": "dob_ca_dx_days",
-                        "sampleType": "TIMELINE-SEQUENCE",
-                        "dataset": "Cancer-level dataset",
-                        "cbio": "CA_DX_DAYS",
-                        "id": "syn22296816",  # HACK: hard coded synapse id
-                    },
-                    {
-                        "code": "dob_cpt_report_days",
-                        "sampleType": "TIMELINE-SEQUENCE",
-                        "dataset": "Cancer panel test level dataset",
-                        "cbio": "DPT_REPORT_DAYS",
-                        "id": "syn22296816",  # HACK: hard coded synapse id
-                    }],
+                pd.DataFrame(
+                    [
+                        {
+                            "code": "redcap_ca_index",
+                            "sampleType": "TIMELINE-SEQUENCE",
+                            "dataset": "Cancer-level dataset",
+                            "cbio": "INDEX_CANCER",
+                            "id": "syn22296816",  # HACK: hard coded synapse id
+                        },
+                        {
+                            "code": "dob_ca_dx_days",
+                            "sampleType": "TIMELINE-SEQUENCE",
+                            "dataset": "Cancer-level dataset",
+                            "cbio": "CA_DX_DAYS",
+                            "id": "syn22296816",  # HACK: hard coded synapse id
+                        },
+                        {
+                            "code": "dob_cpt_report_days",
+                            "sampleType": "TIMELINE-SEQUENCE",
+                            "dataset": "Cancer panel test level dataset",
+                            "cbio": "DPT_REPORT_DAYS",
+                            "id": "syn22296816",  # HACK: hard coded synapse id
+                        },
+                    ],
                     index=["redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days"],
                 ),
             ]
         )
         sequence_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-SEQUENCE"
+            df_timeline, "TIMELINE-SEQUENCE"
         )
         # HACK: Manually calculate the START_DATE based on criteria defined
         # in GEN-94
-        sequence_data['df']['START_DATE']
-        seq_df = sequence_data['df']
-        index_seq_df = seq_df[seq_df['INDEX_CANCER'] == "Yes"]
-        index_seq_df['START_DATE'] = index_seq_df['DPT_REPORT_DAYS'] - index_seq_df['CA_DX_DAYS']
-        del seq_df['START_DATE']
-        seq_df = seq_df.merge(index_seq_df[['SAMPLE_ID', 'START_DATE']], on="SAMPLE_ID")
+        # sequence_data["df"]["START_DATE"]
+        seq_df = sequence_data["df"]
+        index_seq_df = seq_df[seq_df["INDEX_CANCER"] == "Yes"]
+        index_seq_df["START_DATE"] = (
+            index_seq_df["DPT_REPORT_DAYS"] - index_seq_df["CA_DX_DAYS"]
+        )
+        del seq_df["START_DATE"]
+        seq_df = seq_df.merge(index_seq_df[["SAMPLE_ID", "START_DATE"]], on="SAMPLE_ID")
         # Delete unneeded columns
-        del seq_df['DPT_REPORT_DAYS']
-        del seq_df['INDEX_CANCER']
-        del seq_df['CA_DX_DAYS']
+        del seq_df["DPT_REPORT_DAYS"]
+        del seq_df["INDEX_CANCER"]
+        del seq_df["CA_DX_DAYS"]
         # reorder Columns to match requirement
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(seq_df.columns.drop(cols_to_order).tolist())
         seq_df = seq_df[cols_to_order]
         seq_df.drop_duplicates(inplace=True)
+        sequence_data["df"] = seq_df
+        # sequence_path = os.path.join(
+        #     self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
+        # )
+        # self.write_and_storedf(
+        #     seq_df, sequence_path, used_entities=sequence_data["used"]
+        # )
 
-        sequence_path = os.path.join(
-            self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
-        )
-        self.write_and_storedf(
-            seq_df, sequence_path, used_entities=sequence_data["used"]
-        )
-        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
-            # Lab test
-            print("LABTEST")
-            lab_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
-            lab_path = os.path.join(
-                self._SPONSORED_PROJECT, "data_timeline_labtest.txt"
-            )
-            self.write_and_storedf(
-                lab_data["df"], lab_path, used_entities=sequence_data["used"]
-            )
+        return sequence_data
 
-        # supplemental clinical file
-        print("SURVIVAL")
-        # This is important because first_index_ca_days is needed
-        # For filtering
-        infodf = pd.concat(
+    def get_timeline_lab(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Get TIMELINE-LAB file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            pd.DataFrame: TIMELINE-LAB data
+        """
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-LAB"').merge(
+            df_file, on="dataset", how="left"
+        )
+        timeline_infodf.index = timeline_infodf["code"]
+        dict_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
+        return dict_data
+
+    def get_survival(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> dict:
+        """Get SURVIVAL file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: SURVIVAL data
+        """
+        df_info = df_map.query('sampleType == "SURVIVAL"').merge(
+            df_file, on="dataset", how="left"
+        )
+        df_info.index = df_info["code"]
+        df_info = pd.concat(
             [
-                infodf,
+                df_info,
                 pd.DataFrame(
                     {
                         "code": "first_index_ca_days",
@@ -1260,121 +1483,44 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 ),
             ]
         )
-        # Must do this because index gets reset
-        infodf.index = infodf["code"]
-        survival_infodf = infodf[infodf["sampleType"] == "SURVIVAL"]
-        survival_data = get_file_data(
-            self.syn, survival_infodf, "SURVIVAL", cohort=self._SPONSORED_PROJECT
+        df_info.index = df_info["code"]
+
+        df_info_survial = df_info[df_info["sampleType"] == "SURVIVAL"]
+        dict_data_survial = get_file_data(
+            self.syn, df_info_survial, "SURVIVAL", cohort=self._SPONSORED_PROJECT
         )
-        survivaldf = survival_data["df"]
-        final_survivaldf = self.configure_clinicaldf(survivaldf, survival_infodf)
+        df_raw_survival = dict_data_survial["df"]
+        df_final_survival = self.configure_clinicaldf(df_raw_survival, df_info_survial)
         # Only take rows where cancer index is null
-        final_survivaldf = final_survivaldf[final_survivaldf["CANCER_INDEX"].isnull()]
+        df_final_survival = df_final_survival[
+            df_final_survival["CANCER_INDEX"].isnull()
+        ]
         # Remove cancer index column
-        del final_survivaldf["CANCER_INDEX"]
+        del df_final_survival["CANCER_INDEX"]
         # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
         # tested on current survival data file and produces unique patient list
-        if "PFS_I_ADV_STATUS" in final_survivaldf.columns:
-            pfs_not_null_idx = ~final_survivaldf["PFS_I_ADV_STATUS"].isnull()
-            pfs_not_blank_idx = final_survivaldf["PFS_I_ADV_STATUS"] != ""
-            nondup_patients_idx = ~final_survivaldf["PATIENT_ID"].duplicated(keep=False)
-            final_survivaldf = final_survivaldf[
+        if "PFS_I_ADV_STATUS" in df_final_survival.columns:
+            pfs_not_null_idx = ~df_final_survival["PFS_I_ADV_STATUS"].isnull()
+            pfs_not_blank_idx = df_final_survival["PFS_I_ADV_STATUS"] != ""
+            nondup_patients_idx = ~df_final_survival["PATIENT_ID"].duplicated(
+                keep=False
+            )
+            df_final_survival = df_final_survival[
                 (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
             ]
-        print("PATIENT")
-        # Patient and sample files
-        patient_infodf = infodf[infodf["sampleType"] == "PATIENT"]
-        # Must get redcap_ca_index to grab only the index cancers
-        patient_infodf = pd.concat(
-            [
-                patient_infodf,
-                pd.DataFrame(
-                    {
-                        "code": "redcap_ca_index",
-                        "sampleType": "PATIENT",
-                        "dataset": "Cancer-level dataset",
-                    },
-                    index=["redcap_ca_index"],
-                ),
-            ],
-            ignore_index=True,
+
+        # Patient and Sample mapping values
+        patient_sample_idx = df_map["sampleType"].isin(
+            ["PATIENT", "SAMPLE", "SURVIVAL"]
         )
-        patient_infodf.index = patient_infodf["code"]
-        patient_data = get_file_data(
-            self.syn, patient_infodf, "PATIENT", cohort=self._SPONSORED_PROJECT
-        )
+        infodf = df_map[patient_sample_idx].merge(df_file, on="dataset", how="left")
+        infodf.index = infodf["code"]
 
-        patientdf = patient_data["df"]
-        # Subset by redcap_ca_index == Yes
-        patientdf = patientdf[patientdf["redcap_ca_index"] == "Yes"]
-        # remove columns after done with it
-        patientdf.drop(columns="redcap_ca_index", inplace=True)
-        final_patientdf = self.configure_clinicaldf(patientdf, infodf)
+        # Regimen mapping values
+        regimen_idx = df_map["sampleType"].isin(["REGIMEN"])
+        regimen_infodf = df_map[regimen_idx].merge(df_file, on="dataset", how="left")
+        regimen_infodf.index = regimen_infodf["code"]
 
-        print("SAMPLE")
-        sample_infodf = infodf[infodf["sampleType"] == "SAMPLE"]
-        sample_data = get_file_data(
-            self.syn, sample_infodf, "SAMPLE", cohort=self._SPONSORED_PROJECT
-        )
-        sampledf = sample_data["df"]
-        del sampledf["path_proc_number"]
-        # SAMPLE FILE
-        final_sampledf = self.configure_clinicaldf(sampledf, infodf)
-
-        # Only patients and samples that exist in the
-        # sponsored project uploads are going to be pulled into the SP project
-
-        # to_keep_patient_idx = final_patientdf["PATIENT_ID"].isin(
-        #     self.genie_clinicaldf["PATIENT_ID"]
-        # )
-        subset_patientdf = final_patientdf[
-            final_patientdf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
-        ]
-
-        # Fix patient duplicated values due to cancer index DOB
-        # Take the larger DX_LASTALIVE_INT_MOS value for all records
-        # TODO: check if its fine to drop this column
-        # subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
-        #                              ascending=False)
-        subset_patientdf.drop_duplicates("PATIENT_ID", inplace=True)
-
-        duplicated = subset_patientdf.PATIENT_ID.duplicated()
-        if duplicated.any():
-            print(
-                "DUPLICATED PATIENT_IDs: {}".format(
-                    ",".join(subset_patientdf["PATIENT_ID"][duplicated])
-                )
-            )
-
-        del subset_patientdf["SP"]
-        cols_to_order = ["PATIENT_ID"]
-        cols_to_order.extend(subset_patientdf.columns.drop(cols_to_order).tolist())
-        # HACK: Temporary remapping of specific values in a column
-        laterality_mapping = {
-            "0": "Not a paired site",
-            "1": "Right: origin of primary",
-            "2": "Left: origin of primary",
-            "3": "Only one side involved, right or left origin unspecified",
-            "4": "Bilateral involvement at time of diagnosis, lateral origin "
-            "unknown for a single primary; or both ovaries involved "
-            "simultaneously, single histology; bilateral retinoblastomas; "
-            "bilateral Wilms' tumors",
-            "5": "Paired site: midline tumor",
-            "9": "Paired site, but no information concerning laterality",
-            "Not paired": "Not a paired site",
-        }
-        if subset_patientdf.get("NAACCR_LATERALITY_CD") is not None:
-            remapped_values = (
-                subset_patientdf["NAACCR_LATERALITY_CD"]
-                .astype(str)
-                .map(laterality_mapping)
-            )
-            subset_patientdf["NAACCR_LATERALITY_CD"] = remapped_values
-
-        # Write patient file out
-        patient_path = self.write_clinical_file(
-            subset_patientdf[cols_to_order], infodf, "patient"
-        )
         # Create regimens data for patient file
         drug_mapping = get_drug_mapping(
             syn=self.syn,
@@ -1391,18 +1537,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         survival_info = pd.concat([infodf, regimens_data["info"]])
-
-        # Create survival data
-        subset_survivaldf = final_survivaldf[
-            final_survivaldf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+        # Only patients and samples that exist in the
+        # sponsored project uploads are going to be pulled into the SP project
+        subset_survivaldf = df_final_survival[
+            df_final_survival["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
         del subset_survivaldf["SP"]
-        # subset_survivaldf = subset_survivaldf.merge(
-        #     regimens_data['df'], on="PATIENT_ID", how="left"
-        # )
-        # Must change the values in OS and PFS columns from
-        # integer to (status:label)
-        # TODO: put remapping of os values in helper function
         os_pfs_cols = [
             col
             for col in subset_survivaldf.columns
@@ -1412,43 +1552,149 @@ class BpcProjectRunner(metaclass=ABCMeta):
         subset_survivaldf.replace(remap_os_values, inplace=True)
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
-        # Order is maintained in the derived variables file so just drop
-        # Duplicates
-        # subset_survivaldf.drop_duplicates("PATIENT_ID", inplace=True)
-        survival_path = self.write_clinical_file(
-            subset_survivaldf[cols_to_order], survival_info, "supp_survival"
+
+        return {"df": subset_survivaldf[cols_to_order], "survival_info": survival_info}
+
+    def get_survival_treatment(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Get SURVIVAL and REGIMEN file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            pd.DataFrame: SURVIVAL and REGIMEN data
+        """
+        # Regimen mapping values
+        regimen_infodf = df_map.query('sampleType == "REGIMEN"').merge(
+            df_file, on="dataset", how="left"
         )
-        # survival treatment
-        survival_treatmentdf = regimens_data["df"]
+        regimen_infodf.index = regimen_infodf["code"]
+
+        drug_mapping = get_drug_mapping(
+            syn=self.syn,
+            cohort=self._SPONSORED_PROJECT,
+            synid_file_grs=self._GRS_SYNID,
+            synid_table_prissmm=self._PRISSMM_SYNID,
+        )
+        regimens_data = create_regimens(
+            self.syn,
+            regimen_infodf,
+            mapping=drug_mapping,
+            top_x_regimens=20,
+            cohort=self._SPONSORED_PROJECT,
+        )
+
+        df_survival_treatment = regimens_data["df"]
         os_pfs_cols = [
             col
-            for col in survival_treatmentdf.columns
+            for col in df_survival_treatment.columns
             if col.startswith(("OS", "PFS")) and col.endswith("STATUS")
         ]
         remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"} for col in os_pfs_cols}
-        survival_treatmentdf.replace(remap_os_values, inplace=True)
+        df_survival_treatment.replace(remap_os_values, inplace=True)
         cols_to_order = ["PATIENT_ID"]
-        cols_to_order.extend(survival_treatmentdf.columns.drop(cols_to_order).tolist())
+        cols_to_order.extend(df_survival_treatment.columns.drop(cols_to_order).tolist())
         # Retract patients from survival treatment file
-        survival_treatmentdf = survival_treatmentdf[
-            survival_treatmentdf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+        df_survival_treatment = df_survival_treatment[
+            df_survival_treatment["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
-        # Order is maintained in the derived variables file so just drop
-        # Duplicates
-        # survival_treatmentdf.drop_duplicates("PATIENT_ID", inplace=True)
-        surv_treatment_path = self.write_clinical_file(
-            survival_treatmentdf[cols_to_order],
-            survival_info,
-            "supp_survival_treatment",
+        return df_survival_treatment[cols_to_order]
+
+    def get_patient(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
+        """Patient data file.
+
+        Custom rule: Fix patient duplicated values due to cancer index DOB
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            pd.DataFrame: PATIENT data
+        """
+        df_info_patient = df_map.query('sampleType == "PATIENT"').merge(
+            df_file, on="dataset", how="left"
+        )
+        df_info_patient.index = df_info_patient["code"]
+        df_info_patient = pd.concat(
+            [
+                df_info_patient,
+                pd.DataFrame(
+                    {
+                        "code": "redcap_ca_index",
+                        "sampleType": "PATIENT",
+                        "dataset": "Cancer-level dataset",
+                    },
+                    index=["redcap_ca_index"],
+                ),
+            ],
+            ignore_index=True,
+        )
+        df_info_patient.index = df_info_patient["code"]
+
+        dict_patient = get_file_data(
+            self.syn, df_info_patient, "PATIENT", cohort=self._SPONSORED_PROJECT
         )
 
-        subset_sampledf = final_sampledf[
-            final_sampledf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+        df_patient = dict_patient["df"]
+        df_patient = df_patient[df_patient["redcap_ca_index"] == "Yes"]
+        df_patient.drop(columns="redcap_ca_index", inplace=True)
+        df_patient_final = self.configure_clinicaldf(df_patient, df_info_patient)
+
+        df_patient_subset = df_patient_final[
+            df_patient_final["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
-        del subset_sampledf["SP"]
-        # TODO: add YEARS
-        # days_to_years_col = ['AGE_AT_SEQ_REPORT_YEARS',
-        #                      'CPT_ORDER_INT', 'CPT_REPORT_INT']
+
+        # Fix patient duplicated values due to cancer index DOB
+        # Take the larger DX_LASTALIVE_INT_MOS value for all records
+        # subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
+        #                              ascending=False)
+        df_patient_subset.drop_duplicates("PATIENT_ID", inplace=True)
+        duplicated = df_patient_subset.PATIENT_ID.duplicated()
+        if duplicated.any():
+            logging.warning(
+                "DUPLICATED PATIENT_IDs: {}".format(
+                    ",".join(df_patient_subset["PATIENT_ID"][duplicated])
+                )
+            )
+
+        del df_patient_subset["SP"]
+        cols_to_order = ["PATIENT_ID"]
+        cols_to_order.extend(df_patient_subset.columns.drop(cols_to_order).tolist())
+
+        df_patient_subset = hack_remap_laterality(df_patient_subset=df_patient_subset)
+
+        return df_patient_subset[cols_to_order]
+
+    def get_sample(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
+        """SAMPLE data file
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            pd.DataFrame: SAMPLE data
+        """
+        df_info_sample = df_map.query('sampleType == "SAMPLE"').merge(
+            df_file, on="dataset", how="left"
+        )
+        df_info_sample.index = df_info_sample["code"]
+        dict_sample = get_file_data(
+            self.syn, df_info_sample, "SAMPLE", cohort=self._SPONSORED_PROJECT
+        )
+
+        df_sample = dict_sample["df"]
+        del df_sample["path_proc_number"]
+        df_sample_final = self.configure_clinicaldf(df_sample, df_info_sample)
+
+        df_sample_subset = df_sample_final[
+            df_sample_final["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+        ]
+        del df_sample_subset["SP"]
         days_to_years_col = [
             "AGE_AT_SEQ_REPORT_YEARS",
             "CPT_ORDER_INT",
@@ -1456,36 +1702,38 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ]
         for col in days_to_years_col:
             # not all columns could exist, so check if column exists
-            if col in subset_sampledf:
-                years = subset_sampledf[col].apply(change_days_to_years)
-                subset_sampledf[col] = years
-        subset_sampledf["AGE_AT_SEQUENCING"] = subset_sampledf[
+            if col in df_sample_subset:
+                years = df_sample_subset[col].apply(change_days_to_years)
+                df_sample_subset[col] = years
+        df_sample_subset["AGE_AT_SEQUENCING"] = df_sample_subset[
             "AGE_AT_SEQUENCING"
         ].apply(math.floor)
         # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
-        del subset_sampledf["CPT_SEQ_DATE"]
+        del df_sample_subset["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
-        subset_sampledf = subset_sampledf.merge(
+        df_sample_subset = df_sample_subset.merge(
             self.genie_clinicaldf[["SAMPLE_ID", "SEQ_YEAR"]],
             on="SAMPLE_ID",
             how="left",
         )
-        subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
-        # Remove duplicated samples due to PDL1
-        # Keep only one sample in this priority
-        # PDL1_POSITIVE_ANY: Yes
-        # PDL1_POSITIVE_ANY: No
-        # PDL1_POSITIVE_ANY: <blank>
-        subset_sampledf.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
-        subset_sampledf.drop_duplicates("SAMPLE_ID", inplace=True)
-        # duplicated = subset_sampledf.SAMPLE_ID.duplicated()
-        # if duplicated.any():
-        #     # TODO: Add in duplicated ids
-        #     print("DUPLICATED SAMPLE_IDs")
-        # There are duplicated samples
-        # subset_sampledf = subset_sampledf[~duplicated]
-        sample_path = self.write_clinical_file(subset_sampledf, infodf, "sample")
+        df_sample_subset.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
+        df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
+        df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
 
+        return df_sample_subset
+
+    def create_and_write_case_lists(
+        self, subset_sampledf: pd.DataFrame, subset_patientdf: pd.DataFrame, used: list
+    ) -> None:
+        """Create, write, and, if applicable, store case list files.
+
+        Args:
+            subset_sampledf: Dataframe of sample information
+            subset_patientdf: Dataframe of patient information
+            used: Synapse IDs used to construct the case file data.
+        """
+        # Merged clinical file is created here because it is needed
+        # for the case lists
         # Remove oncotree code here, because no longer need it
         merged_clinicaldf = subset_sampledf.merge(
             subset_patientdf, on="PATIENT_ID", how="outer"
@@ -1511,11 +1759,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 not_found_samples.to_csv("notfoundsamples.csv")
                 if not self.staging:
                     self.syn.store(
-                        synapseclient.File(
+                        File(
                             "notfoundsamples.csv", parent=self._SP_REDCAP_EXPORTS_SYNID
                         )
                     )
-
         # Hard coded most up to date oncotree version
         oncotreelink = self.syn.get("syn13890902").externalURL
         # Use the old oncotree link for now
@@ -1523,7 +1770,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         oncotreelink = (
             "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
         )
-        oncotree_dict = genie.process_functions.get_oncotree_code_mappings(oncotreelink)
+        oncotree_dict = process_functions.get_oncotree_code_mappings(oncotreelink)
         # Map cancer type and cancer type detailed
         # This is to create case list files
         merged_clinicaldf["CANCER_TYPE"] = [
@@ -1549,43 +1796,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             index=False,
             sep="\t",
         )
-        if not self.staging:
-            patient_fileent = File(patient_path, parent=self._SP_SYN_ID)
-            patient_ent = self.syn.store(
-                patient_fileent, used=patient_data["used"], executed=self._GITHUB_REPO
-            )
 
-            sample_fileent = File(sample_path, parent=self._SP_SYN_ID)
-            sample_ent = self.syn.store(
-                sample_fileent, used=sample_data["used"], executed=self._GITHUB_REPO
-            )
-
-            survival_fileent = File(survival_path, parent=self._SP_SYN_ID)
-            used = survival_data["used"]
-            used.append(regimens_data["used"])
-            survival_ent = self.syn.store(
-                survival_fileent, used=used, executed=self._GITHUB_REPO
-            )
-
-            survival_treatment_fileent = File(
-                surv_treatment_path, parent=self._SP_SYN_ID
-            )
-            used = survival_data["used"]
-            used.append(regimens_data["used"])
-            survival_treatment_fileent = self.syn.store(
-                survival_treatment_fileent, used=used, executed=self._GITHUB_REPO
-            )
-        self.create_maf(subset_sampledf["SAMPLE_ID"])
-
-        cna_samples = self.create_cna(subset_sampledf["SAMPLE_ID"])
-
-        self.create_genematrixdf(subset_sampledf, cna_samples)
-
-        self.create_fusion(subset_sampledf["SAMPLE_ID"])
-
-        self.create_seg(subset_sampledf["SAMPLE_ID"])
-
-        self.create_sv(subset_sampledf["SAMPLE_ID"])
         # Create case lists
         case_list_path = os.path.join(self._SPONSORED_PROJECT, "case_lists")
 
@@ -1599,7 +1810,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Write out cases sequenced so people can tell
         # which samples were sequenced
         assay_info = self.syn.tableQuery(
-            "select * from syn17009222", includeRowIdAndRowVersion=False, separator="\t"
+            f"select * from {self._ASSAY_SYNID}",
+            includeRowIdAndRowVersion=False,
+            separator="\t",
         )
         create_case_lists.main(
             os.path.join(self._SPONSORED_PROJECT, "data_clinical.txt"),
@@ -1615,15 +1828,239 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 file_ent = File(casepath, parent=self._CASE_LIST_SYN_ID)
                 self.syn.store(
                     file_ent,
-                    used=[patient_ent.id, sample_ent.id],
+                    used=used,
                     executed=self._GITHUB_REPO,
                 )
 
-        # Create gene panel files
-        self.create_gene_panels(subset_sampledf["SEQ_ASSAY_ID"].unique())
-        # Create metadata files
+    def run(self):
+        """Runs the redcap export to export all files"""
+
+        logging.info("creating release folders...")
+        create_release_folders(cohort=self._SPONSORED_PROJECT)
+
+        logging.info("reading variable to cBio mapping...")
+        redcap_to_cbiomappingdf = get_bpc_to_cbio_mapping_df(
+            self.syn,
+            cohort=self._SPONSORED_PROJECT,
+            synid_table_cbio=self._REDCAP_TO_CBIOMAPPING_SYNID,
+        )
+
+        logging.info("reading and dataset label mappings...")
+        data_tablesdf = get_data_file_synapse_id_df(
+            syn=self.syn, synid_table_files=self._DATA_TABLE_IDS
+        )
+
+        logging.info("writing TIMELINE-TREATMENT...")
+        treatment_data = self.get_timeline_treatment(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
+            logging.info("writing TIMELINE-TREATMENT-RT...")
+            rad_df = self.get_timeline_treatment_rad(
+                df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+            )
+            treatment_data["df"] = pd.concat([treatment_data["df"], rad_df])
+        else:
+            logging.info("skipping TIMELINE-TREATMENT-RT")
+        self.write_and_storedf(
+            treatment_data["df"],
+            os.path.join(self._SPONSORED_PROJECT, "data_timeline_treatment.txt"),
+            used_entities=treatment_data["used"],
+        )
+
+        logging.info("writing TIMELINE-DX...")
+        cancerdx_data = self.get_timeline_dx(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            cancerdx_data["df"],
+            os.path.join(self._SPONSORED_PROJECT, "data_timeline_cancer_diagnosis.txt"),
+            used_entities=cancerdx_data["used"],
+        )
+
+        logging.info("writing TIMELINE-PATHOLOGY...")
+        pathology_data = self.get_timeline_pathology(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            pathology_data["df"],
+            os.path.join(self._SPONSORED_PROJECT, "data_timeline_pathology.txt"),
+            used_entities=pathology_data["used"],
+        )
+
+        logging.info("writing TIMELINE-SAMPLE...")
+        acquisition_data = self.get_timeline_sample(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            acquisition_data["df"],
+            os.path.join(
+                self._SPONSORED_PROJECT, "data_timeline_sample_acquisition.txt"
+            ),
+            used_entities=acquisition_data["used"],
+        )
+
+        logging.info("writing TIMELINE-MEDONC...")
+        medonc_data = self.get_timeline_medonc(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            medonc_data["df"],
+            os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt"),
+            used_entities=medonc_data["used"],
+        )
+
+        logging.info("writing TIMELINE-IMAGING...")
+        imaging_data = self.get_timeline_imaging(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            imaging_data["df"],
+            os.path.join(self._SPONSORED_PROJECT, "data_timeline_imaging.txt"),
+            used_entities=imaging_data["used"],
+        )
+
+        logging.info("writing TIMELINE-SEQUENCE...")
+        sequence_data = self.get_timeline_sequence(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            df=sequence_data["df"],
+            filepath=os.path.join(
+                self._SPONSORED_PROJECT, "data_timeline_sequencing.txt"
+            ),
+            used_entities=sequence_data["used"],
+        )
+
+        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
+            logging.info("writing TIMELINE-LABTEST...")
+            lab_data = self.get_timeline_lab(
+                df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+            )
+            self.write_and_storedf(
+                df=lab_data["df"],
+                filepath=os.path.join(
+                    self._SPONSORED_PROJECT, "data_timeline_labtest.txt"
+                ),
+                used_entities=lab_data["used"],
+            )
+        else:
+            logging.info("skipping TIMELINE-LABTEST...")
+
+        logging.info("writing CLINICAL-SURVIVAL...")
+        final_survival_data = self.get_survival(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        survival_path = self.write_clinical_file(
+            final_survival_data["df"],
+            final_survival_data["survival_info"],
+            "supp_survival",
+        )
+        # TODO: Fix this
+        # survival_used = get_synid_data(
+        #     syn=self.syn,
+        #     df_map=redcap_to_cbiomappingdf,
+        #     df_file=data_tablesdf,
+        #     sampletype=["SURVIVAL", "REGIMEN"],
+        #     cohort=self._SPONSORED_PROJECT,
+        # )
+        if not self.staging:
+            survival_fileent = File(survival_path, parent=self._SP_SYN_ID)
+            # survival_used = get_synid_data(
+            #     syn=self.syn,
+            #     df_map=redcap_to_cbiomappingdf,
+            #     df_file=data_tablesdf,
+            #     sampletype=["SURVIVAL", "REGIMEN"],
+            #     cohort=self._SPONSORED_PROJECT,
+            # )
+            survival_ent = self.syn.store(
+                survival_fileent, used=survival_used, executed=self._GITHUB_REPO
+            )
+
+        logging.info("writing CLINICAL-SURVIVAL-TREATMENT...")
+        df_survival_treatment = self.get_survival_treatment(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        surv_treatment_path = self.write_clinical_file(
+            df_survival_treatment,
+            final_survival_data["survival_info"],
+            "supp_survival_treatment",
+        )
+        if not self.staging:
+            survival_treatment_fileent = File(
+                surv_treatment_path, parent=self._SP_SYN_ID
+            )
+            survival_treatment_fileent = self.syn.store(
+                survival_treatment_fileent,
+                used=survival_used,
+                executed=self._GITHUB_REPO,
+            )
+
+        logging.info("writing CLINICAL-SAMPLE...")
+        df_sample_final = self.get_sample(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        sample_path = self.write_clinical_file(
+            df_sample_final, final_survival_data["survival_info"], "sample"
+        )
+        if not self.staging:
+            sample_fileent = File(sample_path, parent=self._SP_SYN_ID)
+            sample_used = get_synid_data(
+                syn=self.syn,
+                df_map=redcap_to_cbiomappingdf,
+                df_file=data_tablesdf,
+                sampletype=["SAMPLE"],
+                cohort=self._SPONSORED_PROJECT,
+            )
+            sample_ent = self.syn.store(
+                sample_fileent, used=sample_used, executed=self._GITHUB_REPO
+            )
+
+        logging.info("writing CLINICAL-PATIENT...")
+        df_patient_final = self.get_patient(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        patient_path = self.write_clinical_file(
+            df_patient_final, final_survival_data["survival_info"], "patient"
+        )
+        if not self.staging:
+            logging.info("uploading clinical data files to Synapse...")
+            patient_fileent = File(patient_path, parent=self._SP_SYN_ID)
+            patient_used = get_synid_data(
+                syn=self.syn,
+                df_map=redcap_to_cbiomappingdf,
+                df_file=data_tablesdf,
+                sampletype=["PATIENT"],
+                cohort=self._SPONSORED_PROJECT,
+            )
+            patient_ent = self.syn.store(
+                patient_fileent, used=patient_used, executed=self._GITHUB_REPO
+            )
+
+        logging.info("writing genomic data files...")
+        self.create_and_write_maf(df_sample_final["SAMPLE_ID"])
+        dict_cna = self.create_and_write_cna(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_genematrix(df_sample_final, dict_cna["cna_samples"])
+        self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_seg(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_sv(df_sample_final["SAMPLE_ID"])
+        # TODO: Fix this
+        # TODO: do retractions
+        # ids = get_synid_data(
+        #         syn=self.syn,
+        #         df_map=redcap_to_cbiomappingdf,
+        #         df_file=data_tablesdf,
+        #         sampletype=["PATIENT", "SAMPLE"],
+        #         cohort=self._SPONSORED_PROJECT,
+        #     )
+        ids = []
+        self.create_and_write_case_lists(
+            subset_sampledf=df_sample_final, subset_patientdf=df_patient_final, used=ids
+        )
+        self.create_and_write_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
+
+        logging.info("writing metadata files...")
         metadata_files = self.create_bpc_cbio_metafiles()
-        # must store metadata files if not staging
         if not self.staging:
             for metadata_file in metadata_files:
                 file_ent = File(metadata_file, parent=self._SP_SYN_ID)
@@ -1632,6 +2069,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     executed=self._GITHUB_REPO,
                 )
 
+        logging.info("cBioPortal validation")
         cmd = [
             "python",
             os.path.join(
