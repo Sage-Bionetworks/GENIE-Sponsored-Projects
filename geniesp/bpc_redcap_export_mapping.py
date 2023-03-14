@@ -109,7 +109,6 @@ def get_file_data(
 
 
 def get_synid_data(
-    syn: Synapse,
     df_map: pd.DataFrame,
     df_file: pd.DataFrame,
     sampletype: list,
@@ -119,17 +118,16 @@ def get_synid_data(
     sample type data frames.
 
     Args:
-        syn (Synapse): Synapse connection
         df_map (pd.DataFrame): REDCap to cBioPortal mapping data frame
         df_file (pd.DataFrame): Synapse ID to dataset label data frame
         sampletype (list): list of sample type labels
         cohort (str): cohort label
 
     Returns:
-        List: _description_
+        List: List of used synapse ids
     """
     datasets = df_map[
-        df_map["sampleType"].isin(sampletype) and df_map[cohort] == "true"
+        (df_map["sampleType"].isin(sampletype)) & (df_map[cohort])
     ]["dataset"].unique()
     used = df_file[df_file["dataset"].isin(datasets)]["id"]
     return list(used)
@@ -1741,7 +1739,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
         # Make sure there are no missing sample ids
         if sum(missing_sample_idx) > 0:
-            print(
+            logging.info(
                 "MISSING SAMPLE_ID for: {}".format(
                     ",".join(merged_clinicaldf["PATIENT_ID"][missing_sample_idx])
                 )
@@ -1750,12 +1748,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         # upload samples that are not part of the main GENIE cohort
         if merged_clinicaldf.get("SAMPLE_ID") is not None:
-            print("Samples not in GENIE clinical databases (SP and normal)")
+            logging.info("Samples not in GENIE clinical databases (SP and normal)")
             not_found_samples = merged_clinicaldf["SAMPLE_ID"][
                 ~merged_clinicaldf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
             ]
             if not not_found_samples.empty:
-                print(not_found_samples[~not_found_samples.isnull()])
+                logging.info(not_found_samples[~not_found_samples.isnull()])
                 not_found_samples.to_csv("notfoundsamples.csv")
                 if not self.staging:
                     self.syn.store(
@@ -1956,23 +1954,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
             final_survival_data["survival_info"],
             "supp_survival",
         )
-        # TODO: Fix this
-        # survival_used = get_synid_data(
-        #     syn=self.syn,
-        #     df_map=redcap_to_cbiomappingdf,
-        #     df_file=data_tablesdf,
-        #     sampletype=["SURVIVAL", "REGIMEN"],
-        #     cohort=self._SPONSORED_PROJECT,
-        # )
+        survival_used = get_synid_data(
+            df_map=redcap_to_cbiomappingdf,
+            df_file=data_tablesdf,
+            sampletype=["SURVIVAL", "REGIMEN"],
+            cohort=self._SPONSORED_PROJECT,
+        )
         if not self.staging:
             survival_fileent = File(survival_path, parent=self._SP_SYN_ID)
-            # survival_used = get_synid_data(
-            #     syn=self.syn,
-            #     df_map=redcap_to_cbiomappingdf,
-            #     df_file=data_tablesdf,
-            #     sampletype=["SURVIVAL", "REGIMEN"],
-            #     cohort=self._SPONSORED_PROJECT,
-            # )
             survival_ent = self.syn.store(
                 survival_fileent, used=survival_used, executed=self._GITHUB_REPO
             )
@@ -2006,7 +1995,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         if not self.staging:
             sample_fileent = File(sample_path, parent=self._SP_SYN_ID)
             sample_used = get_synid_data(
-                syn=self.syn,
                 df_map=redcap_to_cbiomappingdf,
                 df_file=data_tablesdf,
                 sampletype=["SAMPLE"],
@@ -2027,7 +2015,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
             logging.info("uploading clinical data files to Synapse...")
             patient_fileent = File(patient_path, parent=self._SP_SYN_ID)
             patient_used = get_synid_data(
-                syn=self.syn,
                 df_map=redcap_to_cbiomappingdf,
                 df_file=data_tablesdf,
                 sampletype=["PATIENT"],
@@ -2044,16 +2031,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
         self.create_and_write_seg(df_sample_final["SAMPLE_ID"])
         self.create_and_write_sv(df_sample_final["SAMPLE_ID"])
-        # TODO: Fix this
-        # TODO: do retractions
-        # ids = get_synid_data(
-        #         syn=self.syn,
-        #         df_map=redcap_to_cbiomappingdf,
-        #         df_file=data_tablesdf,
-        #         sampletype=["PATIENT", "SAMPLE"],
-        #         cohort=self._SPONSORED_PROJECT,
-        #     )
-        ids = []
+
+        ids = get_synid_data(
+                df_map=redcap_to_cbiomappingdf,
+                df_file=data_tablesdf,
+                sampletype=["PATIENT", "SAMPLE"],
+                cohort=self._SPONSORED_PROJECT,
+            )
         self.create_and_write_case_lists(
             subset_sampledf=df_sample_final, subset_patientdf=df_patient_final, used=ids
         )
