@@ -1175,9 +1175,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             pd.DataFrame: TIMELINE-TREATMENT data
         """
 
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-TREATMENT"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-TREATMENT"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
         treatment_data = self.make_timeline_treatmentdf(
@@ -1199,9 +1198,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             pd.DataFrame: TIMELINE-TREATMENT-RAD data
         """
 
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-TREATMENT-RT"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-TREATMENT-RT"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf = pd.concat(
             [
@@ -1242,9 +1240,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: TIMELINE-DX data
         """
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-DX"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-DX"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
         cancerdx_data = self.create_fixed_timeline_files(
@@ -1268,9 +1265,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: TIMELINE-PATHOLOGY data
         """
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-PATHOLOGY"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-PATHOLOGY"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
         pathology_data = self.create_fixed_timeline_files(
@@ -1288,9 +1284,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: TIMELINE-SAMPLE data
         """
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-SAMPLE"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-SAMPLE"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
         acquisition_data = self.create_fixed_timeline_files(
@@ -1343,12 +1338,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: TIMELINE-MEDONC data
         """
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-MEDONC"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-MEDONC"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
-        dict_medonc = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-MEDONC")
+        dict_medonc = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-MEDONC"
+        )
         return dict_medonc
 
     def get_timeline_imaging(
@@ -1363,12 +1359,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: TIMELINE-IMAGING data
         """
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-IMAGING"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-IMAGING"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
-        dict_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-IMAGING")
+        dict_data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-IMAGING"
+        )
         return dict_data
 
     def get_timeline_sequence(
@@ -1383,9 +1380,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: TIMELINE-SEQUENCE data
         """
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-SEQUENCE"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-SEQUENCE"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
         # GEN-94: Add these cancer level dataset fields to get the
@@ -1466,9 +1462,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: TIMELINE-LAB data
         """
-        timeline_infodf = (
-            df_map.query('sampleType == "TIMELINE-LAB"')
-            .merge(df_file, on="dataset", how="left")
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-LAB"').merge(
+            df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
         dict_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
@@ -1484,9 +1479,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             dict: SURVIVAL data
         """
-        df_info = (
-            df_map.query('sampleType == "SURVIVAL"')
-            .merge(df_file, on="dataset", how="left")
+        df_info = df_map.query('sampleType == "SURVIVAL"').merge(
+            df_file, on="dataset", how="left"
         )
         df_info.index = df_info["code"]
         df_info = pd.concat(
@@ -1613,9 +1607,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             pd.DataFrame: SURVIVAL and REGIMEN data
         """
         # Regimen mapping values
-        regimen_infodf = (
-            df_map.query('sampleType == "REGIMEN"')
-            .merge(df_file, on="dataset", how="left")
+        regimen_infodf = df_map.query('sampleType == "REGIMEN"').merge(
+            df_file, on="dataset", how="left"
         )
         regimen_infodf.index = regimen_infodf["code"]
 
@@ -1645,7 +1638,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(df_survival_treatment.columns.drop(cols_to_order).tolist())
         return df_survival_treatment[cols_to_order]
 
-
     def get_patient(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
         """Patient data file.
 
@@ -1659,9 +1651,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: PATIENT data
         """
-        df_info_patient = (
-            df_map.query('sampleType == "PATIENT"')
-            .merge(df_file, on="dataset", how="left")
+        df_info_patient = df_map.query('sampleType == "PATIENT"').merge(
+            df_file, on="dataset", how="left"
         )
         df_info_patient.index = df_info_patient["code"]
         df_info_patient = pd.concat(
@@ -1720,54 +1711,53 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: SAMPLE data
         """
-    #     subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
-    #     # Remove duplicated samples due to PDL1
-    #     # Keep only one sample in this priority
-    #     # PDL1_POSITIVE_ANY: Yes
-    #     # PDL1_POSITIVE_ANY: No
-    #     # PDL1_POSITIVE_ANY: <blank>
-    #     subset_sampledf.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
-    #     subset_sampledf.drop_duplicates("SAMPLE_ID", inplace=True)
-    #     # duplicated = subset_sampledf.SAMPLE_ID.duplicated()
-    #     # if duplicated.any():
-    #     #     # TODO: Add in duplicated ids
-    #     #     print("DUPLICATED SAMPLE_IDs")
-    #     # There are duplicated samples
-    #     # subset_sampledf = subset_sampledf[~duplicated]
-    #     sample_path = self.write_clinical_file(subset_sampledf, infodf, "sample")
+        #     subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
+        #     # Remove duplicated samples due to PDL1
+        #     # Keep only one sample in this priority
+        #     # PDL1_POSITIVE_ANY: Yes
+        #     # PDL1_POSITIVE_ANY: No
+        #     # PDL1_POSITIVE_ANY: <blank>
+        #     subset_sampledf.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
+        #     subset_sampledf.drop_duplicates("SAMPLE_ID", inplace=True)
+        #     # duplicated = subset_sampledf.SAMPLE_ID.duplicated()
+        #     # if duplicated.any():
+        #     #     # TODO: Add in duplicated ids
+        #     #     print("DUPLICATED SAMPLE_IDs")
+        #     # There are duplicated samples
+        #     # subset_sampledf = subset_sampledf[~duplicated]
+        #     sample_path = self.write_clinical_file(subset_sampledf, infodf, "sample")
 
-    #     # Remove oncotree code here, because no longer need it
-    #     merged_clinicaldf = subset_sampledf.merge(
-    #         subset_patientdf, on="PATIENT_ID", how="outer"
-    #     )
-    #     missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
-    #     # Make sure there are no missing sample ids
-    #     if sum(missing_sample_idx) > 0:
-    #         print(
-    #             "MISSING SAMPLE_ID for: {}".format(
-    #                 ",".join(merged_clinicaldf["PATIENT_ID"][missing_sample_idx])
-    #             )
-    #         )
-    #         merged_clinicaldf = merged_clinicaldf[~missing_sample_idx]
+        #     # Remove oncotree code here, because no longer need it
+        #     merged_clinicaldf = subset_sampledf.merge(
+        #         subset_patientdf, on="PATIENT_ID", how="outer"
+        #     )
+        #     missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
+        #     # Make sure there are no missing sample ids
+        #     if sum(missing_sample_idx) > 0:
+        #         print(
+        #             "MISSING SAMPLE_ID for: {}".format(
+        #                 ",".join(merged_clinicaldf["PATIENT_ID"][missing_sample_idx])
+        #             )
+        #         )
+        #         merged_clinicaldf = merged_clinicaldf[~missing_sample_idx]
 
-    #     # upload samples that are not part of the main GENIE cohort
-    #     if merged_clinicaldf.get("SAMPLE_ID") is not None:
-    #         print("Samples not in GENIE clinical databases (SP and normal)")
-    #         not_found_samples = merged_clinicaldf["SAMPLE_ID"][
-    #             ~merged_clinicaldf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
-    #         ]
-    #         if not not_found_samples.empty:
-    #             print(not_found_samples[~not_found_samples.isnull()])
-    #             not_found_samples.to_csv("notfoundsamples.csv")
-    #             if not self.staging:
-    #                 self.syn.store(
-    #                     synapseclient.File(
-    #                         "notfoundsamples.csv", parent=self._SP_REDCAP_EXPORTS_SYNID
-    #                     )
-    #                 )
-        df_info_sample = (
-            df_map.query('sampleType == "SAMPLE"')
-            .merge(df_file, on="dataset", how="left")
+        #     # upload samples that are not part of the main GENIE cohort
+        #     if merged_clinicaldf.get("SAMPLE_ID") is not None:
+        #         print("Samples not in GENIE clinical databases (SP and normal)")
+        #         not_found_samples = merged_clinicaldf["SAMPLE_ID"][
+        #             ~merged_clinicaldf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+        #         ]
+        #         if not not_found_samples.empty:
+        #             print(not_found_samples[~not_found_samples.isnull()])
+        #             not_found_samples.to_csv("notfoundsamples.csv")
+        #             if not self.staging:
+        #                 self.syn.store(
+        #                     synapseclient.File(
+        #                         "notfoundsamples.csv", parent=self._SP_REDCAP_EXPORTS_SYNID
+        #                     )
+        #                 )
+        df_info_sample = df_map.query('sampleType == "SAMPLE"').merge(
+            df_file, on="dataset", how="left"
         )
         df_info_sample.index = df_info_sample["code"]
         dict_sample = get_file_data(
@@ -1809,13 +1799,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         return df_sample_subset
 
-    def create_and_write_case_lists(self, subset_sampledf, subset_patientdf, used: list) -> None:
+    def create_and_write_case_lists(
+        self, subset_sampledf: pd.DataFrame, subset_patientdf: pd.DataFrame, used: list
+    ) -> None:
         """Create, write, and, if applicable, store case list files.
 
         Args:
-            used (list): Synapse IDs used to construct the case file data.
+            subset_sampledf: Dataframe of sample information
+            subset_patientdf: Dataframe of patient information
+            used: Synapse IDs used to construct the case file data.
         """
-
+        # Merged clinical file is created here because it is needed
+        # for the case lists
         # Remove oncotree code here, because no longer need it
         merged_clinicaldf = subset_sampledf.merge(
             subset_patientdf, on="PATIENT_ID", how="outer"
@@ -1892,7 +1887,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Write out cases sequenced so people can tell
         # which samples were sequenced
         assay_info = self.syn.tableQuery(
-            f"select * from {self._ASSAY_SYNID}", includeRowIdAndRowVersion=False, separator="\t"
+            f"select * from {self._ASSAY_SYNID}",
+            includeRowIdAndRowVersion=False,
+            separator="\t",
         )
         create_case_lists.main(
             os.path.join(self._SPONSORED_PROJECT, "data_clinical.txt"),
@@ -1910,7 +1907,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     file_ent,
                     used=used,
                     executed=self._GITHUB_REPO,
-        )
+                )
 
     def run(self):
         """Runs the redcap export to export all files"""
@@ -2032,7 +2029,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
         survival_path = self.write_clinical_file(
-            final_survival_data['df'], final_survival_data['survival_info'], "supp_survival"
+            final_survival_data["df"],
+            final_survival_data["survival_info"],
+            "supp_survival",
         )
         # TODO: Fix this
         # survival_used = get_synid_data(
@@ -2061,7 +2060,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         surv_treatment_path = self.write_clinical_file(
             df_survival_treatment,
-            final_survival_data['survival_info'],
+            final_survival_data["survival_info"],
             "supp_survival_treatment",
         )
         if not self.staging:
@@ -2079,7 +2078,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
         sample_path = self.write_clinical_file(
-            df_sample_final, final_survival_data['survival_info'], "sample"
+            df_sample_final, final_survival_data["survival_info"], "sample"
         )
         if not self.staging:
             sample_fileent = File(sample_path, parent=self._SP_SYN_ID)
@@ -2099,7 +2098,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
         patient_path = self.write_clinical_file(
-            df_patient_final, final_survival_data['survival_info'], "patient"
+            df_patient_final, final_survival_data["survival_info"], "patient"
         )
         if not self.staging:
             logging.info("uploading clinical data files to Synapse...")
@@ -2133,9 +2132,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         #     )
         ids = []
         self.create_and_write_case_lists(
-            subset_sampledf=df_sample_final,
-            subset_patientdf=df_patient_final,
-            used=ids
+            subset_sampledf=df_sample_final, subset_patientdf=df_patient_final, used=ids
         )
         self.create_and_write_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
 
