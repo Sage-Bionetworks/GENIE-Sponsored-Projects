@@ -1484,9 +1484,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: SURVIVAL data
         """
-
-        idx_survival = df_map["sampleType"].isin(["SURVIVAL"])
-        df_info = df_map[idx_survival].merge(df_file, on="dataset", how="left")
+        df_info = (
+            df_map.query('sampleType == "SURVIVAL"')
+            .merge(df_file, on="dataset", how="left")
+        )
         df_info.index = df_info["code"]
         df_info = pd.concat(
             [
@@ -1611,10 +1612,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: SURVIVAL and REGIMEN data
         """
-
         # Regimen mapping values
-        regimen_idx = df_map["sampleType"].isin(["REGIMEN"])
-        regimen_infodf = df_map[regimen_idx].merge(df_file, on="dataset", how="left")
+        regimen_infodf = (
+            df_map.query('sampleType == "REGIMEN"')
+            .merge(df_file, on="dataset", how="left")
+        )
         regimen_infodf.index = regimen_infodf["code"]
 
         drug_mapping = get_drug_mapping(
@@ -2036,7 +2038,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
-            logging.info("writing LABTEST...")
+            logging.info("writing TIMELINE-LABTEST...")
             lab_data = self.get_timeline_lab(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
             )
@@ -2048,15 +2050,27 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 used_entities=lab_data["used"],
             )
         else:
-            logging.info("skipping LABTEST...")
+            logging.info("skipping TIMELINE-LABTEST...")
 
-        # logging.info("writing SURVIVAL...")
-        # df_final_survival = self.get_survival(
-        #     df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
-        # )
-        # survival_path = self.write_clinical_file(
-        #     df_final_survival, redcap_to_cbiomappingdf, "supp_survival"
-        # )
+        logging.info("writing SURVIVAL...")
+        df_final_survival = self.get_survival(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        survival_path = self.write_clinical_file(
+            df_final_survival, redcap_to_cbiomappingdf, "supp_survival"
+        )
+        if not self.staging:
+            survival_fileent = File(survival_path, parent=self._SP_SYN_ID)
+            survival_used = get_synid_data(
+                syn=self.syn,
+                df_map=redcap_to_cbiomappingdf,
+                df_file=data_tablesdf,
+                sampletype=["SURVIVAL", "REGIMEN"],
+                cohort=self._SPONSORED_PROJECT,
+            )
+            survival_ent = self.syn.store(
+                survival_fileent, used=survival_used, executed=self._GITHUB_REPO
+            )
 
         # logging.info("writing SURVIVAL-TREATMENT...")
         # df_survival_treatment = self.get_survival_treatment(
