@@ -1183,6 +1183,26 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         return treatment_data
 
+    def get_timeline_performance(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-PERFORMANCE file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-PERFORMANCE data
+        """
+
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-PERFORMANCE"').merge(
+            df_file, on="dataset", how="left"
+        )
+        timeline_infodf.index = timeline_infodf["code"]
+        data = self.make_timeline_treatmentdf(timeline_infodf, "TIMELINE-PERFORMANCE")
+        return data
+
     def get_timeline_treatment_rad(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
     ) -> dict:
@@ -1942,6 +1962,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
         else:
             logging.info("skipping TIMELINE-LABTEST...")
+
+        logging.info("writing TIMELINE-PERFORMANCE...")
+        performance_data = self.get_timeline_performance(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            df=performance_data["df"],
+            filepath=os.path.join(
+                self._SPONSORED_PROJECT, "data_timeline_performance_status.txt"
+            ),
+            used_entities=performance_data["used"],
+        )
 
         logging.info("writing CLINICAL-SURVIVAL...")
         final_survival_data = self.get_survival(
