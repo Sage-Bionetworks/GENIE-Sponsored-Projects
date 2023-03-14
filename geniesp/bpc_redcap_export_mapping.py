@@ -1711,51 +1711,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: SAMPLE data
         """
-        #     subset_sampledf.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
-        #     # Remove duplicated samples due to PDL1
-        #     # Keep only one sample in this priority
-        #     # PDL1_POSITIVE_ANY: Yes
-        #     # PDL1_POSITIVE_ANY: No
-        #     # PDL1_POSITIVE_ANY: <blank>
-        #     subset_sampledf.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
-        #     subset_sampledf.drop_duplicates("SAMPLE_ID", inplace=True)
-        #     # duplicated = subset_sampledf.SAMPLE_ID.duplicated()
-        #     # if duplicated.any():
-        #     #     # TODO: Add in duplicated ids
-        #     #     print("DUPLICATED SAMPLE_IDs")
-        #     # There are duplicated samples
-        #     # subset_sampledf = subset_sampledf[~duplicated]
-        #     sample_path = self.write_clinical_file(subset_sampledf, infodf, "sample")
-
-        #     # Remove oncotree code here, because no longer need it
-        #     merged_clinicaldf = subset_sampledf.merge(
-        #         subset_patientdf, on="PATIENT_ID", how="outer"
-        #     )
-        #     missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
-        #     # Make sure there are no missing sample ids
-        #     if sum(missing_sample_idx) > 0:
-        #         print(
-        #             "MISSING SAMPLE_ID for: {}".format(
-        #                 ",".join(merged_clinicaldf["PATIENT_ID"][missing_sample_idx])
-        #             )
-        #         )
-        #         merged_clinicaldf = merged_clinicaldf[~missing_sample_idx]
-
-        #     # upload samples that are not part of the main GENIE cohort
-        #     if merged_clinicaldf.get("SAMPLE_ID") is not None:
-        #         print("Samples not in GENIE clinical databases (SP and normal)")
-        #         not_found_samples = merged_clinicaldf["SAMPLE_ID"][
-        #             ~merged_clinicaldf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
-        #         ]
-        #         if not not_found_samples.empty:
-        #             print(not_found_samples[~not_found_samples.isnull()])
-        #             not_found_samples.to_csv("notfoundsamples.csv")
-        #             if not self.staging:
-        #                 self.syn.store(
-        #                     synapseclient.File(
-        #                         "notfoundsamples.csv", parent=self._SP_REDCAP_EXPORTS_SYNID
-        #                     )
-        #                 )
         df_info_sample = df_map.query('sampleType == "SAMPLE"').merge(
             df_file, on="dataset", how="left"
         )
