@@ -1356,7 +1356,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def get_timeline_sequence(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
-    ) -> pd.DataFrame:
+    ) -> dict:
         """Get TIMELINE-SEQUENCE file data.
 
         Args:
@@ -1364,7 +1364,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: TIMELINE-SEQUENCE data
+            dict: TIMELINE-SEQUENCE data
         """
         timeline_infodf = df_map.query('sampleType == "TIMELINE-SEQUENCE"').merge(
             df_file, on="dataset", how="left"
