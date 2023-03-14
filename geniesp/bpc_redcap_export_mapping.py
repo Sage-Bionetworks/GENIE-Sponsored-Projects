@@ -1121,7 +1121,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             keep_seq_assay_ids (list): list of sequence assay IDs
 
         Returns:
-            List: file paths of written data
+            list: file paths of written data
         """
 
         gene_panel_paths = []
@@ -1172,7 +1172,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: TIMELINE-TREATMENT data
+            dict: TIMELINE-TREATMENT data
         """
 
         timeline_infodf = df_map.query('sampleType == "TIMELINE-TREATMENT"').merge(
@@ -1187,7 +1187,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def get_timeline_treatment_rad(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
-    ) -> pd.DataFrame:
+    ) -> dict:
         """Get TIMELINE-TREATMENT-RAD file data.
 
         Args:
@@ -1195,7 +1195,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: TIMELINE-TREATMENT-RAD data
+            dict: TIMELINE-TREATMENT-RAD data
         """
 
         timeline_infodf = df_map.query('sampleType == "TIMELINE-TREATMENT-RT"').merge(
@@ -1238,7 +1238,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: TIMELINE-DX data
+            dict: TIMELINE-DX data
         """
         timeline_infodf = df_map.query('sampleType == "TIMELINE-DX"').merge(
             df_file, on="dataset", how="left"
@@ -1263,7 +1263,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: TIMELINE-PATHOLOGY data
+            dict: TIMELINE-PATHOLOGY data
         """
         timeline_infodf = df_map.query('sampleType == "TIMELINE-PATHOLOGY"').merge(
             df_file, on="dataset", how="left"
@@ -1282,7 +1282,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: TIMELINE-SAMPLE data
+            dict: TIMELINE-SAMPLE data
         """
         timeline_infodf = df_map.query('sampleType == "TIMELINE-SAMPLE"').merge(
             df_file, on="dataset", how="left"
@@ -1314,29 +1314,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def get_timeline_medonc(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
-    ) -> pd.DataFrame:
+    ) -> dict:
         """Get TIMELINE-MEDONC file data.
 
         Args:
             df_map (pd.DataFrame): variable to cBioPortal mapping info
             df_file (pd.DataFrame): data file to Synapse ID mapping
-        self.write_and_storedf(
-            acquisition_data["df"][~null_dates_idx],
-            acquisition_path,
-            used_entities=acquisition_data["used"],
-        )
-        # Medonc
-        print("MEDONC")
-        medonc_data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-MEDONC"
-        )
-        medonc_path = os.path.join(self._SPONSORED_PROJECT, "data_timeline_medonc.txt")
-        self.write_and_storedf(
-            medonc_data["df"], medonc_path, used_entities=medonc_data["used"]
-        )
 
         Returns:
-            pd.DataFrame: TIMELINE-MEDONC data
+            dict: TIMELINE-MEDONC data
         """
         timeline_infodf = df_map.query('sampleType == "TIMELINE-MEDONC"').merge(
             df_file, on="dataset", how="left"
@@ -1349,7 +1335,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
     def get_timeline_imaging(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
-    ) -> pd.DataFrame:
+    ) -> dict:
         """Get TIMELINE-IMAGING file data.
 
         Args:
@@ -1357,7 +1343,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: TIMELINE-IMAGING data
+            dict: TIMELINE-IMAGING data
         """
         timeline_infodf = df_map.query('sampleType == "TIMELINE-IMAGING"').merge(
             df_file, on="dataset", how="left"
@@ -1535,31 +1521,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         regimen_infodf = df_map[regimen_idx].merge(df_file, on="dataset", how="left")
         regimen_infodf.index = regimen_infodf["code"]
 
-        # Only patients and samples that exist in the
-        # sponsored project uploads are going to be pulled into the SP project
-
-        # to_keep_patient_idx = final_patientdf["PATIENT_ID"].isin(
-        #     self.genie_clinicaldf["PATIENT_ID"]
-        # )
-        # subset_patientdf = final_patientdf[
-        #     final_patientdf["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
-        # ]
-
-        # Fix patient duplicated values due to cancer index DOB
-        # Take the larger DX_LASTALIVE_INT_MOS value for all records
-        # TODO: check if its fine to drop this column
-        # subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
-        #                              ascending=False)
-        # subset_patientdf.drop_duplicates("PATIENT_ID", inplace=True)
-
-        # duplicated = subset_patientdf.PATIENT_ID.duplicated()
-        # if duplicated.any():
-        #     print(
-        #         "DUPLICATED PATIENT_IDs: {}".format(
-        #             ",".join(subset_patientdf["PATIENT_ID"][duplicated])
-        #         )
-        #     )
-
         # Create regimens data for patient file
         drug_mapping = get_drug_mapping(
             syn=self.syn,
@@ -1576,8 +1537,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         survival_info = pd.concat([infodf, regimens_data["info"]])
-
-        # Create survival data
+        # Only patients and samples that exist in the
+        # sponsored project uploads are going to be pulled into the SP project
         subset_survivaldf = df_final_survival[
             df_final_survival["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
@@ -1636,13 +1597,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_survival_treatment.replace(remap_os_values, inplace=True)
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(df_survival_treatment.columns.drop(cols_to_order).tolist())
+        # Retract patients from survival treatment file
+        df_survival_treatment = df_survival_treatment[
+            df_survival_treatment["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+        ]
         return df_survival_treatment[cols_to_order]
 
     def get_patient(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
         """Patient data file.
 
         Custom rule: Fix patient duplicated values due to cancer index DOB
-        (NEED TO CONFIRM: Take the larger DX_LASTALIVE_INT_MOS value for all records)
 
         Args:
             df_map (pd.DataFrame): variable to cBioPortal mapping info
@@ -1684,6 +1648,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_patient_final["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
 
+        # Fix patient duplicated values due to cancer index DOB
+        # Take the larger DX_LASTALIVE_INT_MOS value for all records
+        # subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
+        #                              ascending=False)
         df_patient_subset.drop_duplicates("PATIENT_ID", inplace=True)
         duplicated = df_patient_subset.PATIENT_ID.duplicated()
         if duplicated.any():
