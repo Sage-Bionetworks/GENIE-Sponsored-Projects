@@ -126,9 +126,9 @@ def get_synid_data(
     Returns:
         List: List of used synapse ids
     """
-    datasets = df_map[
-        (df_map["sampleType"].isin(sampletype)) & (df_map[cohort])
-    ]["dataset"].unique()
+    datasets = df_map[(df_map["sampleType"].isin(sampletype)) & (df_map[cohort])][
+        "dataset"
+    ].unique()
     used = df_file[df_file["dataset"].isin(datasets)]["id"]
     return list(used)
 
@@ -1310,9 +1310,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             acquisition_data["df"] = acquisition_data["df"][~null_dates_idx]
         return acquisition_data
 
-    def get_timeline_medonc(
-        self, df_map: pd.DataFrame, df_file: pd.DataFrame
-    ) -> dict:
+    def get_timeline_medonc(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> dict:
         """Get TIMELINE-MEDONC file data.
 
         Args:
@@ -1331,9 +1329,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         return dict_medonc
 
-    def get_timeline_imaging(
-        self, df_map: pd.DataFrame, df_file: pd.DataFrame
-    ) -> dict:
+    def get_timeline_imaging(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> dict:
         """Get TIMELINE-IMAGING file data.
 
         Args:
@@ -1597,7 +1593,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order.extend(df_survival_treatment.columns.drop(cols_to_order).tolist())
         # Retract patients from survival treatment file
         df_survival_treatment = df_survival_treatment[
-            df_survival_treatment["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
+            df_survival_treatment["PATIENT_ID"].isin(
+                self.genie_clinicaldf["PATIENT_ID"]
+            )
         ]
         return df_survival_treatment[cols_to_order]
 
@@ -2033,11 +2031,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.create_and_write_sv(df_sample_final["SAMPLE_ID"])
 
         ids = get_synid_data(
-                df_map=redcap_to_cbiomappingdf,
-                df_file=data_tablesdf,
-                sampletype=["PATIENT", "SAMPLE"],
-                cohort=self._SPONSORED_PROJECT,
-            )
+            df_map=redcap_to_cbiomappingdf,
+            df_file=data_tablesdf,
+            sampletype=["PATIENT", "SAMPLE"],
+            cohort=self._SPONSORED_PROJECT,
+        )
         self.create_and_write_case_lists(
             subset_sampledf=df_sample_final, subset_patientdf=df_patient_final, used=ids
         )
