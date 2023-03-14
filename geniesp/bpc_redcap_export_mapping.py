@@ -1474,7 +1474,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         dict_data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-LAB")
         return dict_data
 
-    def get_survival(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
+    def get_survival(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> dict:
         """Get SURVIVAL file data.
 
         Args:
@@ -1482,7 +1482,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file (pd.DataFrame): data file to Synapse ID mapping
 
         Returns:
-            pd.DataFrame: SURVIVAL data
+            dict: SURVIVAL data
         """
         df_info = (
             df_map.query('sampleType == "SURVIVAL"')
@@ -1598,7 +1598,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
 
-        return subset_survivaldf[cols_to_order]
+        return {"df": subset_survivaldf[cols_to_order], "survival_info": survival_info}
 
     def get_survival_treatment(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
@@ -2053,11 +2053,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
             logging.info("skipping TIMELINE-LABTEST...")
 
         logging.info("writing SURVIVAL...")
-        df_final_survival = self.get_survival(
+        final_survival_data = self.get_survival(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
         survival_path = self.write_clinical_file(
-            df_final_survival, redcap_to_cbiomappingdf, "supp_survival"
+            final_survival_data['df'], final_survival_data['survival_info'], "supp_survival"
         )
         if not self.staging:
             survival_fileent = File(survival_path, parent=self._SP_SYN_ID)
@@ -2072,15 +2072,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 survival_fileent, used=survival_used, executed=self._GITHUB_REPO
             )
 
-        # logging.info("writing SURVIVAL-TREATMENT...")
-        # df_survival_treatment = self.get_survival_treatment(
-        #     df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
-        # )
-        # surv_treatment_path = self.write_clinical_file(
-        #     df_survival_treatment,
-        #     redcap_to_cbiomappingdf,
-        #     "supp_survival_treatment",
-        # )
+        logging.info("writing SURVIVAL-TREATMENT...")
+        df_survival_treatment = self.get_survival_treatment(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        surv_treatment_path = self.write_clinical_file(
+            df_survival_treatment,
+            final_survival_data['survival_info'],
+            "supp_survival_treatment",
+        )
 
         # logging.info("writing SAMPLE...")
         # df_sample_final = self.get_sample(
