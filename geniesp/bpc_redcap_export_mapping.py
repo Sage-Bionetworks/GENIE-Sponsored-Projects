@@ -1202,9 +1202,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
-        data = self.create_fixed_timeline_files(
-            timeline_infodf, "TIMELINE-PERFORMANCE"
-        )
+        data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
         return data
 
     def get_timeline_treatment_rad(
