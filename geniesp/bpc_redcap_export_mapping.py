@@ -28,6 +28,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_timeline_cancer_diagnosis.txt",
     "data_timeline_pathology.txt",
     "data_timeline_sample_acquisition.txt",
+    "data_timeline_performance_status.txt",
     "data_timeline_medonc.txt",
     "data_timeline_imaging.txt",
     "data_timeline_sequencing.txt",
@@ -1907,7 +1908,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=pathology_data["used"],
         )
 
-        logging.info("writing TIMELINE-SAMPLE...")
+        logging.info("writing TIMELINE-SAMPLE-ACQUISITION...")
         acquisition_data = self.get_timeline_sample(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )

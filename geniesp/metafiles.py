@@ -248,6 +248,7 @@ def create_cbio_metafiles(
         "data_timeline_medonc.txt",
         "data_timeline_pathology.txt",
         "data_timeline_sample_acquisition.txt",
+        "data_timeline_performance_status.txt",
         "data_timeline_sequencing.txt",
         "data_timeline_treatment.txt",
         "data_timeline_labtest.txt",
