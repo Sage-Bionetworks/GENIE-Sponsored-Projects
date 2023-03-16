@@ -476,7 +476,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Sponsored project name
     _SPONSORED_PROJECT = ""
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.38"
+    # version 38 was the last stable version
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -1200,7 +1201,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_file, on="dataset", how="left"
         )
         timeline_infodf.index = timeline_infodf["code"]
-        data = self.make_timeline_treatmentdf(timeline_infodf, "TIMELINE-PERFORMANCE")
+        data = self.create_fixed_timeline_files(
+            timeline_infodf, "TIMELINE-PERFORMANCE"
+        )
         return data
 
     def get_timeline_treatment_rad(
