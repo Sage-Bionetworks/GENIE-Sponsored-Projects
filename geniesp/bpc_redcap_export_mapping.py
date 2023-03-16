@@ -8,8 +8,8 @@
   REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
 """
 from abc import ABCMeta
-from csv import DictReader
 from datetime import date
+from functools import cached_property
 import math
 import os
 import subprocess
@@ -531,6 +531,37 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
         self.genie_clinicaldf = self.get_main_genie_clinicaldf()
         self._GITHUB_REPO = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
+
+    @cached_property
+    def cbioportal_folders(self):
+        parent_id = "syn50876969" if self.staging else "syn21241322"
+        sp_data_folder = self.syn.store(
+            Folder(self._SPONSORED_PROJECT, parentId=parent_id)
+        )
+        release_folder = self.syn.store(Folder(self.release, parent=sp_data_folder))
+        if not self.staging:
+            release_folder = self.syn.store(
+                Folder("cBioPortal_files", parent=release_folder)
+            ).id
+        case_lists = self.syn.store(
+            Folder("case_lists", parent=release_folder)
+        )
+        return {"release": release_folder,
+                "case_lists": case_lists}
+
+    @cached_property
+    def _CASE_LIST_SYN_ID(self):
+        if not self.staging:
+            sp_data_folder = self.syn.store(
+                Folder(self._SPONSORED_PROJECT, parentId="syn21241322")
+            )
+            release_folder = self.syn.store(Folder(self.release, parent=sp_data_folder))
+            # Add cBioPortal files into cBioPortal files folder in release
+            return self.syn.store(
+                Folder("cBioPortal_files", parent=release_folder)
+            ).id
+        else:
+            return "foo"
 
     def get_main_genie_clinicaldf(self) -> pd.DataFrame:
         """Get main GENIE clinical samples and perform retraction
