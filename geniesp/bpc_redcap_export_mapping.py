@@ -579,15 +579,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 Folder(self._SPONSORED_PROJECT, parentId=parent_id)
             )
             release_folder = self.syn.store(Folder(self.release, parent=sp_data_folder))
-        # if not self.upload:
-        #     release_folder = self.syn.store(
-        #         Folder("cBioPortal_files", parent=release_folder)
-        #     ).id
-            case_lists = self.syn.store(
-                Folder("case_lists", parent=release_folder)
-            )
-            return {"release": release_folder,
-                    "case_lists": case_lists}
+            # if not self.upload:
+            #     release_folder = self.syn.store(
+            #         Folder("cBioPortal_files", parent=release_folder)
+            #     ).id
+            case_lists = self.syn.store(Folder("case_lists", parent=release_folder))
+            return {"release": release_folder, "case_lists": case_lists}
         return {}
 
     def create_bpc_cbio_metafiles(self) -> List:
@@ -662,7 +659,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         data_gene_panel.to_csv(gene_matrix_filepath, sep="\t", index=False)
         if self.upload:
-            file_ent = File(gene_matrix_filepath, parent=self.cbioportal_folders['release'])
+            file_ent = File(
+                gene_matrix_filepath, parent=self.cbioportal_folders["release"]
+            )
             self.syn.store(file_ent, used=used_ent, executed=self._GITHUB_REPO)
 
     def configure_clinicaldf(
@@ -916,7 +915,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         if self.upload:
             # Add the mapping file to the release file provenance
             used_entities.append(self._REDCAP_TO_CBIOMAPPING_SYNID)
-            ent = File(filepath, parent=self.cbioportal_folders['release'])
+            ent = File(filepath, parent=self.cbioportal_folders["release"])
             self.syn.store(ent, executed=self._GITHUB_REPO, used=used_entities)
 
     def create_fixed_timeline_files(
@@ -1018,7 +1017,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     maf_f.write(maf_text)
             index += 1
         if self.upload:
-            file_ent = File(mafpath, parent=self.cbioportal_folders['release'])
+            file_ent = File(mafpath, parent=self.cbioportal_folders["release"])
             self.syn.store(file_ent, used=[maf_synid], executed=self._GITHUB_REPO)
 
         return mafpath
@@ -1054,7 +1053,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             cna_file.write(cna_text)
 
         if self.upload:
-            file_ent = File(cna_path, parent=self.cbioportal_folders['release'])
+            file_ent = File(cna_path, parent=self.cbioportal_folders["release"])
             self.syn.store(file_ent, used=[cna_synid], executed=self._GITHUB_REPO)
         return {"filepath": cna_file, "cna_samples": cnadf.columns.tolist()}
 
@@ -1161,7 +1160,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             with open(gene_panel_path, "w+") as f:
                 f.write(gene_panel_text)
             if self.upload:
-                fileEnt = File(gene_panel_path, parent=self.cbioportal_folders['release'])
+                fileEnt = File(
+                    gene_panel_path, parent=self.cbioportal_folders["release"]
+                )
                 self.syn.store(
                     fileEnt, used=[genomic_info_synid], executed=self._GITHUB_REPO
                 )
@@ -1848,7 +1849,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         for casepath in case_list_files:
             casepath = os.path.join(case_list_path, casepath)
             if self.upload:
-                file_ent = File(casepath, parent=self.cbioportal_folders['case_lists'])
+                file_ent = File(casepath, parent=self.cbioportal_folders["case_lists"])
                 self.syn.store(
                     file_ent,
                     used=used,
@@ -1998,7 +1999,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             cohort=self._SPONSORED_PROJECT,
         )
         if self.upload:
-            survival_fileent = File(survival_path, parent=self.cbioportal_folders['release'])
+            survival_fileent = File(
+                survival_path, parent=self.cbioportal_folders["release"]
+            )
             survival_ent = self.syn.store(
                 survival_fileent, used=survival_used, executed=self._GITHUB_REPO
             )
@@ -2014,7 +2017,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         if self.upload:
             survival_treatment_fileent = File(
-                surv_treatment_path, parent=self.cbioportal_folders['release']
+                surv_treatment_path, parent=self.cbioportal_folders["release"]
             )
             survival_treatment_fileent = self.syn.store(
                 survival_treatment_fileent,
@@ -2030,7 +2033,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_sample_final, final_survival_data["survival_info"], "sample"
         )
         if self.upload:
-            sample_fileent = File(sample_path, parent=self.cbioportal_folders['release'])
+            sample_fileent = File(
+                sample_path, parent=self.cbioportal_folders["release"]
+            )
             sample_used = get_synid_data(
                 df_map=redcap_to_cbiomappingdf,
                 df_file=data_tablesdf,
@@ -2050,7 +2055,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         if self.upload:
             logging.info("uploading clinical data files to Synapse...")
-            patient_fileent = File(patient_path, parent=self.cbioportal_folders['release'])
+            patient_fileent = File(
+                patient_path, parent=self.cbioportal_folders["release"]
+            )
             patient_used = get_synid_data(
                 df_map=redcap_to_cbiomappingdf,
                 df_file=data_tablesdf,
@@ -2084,7 +2091,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         metadata_files = self.create_bpc_cbio_metafiles()
         if self.upload:
             for metadata_file in metadata_files:
-                file_ent = File(metadata_file, parent=self.cbioportal_folders['release'])
+                file_ent = File(
+                    metadata_file, parent=self.cbioportal_folders["release"]
+                )
                 self.syn.store(
                     file_ent,
                     executed=self._GITHUB_REPO,

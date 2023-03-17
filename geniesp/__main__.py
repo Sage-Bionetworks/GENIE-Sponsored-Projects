@@ -63,9 +63,7 @@ def main():
     else:
         cbiopath = args.cbioportal
 
-    BPC_MAPPING[args.sp](
-        syn, cbiopath, release=args.release, upload=args.upload
-    ).run()
+    BPC_MAPPING[args.sp](syn, cbiopath, release=args.release, upload=args.upload).run()
 
 
 if __name__ == "__main__":
