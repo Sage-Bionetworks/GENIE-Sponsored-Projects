@@ -28,6 +28,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_timeline_cancer_diagnosis.txt",
     "data_timeline_pathology.txt",
     "data_timeline_sample_acquisition.txt",
+    "data_timeline_performance_status.txt",
     "data_timeline_medonc.txt",
     "data_timeline_imaging.txt",
     "data_timeline_sequencing.txt",
@@ -476,7 +477,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Sponsored project name
     _SPONSORED_PROJECT = ""
     # Redcap codes to cbioportal mapping synid and form key is in
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.38"
+    # version 38 was the last stable version
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -1183,6 +1185,26 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         return treatment_data
 
+    def get_timeline_performance(
+        self, df_map: pd.DataFrame, df_file: pd.DataFrame
+    ) -> dict:
+        """Get TIMELINE-PERFORMANCE file data.
+
+        Args:
+            df_map (pd.DataFrame): variable to cBioPortal mapping info
+            df_file (pd.DataFrame): data file to Synapse ID mapping
+
+        Returns:
+            dict: TIMELINE-PERFORMANCE data
+        """
+
+        timeline_infodf = df_map.query('sampleType == "TIMELINE-PERFORMANCE"').merge(
+            df_file, on="dataset", how="left"
+        )
+        timeline_infodf.index = timeline_infodf["code"]
+        data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
+        return data
+
     def get_timeline_treatment_rad(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
     ) -> dict:
@@ -1884,7 +1906,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=pathology_data["used"],
         )
 
-        logging.info("writing TIMELINE-SAMPLE...")
+        logging.info("writing TIMELINE-SAMPLE-ACQUISITION...")
         acquisition_data = self.get_timeline_sample(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
@@ -1942,6 +1964,18 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
         else:
             logging.info("skipping TIMELINE-LABTEST...")
+
+        logging.info("writing TIMELINE-PERFORMANCE...")
+        performance_data = self.get_timeline_performance(
+            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+        )
+        self.write_and_storedf(
+            df=performance_data["df"],
+            filepath=os.path.join(
+                self._SPONSORED_PROJECT, "data_timeline_performance_status.txt"
+            ),
+            used_entities=performance_data["used"],
+        )
 
         logging.info("writing CLINICAL-SURVIVAL...")
         final_survival_data = self.get_survival(
