@@ -11,15 +11,15 @@ process cBioPortalExport {
    input:
    val cohort
    val release
-   val staging
+   val upload
 
    output:
    stdout
 
    script:
-   if ( staging ) {
+   if ( upload ) {
       """
-      geniesp $cohort $release --staging --cbioportal /usr/src/cbioportal
+      geniesp $cohort $release --upload --cbioportal /usr/src/cbioportal
       """
    } else {
       """
@@ -31,7 +31,7 @@ process cBioPortalExport {
 workflow {
    params.cohort = 'NSCLC' // Default
    params.release = '1.1-consortium'  // Default
-   params.staging = true  // Default
+   params.upload = false  // Default
 
    // Check if cohort is part of allowed cohort list
    def allowed_cohorts = ["BLADDER", "BrCa", "CRC", "NSCLC", "PANC", "Prostate"]
@@ -39,7 +39,7 @@ workflow {
 
    ch_cohort = Channel.value(params.cohort)
    ch_release = Channel.value(params.release)
-   ch_staging = Channel.value(params.staging)
+   ch_upload = Channel.value(params.upload)
 
-   cBioPortalExport(ch_cohort, ch_release, ch_staging)
+   cBioPortalExport(ch_cohort, ch_release, ch_upload)
 }
