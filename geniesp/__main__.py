@@ -32,9 +32,9 @@ def main():
 
     parser.add_argument("release", type=str, help="Specify bpc release")
     parser.add_argument(
-        "--staging",
+        "--upload",
         action="store_true",
-        help="If true, files aren't uploaded onto synapse",
+        help="Upload files into Synapse BPC staging directory. Default: false.",
     )
     parser.add_argument(
         "--log",
@@ -64,7 +64,7 @@ def main():
         cbiopath = args.cbioportal
 
     BPC_MAPPING[args.sp](
-        syn, cbiopath, release=args.release, staging=args.staging
+        syn, cbiopath, release=args.release, upload=args.upload
     ).run()
 
 
