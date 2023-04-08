@@ -1984,16 +1984,19 @@ class BpcProjectRunner(metaclass=ABCMeta):
             logging.info("skipping TIMELINE-LABTEST...")
 
         logging.info("writing TIMELINE-PERFORMANCE...")
-        performance_data = self.get_timeline_performance(
-            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
-        )
-        self.write_and_storedf(
-            df=performance_data["df"],
-            filepath=os.path.join(
-                self._SPONSORED_PROJECT, "data_timeline_performance_status.txt"
-            ),
-            used_entities=performance_data["used"],
-        )
+        if self._SPONSORED_PROJECT not in ["BLADDER"]:
+            performance_data = self.get_timeline_performance(
+                df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+            )
+            self.write_and_storedf(
+                df=performance_data["df"],
+                filepath=os.path.join(
+                    self._SPONSORED_PROJECT, "data_timeline_performance_status.txt"
+                ),
+                used_entities=performance_data["used"],
+            )
+        else:
+            logging.info("skipping TIMELINE-PERFORMANCE...")
 
         logging.info("writing CLINICAL-SURVIVAL...")
         final_survival_data = self.get_survival(
