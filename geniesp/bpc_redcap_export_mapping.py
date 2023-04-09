@@ -500,7 +500,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _SPONSORED_PROJECT = ""
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38 was the last stable version
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.41"
+    # Use version 42 - but there is a bug in Synapse...
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
