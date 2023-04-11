@@ -471,6 +471,28 @@ def hack_remap_laterality(df_patient_subset: pd.DataFrame) -> pd.DataFrame:
     return df_patient_subset
 
 
+def remap_os_values(df: pd.DataFrame):
+    """Remap OS numerical values to string values
+    0 -> 0:LIVING
+    1 -> 1:DECEASED
+    """
+    remap_values = {col: {0: "0:LIVING", 1: "1:DECEASED"}
+                    for col in df.columns
+                    if col.startswith('OS') and col.endswith("STATUS")}
+    return df.replace(remap_values)
+
+
+def remap_pfs_values(df: pd.DataFrame):
+    """Remap PFS numerical values to string values
+    0 -> 0:CENSORED
+    1 -> 1:PROGRESSED
+    """
+    remap_values = {col: {0: "0:CENSORED", 1: "1:PROGRESSED"}
+                    for col in df.columns
+                    if col.startswith('PFS') and col.endswith("STATUS")}
+    return df.replace(remap_values)
+
+
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
 
@@ -478,6 +500,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _SPONSORED_PROJECT = ""
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38 was the last stable version
+    # Use version 42 - but there is a bug in Synapse...
     _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
@@ -1565,13 +1588,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             df_final_survival["PATIENT_ID"].isin(self.genie_clinicaldf["PATIENT_ID"])
         ]
         del subset_survivaldf["SP"]
-        os_pfs_cols = [
-            col
-            for col in subset_survivaldf.columns
-            if col.startswith(("OS", "PFS")) and col.endswith("STATUS")
-        ]
-        remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"} for col in os_pfs_cols}
-        subset_survivaldf.replace(remap_os_values, inplace=True)
+        subset_survivaldf = remap_os_values(df=subset_survivaldf)
+        subset_survivaldf = remap_pfs_values(df=subset_survivaldf)
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
 
@@ -1610,13 +1628,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         df_survival_treatment = regimens_data["df"]
-        os_pfs_cols = [
-            col
-            for col in df_survival_treatment.columns
-            if col.startswith(("OS", "PFS")) and col.endswith("STATUS")
-        ]
-        remap_os_values = {col: {0: "0:LIVING", 1: "1:DECEASED"} for col in os_pfs_cols}
-        df_survival_treatment.replace(remap_os_values, inplace=True)
+        df_survival_treatment = remap_os_values(df=df_survival_treatment)
+        df_survival_treatment = remap_pfs_values(df=df_survival_treatment)
         cols_to_order = ["PATIENT_ID"]
         cols_to_order.extend(df_survival_treatment.columns.drop(cols_to_order).tolist())
         # Retract patients from survival treatment file
@@ -1972,16 +1985,19 @@ class BpcProjectRunner(metaclass=ABCMeta):
             logging.info("skipping TIMELINE-LABTEST...")
 
         logging.info("writing TIMELINE-PERFORMANCE...")
-        performance_data = self.get_timeline_performance(
-            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
-        )
-        self.write_and_storedf(
-            df=performance_data["df"],
-            filepath=os.path.join(
-                self._SPONSORED_PROJECT, "data_timeline_performance_status.txt"
-            ),
-            used_entities=performance_data["used"],
-        )
+        if self._SPONSORED_PROJECT in ["BLADDER"]:
+            performance_data = self.get_timeline_performance(
+                df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
+            )
+            self.write_and_storedf(
+                df=performance_data["df"],
+                filepath=os.path.join(
+                    self._SPONSORED_PROJECT, "data_timeline_performance_status.txt"
+                ),
+                used_entities=performance_data["used"],
+            )
+        else:
+            logging.info("skipping TIMELINE-PERFORMANCE...")
 
         logging.info("writing CLINICAL-SURVIVAL...")
         final_survival_data = self.get_survival(

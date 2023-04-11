@@ -3,17 +3,19 @@ from .bpc_redcap_export_mapping import BpcProjectRunner
 
 
 class Brca(BpcProjectRunner):
-    """NSCLC BPC sponsored project"""
+    """BrCa BPC sponsored project"""
 
     # Sponsored project name
     _SPONSORED_PROJECT = "BrCa"
+    _exclude_files = ["data_timeline_performance_status.txt"]
 
 
 class Crc(BpcProjectRunner):
-    """NSCLC BPC sponsored project"""
+    """CRC BPC sponsored project"""
 
     # Sponsored project name
     _SPONSORED_PROJECT = "CRC"
+    _exclude_files = ["data_timeline_performance_status.txt"]
 
 
 class Nsclc(BpcProjectRunner):
@@ -21,7 +23,7 @@ class Nsclc(BpcProjectRunner):
 
     # Sponsored project name
     _SPONSORED_PROJECT = "NSCLC"
-    _exclude_files = ["data_timeline_labtest.txt"]
+    _exclude_files = ["data_timeline_labtest.txt", "data_timeline_performance_status.txt"]
 
 
 class Panc(BpcProjectRunner):
@@ -29,6 +31,7 @@ class Panc(BpcProjectRunner):
 
     # Sponsored project name
     _SPONSORED_PROJECT = "PANC"
+    _exclude_files = ["data_timeline_performance_status.txt"]
 
 
 class Prostate(BpcProjectRunner):
@@ -36,6 +39,7 @@ class Prostate(BpcProjectRunner):
 
     # Sponsored project name
     _SPONSORED_PROJECT = "Prostate"
+    _exclude_files = ["data_timeline_performance_status.txt"]
 
 
 class Bladder(BpcProjectRunner):
