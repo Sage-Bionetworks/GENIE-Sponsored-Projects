@@ -39,7 +39,7 @@ class Prostate(BpcProjectRunner):
 
     # Sponsored project name
     _SPONSORED_PROJECT = "Prostate"
-    _exclude_files = ["data_timeline_perforamnce_status.txt"]
+    _exclude_files = ["data_timeline_performance_status.txt"]
 
 
 class Bladder(BpcProjectRunner):

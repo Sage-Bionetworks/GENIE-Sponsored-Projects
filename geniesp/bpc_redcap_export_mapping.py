@@ -485,7 +485,7 @@ def remap_os_values(df: pd.DataFrame):
 def remap_pfs_values(df: pd.DataFrame):
     """Remap PFS numerical values to string values
     0 -> 0:CENSORED
-    1 -> 1:PROGRESSION
+    1 -> 1:PROGRESSED
     """
     remap_values = {col: {0: "0:CENSORED", 1: "1:PROGRESSED"}
                     for col in df.columns
