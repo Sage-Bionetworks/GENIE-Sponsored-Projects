@@ -501,7 +501,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38 was the last stable version
     # Use version 42 - but there is a bug in Synapse...
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.42"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -1232,6 +1232,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         timeline_infodf.index = timeline_infodf["code"]
         data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
+        # HACK: Due to remapping logic, we will re-create RESULT column with correct
+        # values
+        data['MD_KARNOF'] = data['RESULT']
+        data['RESULT'] = [val.split(":")[0] if pd.isnull(val) else val for val in data['RESULT']]
         return data
 
     def get_timeline_treatment_rad(
