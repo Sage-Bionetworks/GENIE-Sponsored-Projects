@@ -1234,8 +1234,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
         # HACK: Due to remapping logic, we will re-create RESULT column with correct
         # values
-        data['MD_KARNOF'] = data['RESULT']
-        data['RESULT'] = [val.split(":")[0] if pd.isnull(val) else val for val in data['RESULT']]
+        data['df']['MD_KARNOF'] = data['df']['RESULT']
+        data['df']['RESULT'] = [val.split(":")[0] if not pd.isnull(val) else val for val in data['df']['RESULT']]
         return data
 
     def get_timeline_treatment_rad(
