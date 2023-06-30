@@ -180,7 +180,7 @@ def configure_mafdf(mafdf: pd.DataFrame, keep_samples: list) -> pd.DataFrame:
     return keep_mafdf
 
 
-def change_days_to_years(days: int) -> int:
+def change_days_to_years(days: int) -> float:
     """Convert days into years.
 
     Args:
@@ -491,6 +491,14 @@ def remap_pfs_values(df: pd.DataFrame):
                     for col in df.columns
                     if col.startswith('PFS') and col.endswith("STATUS")}
     return df.replace(remap_values)
+
+
+def _convert_to_int(value):
+    """Convert object to integer or return nan"""
+    try:
+        return int(value)
+    except ValueError:
+        return float('nan')
 
 
 class BpcProjectRunner(metaclass=ABCMeta):
@@ -1235,7 +1243,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # HACK: Due to remapping logic, we will re-create RESULT column with correct
         # values
         data['df']['MD_KARNOF'] = data['df']['RESULT']
-        data['df']['RESULT'] = [val.split(":")[0] if not pd.isnull(val) else val for val in data['df']['RESULT']]
+        data['df']['RESULT'] = [
+            _convert_to_int(val.split(":")[0]) if not pd.isnull(val)
+            else val
+            for val in data['df']['RESULT']
+        ]
         return data
 
     def get_timeline_treatment_rad(
