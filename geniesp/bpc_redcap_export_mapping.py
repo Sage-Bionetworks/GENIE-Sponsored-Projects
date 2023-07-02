@@ -2121,7 +2121,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.create_and_write_maf(df_sample_final["SAMPLE_ID"])
         dict_cna = self.create_and_write_cna(df_sample_final["SAMPLE_ID"])
         self.create_and_write_genematrix(df_sample_final, dict_cna["cna_samples"])
-        self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
+        # self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
         self.create_and_write_seg(df_sample_final["SAMPLE_ID"])
         self.create_and_write_sv(df_sample_final["SAMPLE_ID"])
 
