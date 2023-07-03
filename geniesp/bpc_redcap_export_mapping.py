@@ -1135,7 +1135,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             str: file path to written data
         """
         # TODO: the seg filename will change 13.X release.
-        file_name = "genie_data_cna_hg19.seg"
+        file_name = "data_cna_hg19.seg"
         seg_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         seg_ent = self.syn.get(seg_synid, followLink=True)
         segdf = pd.read_table(seg_ent.path, low_memory=False)
