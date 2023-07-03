@@ -1162,7 +1162,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         if sv_synid is not None:
             sv_ent = self.syn.get(sv_synid, followLink=True)
             svdf = pd.read_table(sv_ent.path, low_memory=False)
-            svdf = svdf[svdf["Sample_ID"].isin(keep_samples)]
+            svdf = svdf[svdf["Sample_Id"].isin(keep_samples)]
             sv_path = os.path.join(self._SPONSORED_PROJECT, "data_sv.txt")
             self.write_and_storedf(svdf, sv_path, used_entities=[sv_synid])
 
