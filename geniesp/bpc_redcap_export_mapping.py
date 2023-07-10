@@ -180,7 +180,7 @@ def configure_mafdf(mafdf: pd.DataFrame, keep_samples: list) -> pd.DataFrame:
     return keep_mafdf
 
 
-def change_days_to_years(days: int) -> int:
+def change_days_to_years(days: int) -> float:
     """Convert days into years.
 
     Args:
@@ -493,6 +493,14 @@ def remap_pfs_values(df: pd.DataFrame):
     return df.replace(remap_values)
 
 
+def _convert_to_int(value):
+    """Convert object to integer or return nan"""
+    try:
+        return int(value)
+    except ValueError:
+        return float('nan')
+
+
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
 
@@ -501,7 +509,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38 was the last stable version
     # Use version 42 - but there is a bug in Synapse...
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.42"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -1232,6 +1240,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         timeline_infodf.index = timeline_infodf["code"]
         data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
+        # HACK: Due to remapping logic, we will re-create RESULT column with correct
+        # values
+        data['df']['MD_KARNOF'] = data['df']['RESULT']
+        data['df']['RESULT'] = [
+            _convert_to_int(val.split(":")[0]) if not pd.isnull(val)
+            else val
+            for val in data['df']['RESULT']
+        ]
         return data
 
     def get_timeline_treatment_rad(
