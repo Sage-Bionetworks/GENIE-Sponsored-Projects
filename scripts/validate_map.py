@@ -108,7 +108,7 @@ def check_code_name_absent(
         synapse_id = row[0]
         dataset = row[1]
 
-        data = pd.read_csv(syn.get(synapse_id)["path"], low_memory=False)
+        data = pd.read_csv(syn.get(synapse_id)["path"], low_memory=False, encoding='ISO-8859-1')
         code_data = data.columns
 
         # get codes associated with the dataset and of types derived or curated
