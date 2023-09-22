@@ -516,8 +516,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # main GENIE release folder (12.0-public)
-    _MG_RELEASE_SYNID = "syn32309524"
+    # main GENIE release folder (14.0-public)
+    _MG_RELEASE_SYNID = "syn52433756"
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
