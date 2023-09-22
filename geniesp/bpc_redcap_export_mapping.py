@@ -84,7 +84,7 @@ def get_file_data(
         if sampletype == "SAMPLE":
             cols.append("path_proc_number")
         # Only get specific cohort and subset cols
-        tabledf = pd.read_csv(table.path, low_memory=False)
+        tabledf = pd.read_csv(table.path, low_memory=False, encoding='ISO-8859-1')
         tabledf = tabledf[tabledf["cohort"] == cohort]
         tabledf = tabledf[cols]
         # Append to final dataframe if empty
@@ -509,7 +509,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38 was the last stable version
     # Use version 42 - but there is a bug in Synapse...
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.42"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -1241,11 +1241,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf.index = timeline_infodf["code"]
         data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
         # HACK: Due to remapping logic, we will re-create RESULT column with correct
-        # values
-        data['df']['MD_KARNOF'] = data['df']['RESULT']
+        has_md_karnof = ~data['df']['MD_KARNOF'].fillna('').str.startswith(("Not" ,"not"))
+        has_md_ecog = ~data['df']['MD_ECOG'].fillna('').str.startswith(("Not" ,"not"))
+        # Only add in values for SCORE_TYPE and RESULT when MD_KARNOF
+        # and ECOG are present
+        data['df']['SCORE_TYPE'] = ""
+        data['df']['SCORE_TYPE'][has_md_karnof] = "KARNOFSKY"
+        data['df']['SCORE_TYPE'][has_md_ecog] = "ECOG"
+        data['df']['RESULT'] = ""
+        data['df']['RESULT'][has_md_karnof] = data['df']['MD_KARNOF'][has_md_karnof]
+        data['df']['RESULT'][has_md_ecog] = data['df']['MD_ECOG'][has_md_ecog]
+        # CbioPortal doesn't want any rows without MD_KARNOF or MD_ECOG
+        data['df'] = data['df'][data['df']['RESULT'] != ""]
         data['df']['RESULT'] = [
-            _convert_to_int(val.split(":")[0]) if not pd.isnull(val)
-            else val
+            _convert_to_int(val.split(":")[0])
             for val in data['df']['RESULT']
         ]
         return data
