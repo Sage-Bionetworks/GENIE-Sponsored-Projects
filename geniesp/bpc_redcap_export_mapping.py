@@ -572,7 +572,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # DECISION 06/2023: use the release file to do retractions
         # This is due to the most recent releases potentially having
         # samples retracted. The consortium release matched with the
-        # public release (14.6-consortium <-> 14.0-public) must be used
+        # public release (14.7-consortium <-> 14.0-public) must be used
         # due to SEQ_YEAR being used through the code.
         sample_synid = self.get_mg_synid(
             self._MG_RELEASE_SYNID, "data_clinical_sample.txt"
