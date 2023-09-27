@@ -1790,7 +1790,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_sample_subset["AGE_AT_SEQUENCING"] = df_sample_subset[
             "AGE_AT_SEQUENCING"
         ].apply(math.floor)
-        # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
+        # Remove CPT_SEQ_DATE because the values are incorrect
         del df_sample_subset["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
         df_sample_subset = df_sample_subset.merge(
