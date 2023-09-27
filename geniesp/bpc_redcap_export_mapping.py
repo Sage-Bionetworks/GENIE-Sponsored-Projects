@@ -254,8 +254,8 @@ def get_drug_mapping(
         var_names.append("drugs_drug_" + i)
         var_names.append("drugs_drug_oth" + i)
 
-    for obj in dd, grs:
-
+    # for obj in dd, grs:
+    for obj in [dd]:
         for var_name in var_names:
 
             if var_name in obj["Variable / Field Name"].unique():
@@ -270,6 +270,8 @@ def get_drug_mapping(
                         value = pair.split(",")[1].strip()
                         label = value.split("(")[0].strip()
                         mapping[label] = code
+    # ! Remove this after DD and GRS is fixed
+    mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
     return mapping
 
 
@@ -610,9 +612,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             )
             release_folder = self.syn.store(Folder(self.release, parent=sp_data_folder))
             # if not self.upload:
-            #     release_folder = self.syn.store(
-            #         Folder("cBioPortal_files", parent=release_folder)
-            #     ).id
+            release_folder = self.syn.store(
+                Folder("cBioPortal_files", parent=release_folder)
+            ).id
             case_lists = self.syn.store(Folder("case_lists", parent=release_folder))
             return {"release": release_folder, "case_lists": case_lists}
         return {}
@@ -1240,8 +1242,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf.index = timeline_infodf["code"]
         data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
         # HACK: Due to remapping logic, we will re-create RESULT column with correct
-        has_md_karnof = ~data['df']['MD_KARNOF'].fillna('').str.startswith(("Not" ,"not"))
-        has_md_ecog = ~data['df']['MD_ECOG'].fillna('').str.startswith(("Not" ,"not"))
+        has_md_karnof = ~data['df']['MD_KARNOF'].fillna('Not').str.startswith(("Not" ,"not"))
+        has_md_ecog = ~data['df']['MD_ECOG'].fillna('Not').str.startswith(("Not" ,"not"))
         # Only add in values for SCORE_TYPE and RESULT when MD_KARNOF
         # and ECOG are present
         data['df']['SCORE_TYPE'] = ""
