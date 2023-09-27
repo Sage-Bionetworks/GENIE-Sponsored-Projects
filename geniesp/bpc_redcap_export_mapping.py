@@ -85,7 +85,7 @@ def get_file_data(
         if sampletype == "SAMPLE":
             cols.append("path_proc_number")
         # Only get specific cohort and subset cols
-        tabledf = pd.read_csv(table.path, low_memory=False)
+        tabledf = pd.read_csv(table.path, low_memory=False, encoding='ISO-8859-1')
         tabledf = tabledf[tabledf["cohort"] == cohort]
         tabledf = tabledf[cols]
         # Append to final dataframe if empty
@@ -255,8 +255,8 @@ def get_drug_mapping(
         var_names.append("drugs_drug_" + i)
         var_names.append("drugs_drug_oth" + i)
 
-    for obj in dd, grs:
-
+    # for obj in dd, grs:
+    for obj in [dd]:
         for var_name in var_names:
 
             if var_name in obj["Variable / Field Name"].unique():
@@ -271,6 +271,8 @@ def get_drug_mapping(
                         value = pair.split(",")[1].strip()
                         label = value.split("(")[0].strip()
                         mapping[label] = code
+    # ! Remove this after DD and GRS is fixed
+    mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
     return mapping
 
 
@@ -508,9 +510,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Sponsored project name
     _SPONSORED_PROJECT = ""
     # Redcap codes to cbioportal mapping synid and form key is in
-    # version 38 was the last stable version
-    # Use version 42 - but there is a bug in Synapse...
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.42"
+    # version 38, 42 were last stable version(s)
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -518,9 +519,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # main GENIE release folder (14.6-consortium)
+    # main GENIE release folder (14.7-consortium)
     # Must use consortium release, because SEQ_YEAR is used
-    _MG_RELEASE_SYNID = "syn51719445"
+    _MG_RELEASE_SYNID = "syn52414666"
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
@@ -1259,11 +1260,20 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf.index = timeline_infodf["code"]
         data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
         # HACK: Due to remapping logic, we will re-create RESULT column with correct
-        # values
-        data['df']['MD_KARNOF'] = data['df']['RESULT']
+        has_md_karnof = ~data['df']['MD_KARNOF'].fillna('Not').str.startswith(("Not" ,"not"))
+        has_md_ecog = ~data['df']['MD_ECOG'].fillna('Not').str.startswith(("Not" ,"not"))
+        # Only add in values for SCORE_TYPE and RESULT when MD_KARNOF
+        # and ECOG are present
+        data['df']['SCORE_TYPE'] = ""
+        data['df']['SCORE_TYPE'][has_md_karnof] = "KARNOFSKY"
+        data['df']['SCORE_TYPE'][has_md_ecog] = "ECOG"
+        data['df']['RESULT'] = ""
+        data['df']['RESULT'][has_md_karnof] = data['df']['MD_KARNOF'][has_md_karnof]
+        data['df']['RESULT'][has_md_ecog] = data['df']['MD_ECOG'][has_md_ecog]
+        # CbioPortal doesn't want any rows without MD_KARNOF or MD_ECOG
+        data['df'] = data['df'][data['df']['RESULT'] != ""]
         data['df']['RESULT'] = [
-            _convert_to_int(val.split(":")[0]) if not pd.isnull(val)
-            else val
+            _convert_to_int(val.split(":")[0])
             for val in data['df']['RESULT']
         ]
         return data
@@ -1925,7 +1935,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.get_timeline_treatment(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
-        if self._SPONSORED_PROJECT not in ["BrCa", "CRC", "NSCLC"]:
+        if self._SPONSORED_PROJECT not in ["BrCa", "CRC"]:
             logging.info("writing TIMELINE-TREATMENT-RT...")
             rad_df = self.get_timeline_treatment_rad(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf

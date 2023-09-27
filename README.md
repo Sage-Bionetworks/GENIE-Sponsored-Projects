@@ -4,6 +4,14 @@ This repository will contain processing code for GENIE sponsored projects used t
 
 ## Installation
 
+### Using Python
+
+1. Close the repository and navigate to the `READMD.md` in your local directory
+
+3. Build the environment using `pip install -e .`
+
+### Using Docker
+
 1. Install Docker: https://docs.docker.com/get-docker/
 
 2. Clone this repository and navigate to the directory
@@ -41,22 +49,27 @@ Run GENIE sponsored projects
 
 positional arguments:
   {NSCLC,CRC,BrCa,PANC,Prostate,AKT1,ERRB2,FGFR4}
-                        Specify sponsored project to run
-  release               Specify bpc release
+                        Specify project to run
+  release               Specify bpc release (e.g. 1.1-consortium)
 
 optional arguments:
-  -h, --help            show this help message and exit
-  --staging             If true, files aren't uploaded onto synapse
+  -h, --help            Show this help message and exit
+  --upload              Upload files into Synapse BPC staging directory. Default: false
+  --cbioportal {synapseID}
+                        Optional parameter to specify cbioportal folder
+                        location
 ```
 
-Example command line for 'PANC' (pancreas) cohort and the '1.1-consortium' release without loading files to Synapse.  Only the output to the console will be accessible.
+Example command line:
+
 ```
-docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp PANC 1.1-consortium --staging
+geniesp BLADDER 1.1-consortium
+geniesp BLADDER 1.1-consortium --upload
 ```
 
-To load the files directly to Synapse, remove the --staging parameter
 ```
 docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp PANC 1.1-consortium
+docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp PANC 1.1-consortium --upload
 ```
 
 ## Scripts
