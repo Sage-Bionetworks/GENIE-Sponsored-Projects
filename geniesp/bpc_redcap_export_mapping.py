@@ -273,6 +273,7 @@ def get_drug_mapping(
                         mapping[label] = code
     # ! Remove this after DD and GRS is fixed
     mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
+    mapping['Doxorubicin Hydrochloride'] = mapping['Doxorubicin HCL']
     return mapping
 
 
