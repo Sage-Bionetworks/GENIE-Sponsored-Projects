@@ -41,6 +41,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_gene_matrix.txt",
     "data_cna_hg19.seg",
     "data_fusions.txt",
+    "data_sv.txt",
     "data_CNA.txt",
 ]
 
@@ -272,6 +273,7 @@ def get_drug_mapping(
                         mapping[label] = code
     # ! Remove this after DD and GRS is fixed
     mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
+    mapping['Doxorubicin Hydrochloride'] = mapping['Doxorubicin HCL']
     return mapping
 
 
@@ -518,14 +520,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # main GENIE release folder (14.0-public)
-    _MG_RELEASE_SYNID = "syn52433756"
+    # main GENIE release folder (14.7-consortium)
+    # Must use consortium release, because SEQ_YEAR is used
+    _MG_RELEASE_SYNID = "syn52414666"
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
     _GRS_SYNID = "syn24184523"
     # main GENIE sample clinical database
-    _CLINICAL_SYNID = "syn7517674"
+    # _CLINICAL_SYNID = "syn7517674"
     # BPC sample retraction table
     _RETRACTION_SYNID = "syn25779833"
     # main GENIE assay information table
@@ -561,11 +564,26 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Returns:
             pd.DataFrame: main GENIE information for sponsored project samples
         """
-        genie_clinicaldb = self.syn.tableQuery(
-            f"select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, "
-            f"SAMPLE_TYPE, SEQ_YEAR from {self._CLINICAL_SYNID}"
+        # genie_clinicaldb = self.syn.tableQuery(
+        #     f"select SAMPLE_ID, PATIENT_ID, ONCOTREE_CODE, SEQ_ASSAY_ID, "
+        #     f"SAMPLE_TYPE, SEQ_YEAR from {self._CLINICAL_SYNID}"
+        # )
+        # genie_clinicaldf = genie_clinicaldb.asDataFrame()
+        # DECISION 06/2023: use the release file to do retractions
+        # This is due to the most recent releases potentially having
+        # samples retracted. The consortium release matched with the
+        # public release (14.7-consortium <-> 14.0-public) must be used
+        # due to SEQ_YEAR being used through the code.
+        sample_synid = self.get_mg_synid(
+            self._MG_RELEASE_SYNID, "data_clinical_sample.txt"
         )
-        genie_clinicaldf = genie_clinicaldb.asDataFrame()
+        genie_clinicaldf = pd.read_csv(
+            self.syn.get(sample_synid, followLink=True).path, sep="\t", comment="#"
+        )
+        # Filter out cfDNA samples
+        genie_clinicaldf = genie_clinicaldf[
+            genie_clinicaldf['SAMPLE_CLASS'] != "cfDNA"
+        ]
         # BPC retraction database
         bpc_retraction_db = self.syn.tableQuery(
             f"select SAMPLE_ID from {self._RETRACTION_SYNID} where "
@@ -611,10 +629,11 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 Folder(self._SPONSORED_PROJECT, parentId=parent_id)
             )
             release_folder = self.syn.store(Folder(self.release, parent=sp_data_folder))
-            # if not self.upload:
+            # Store in cBioPortal files because there is another folder for
+            # clinical files
             release_folder = self.syn.store(
                 Folder("cBioPortal_files", parent=release_folder)
-            ).id
+            )
             case_lists = self.syn.store(Folder("case_lists", parent=release_folder))
             return {"release": release_folder, "case_lists": case_lists}
         return {}
@@ -1029,7 +1048,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         file_name = "data_mutations_extended.txt"
         mafpath = os.path.join(self._SPONSORED_PROJECT, file_name)
         maf_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
-        maf_ent = self.syn.get(maf_synid)
+        maf_ent = self.syn.get(maf_synid, followLink=True)
         maf_chunks = pd.read_table(maf_ent.path, chunksize=50000, low_memory=False)
         index = 0
         for maf_chunk in maf_chunks:
@@ -1067,7 +1086,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         file_name = "data_CNA.txt"
         cna_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
         cna_path = os.path.join(self._SPONSORED_PROJECT, file_name)
-        cna_ent = self.syn.get(cna_synid)
+        cna_ent = self.syn.get(cna_synid, followLink=True)
         cnadf = pd.read_table(cna_ent.path, low_memory=False)
         keep_cols = ["Hugo_Symbol"]
         keep_cols.extend(cnadf.columns[cnadf.columns.isin(keep_samples)].tolist())
@@ -1100,7 +1119,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         """
         file_name = "data_fusions.txt"
         fusion_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
-        fusion_ent = self.syn.get(fusion_synid)
+        fusion_ent = self.syn.get(fusion_synid, followLink=True)
         fusiondf = pd.read_table(fusion_ent.path, low_memory=False)
         fusiondf = fusiondf[fusiondf["Tumor_Sample_Barcode"].isin(keep_samples)]
         # cBioPortal validation fails when Hugo Symbol is null
@@ -1119,9 +1138,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
             str: file path to written data
         """
         # TODO: the seg filename will change 13.X release.
-        file_name = "genie_data_cna_hg19.seg"
+        file_name = "data_cna_hg19.seg"
         seg_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
-        seg_ent = self.syn.get(seg_synid)
+        seg_ent = self.syn.get(seg_synid, followLink=True)
         segdf = pd.read_table(seg_ent.path, low_memory=False)
         segdf = segdf[segdf["ID"].isin(keep_samples)]
         seg_path = os.path.join(self._SPONSORED_PROJECT, "data_cna_hg19.seg")
@@ -1144,9 +1163,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 f"data_sv.txt doesn't exist in main genie release: {self._MG_RELEASE_SYNID}"
             )
         if sv_synid is not None:
-            sv_ent = self.syn.get(sv_synid)
+            sv_ent = self.syn.get(sv_synid, followLink=True)
             svdf = pd.read_table(sv_ent.path, low_memory=False)
-            svdf = svdf[svdf["Sample_ID"].isin(keep_samples)]
+            svdf = svdf[svdf["Sample_Id"].isin(keep_samples)]
             sv_path = os.path.join(self._SPONSORED_PROJECT, "data_sv.txt")
             self.write_and_storedf(svdf, sv_path, used_entities=[sv_synid])
 
@@ -1163,7 +1182,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         gene_panel_paths = []
         file_name = "genomic_information.txt"
         genomic_info_synid = self.get_mg_synid(self._MG_RELEASE_SYNID, file_name)
-        genomic_info_ent = self.syn.get(genomic_info_synid)
+        genomic_info_ent = self.syn.get(genomic_info_synid, followLink=True)
         genomic_infodf = pd.read_table(genomic_info_ent.path, low_memory=False)
         # Filter by SEQ_ASSAY_ID and only exonic regions
         genomic_infodf = genomic_infodf[
@@ -1771,7 +1790,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_sample_subset["AGE_AT_SEQUENCING"] = df_sample_subset[
             "AGE_AT_SEQUENCING"
         ].apply(math.floor)
-        # Remove SAMPLE_TYPE and CPT_SEQ_DATE because the values are incorrect
+        # Remove CPT_SEQ_DATE because the values are incorrect
         del df_sample_subset["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
         df_sample_subset = df_sample_subset.merge(
@@ -2114,7 +2133,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.create_and_write_maf(df_sample_final["SAMPLE_ID"])
         dict_cna = self.create_and_write_cna(df_sample_final["SAMPLE_ID"])
         self.create_and_write_genematrix(df_sample_final, dict_cna["cna_samples"])
-        self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
+        # self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
         self.create_and_write_seg(df_sample_final["SAMPLE_ID"])
         self.create_and_write_sv(df_sample_final["SAMPLE_ID"])
 
