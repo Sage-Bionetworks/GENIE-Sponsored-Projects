@@ -85,7 +85,7 @@ def get_file_data(
         if sampletype == "SAMPLE":
             cols.append("path_proc_number")
         # Only get specific cohort and subset cols
-        tabledf = pd.read_csv(table.path, low_memory=False, encoding='ISO-8859-1')
+        tabledf = pd.read_csv(table.path, low_memory=False)
         tabledf = tabledf[tabledf["cohort"] == cohort]
         tabledf = tabledf[cols]
         # Append to final dataframe if empty
