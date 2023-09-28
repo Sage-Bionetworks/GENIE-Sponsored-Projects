@@ -20,10 +20,11 @@ git clone git@github.com:Sage-Bionetworks/GENIE-Sponsored-Projects.git
 cd GENIE-Sponsored-Projects
 ```
 
-3. Build the container 
+3. Build the container locally.
 ```
 docker build -t geniesp .
 ```
+
 
 ## Synapse credentials
 
@@ -68,8 +69,8 @@ geniesp BLADDER 1.1-consortium --upload
 ```
 
 ```
-docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp PANC 1.1-consortium
-docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp PANC 1.1-consortium --upload
+docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp geniesp PANC 1.1-consortium
+docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp geniesp PANC 1.1-consortium --upload
 ```
 
 ## Scripts
