@@ -61,7 +61,7 @@ def get_codes_to_remove(codes: List) -> List:
 
 
 def check_code_name_empty(
-    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: bool
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
     """Check for any code that is empty.
 
@@ -80,7 +80,7 @@ def check_code_name_empty(
 
 
 def check_code_name_absent(
-    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: bool
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
     """Check for any code that is not code name that
     does not appear in its associated data file.
@@ -134,7 +134,7 @@ def check_code_name_absent(
 
 
 def check_dataset_names(
-    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: bool
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
     """Check for any dataset name that is not associated with a dataset.
 
@@ -177,7 +177,7 @@ def check_release_status_ambiguous(
 
 
 def check_release_status_map_yes_sor_not(
-    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: bool
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
     """Check for codes where release status in mapping file is yes
     but relase status in scope of release is not yes.
@@ -195,7 +195,7 @@ def check_release_status_map_yes_sor_not(
     map_status = df[cohort]
     map_type = df["data_type"].str.lower()
     map_codes = df.loc[
-        ((map_status == True) & ((map_type == "derived") | (map_type == "curated")))
+        ((map_status) & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
     column_name = get_sor_column_name(
@@ -215,7 +215,7 @@ def check_release_status_map_yes_sor_not(
 
 
 def check_release_status_sor_yes_map_not(
-    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: bool
+    df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
     """Check for codes where release status in scope of release is yes
     but relase status in mapping file is not yes.
@@ -233,7 +233,7 @@ def check_release_status_sor_yes_map_not(
     map_status = df[cohort]
     map_type = df["data_type"].str.lower()
     map_codes = df.loc[
-        ((map_status == True) & ((map_type == "derived") | (map_type == "curated")))
+        ((map_status) & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
     column_name = get_sor_column_name(
