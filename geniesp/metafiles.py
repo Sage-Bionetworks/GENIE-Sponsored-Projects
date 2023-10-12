@@ -210,6 +210,16 @@ def get_cbio_file_metadata(study_identifier: str, cbio_filename: str) -> dict:
             profile_description="Fusions",
             filename=cbio_filename,
         )
+    elif cbio_filename.startswith("data_sv"):
+        meta_dict = create_genomic_meta_file(
+            study_identifier=study_identifier,
+            alteration_type="STRUCTURAL_VARIANT",
+            datatype="SV",
+            stable_id="structural_variants",
+            profile_name="Structural Variants",
+            profile_description="Structural Variants.",
+            filename=cbio_filename,
+        )
     elif cbio_filename.startswith("data_mutations_extended"):
         meta_dict = create_genomic_meta_file(
             study_identifier=study_identifier,
