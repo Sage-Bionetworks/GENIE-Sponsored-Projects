@@ -890,7 +890,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
 
         # Make sure all events types are treatment
-        final_timelinedf["EVENT_TYPE"] = "Treatment"
+        final_timelinedf["EVENT_TYPE"] = "TREATMENT"
 
         # Make sure AGENT is not null and doesn't have parenthesis
         agents = []
@@ -1317,7 +1317,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         rad_df = treatment_rad_data["df"]
         rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
         rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
-        rad_df["EVENT_TYPE"] = "Treatment"
+        rad_df["EVENT_TYPE"] = "TREATMENT"
         rad_df["TREATMENT_TYPE"] = "Radiation Therapy"
         del rad_df["INDEX_CANCER"]
         del rad_df["TEMP"]
