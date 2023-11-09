@@ -531,7 +531,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # main GENIE sample clinical database
     # _CLINICAL_SYNID = "syn7517674"
     # BPC sample retraction table
-    _RETRACTION_SYNID = "syn25779833"
+    _sample_retraction_synid = "syn25779833"
+    _patient_retraction_synid = "syn25998970"
+    _retraction_at_release_synid = "syn52915299"
+    _temporary_patient_retraction_synid = "syn29266682"
     # main GENIE assay information table
     _ASSAY_SYNID = "syn17009222"
     # exclude files to be created for cbioportal
@@ -586,31 +589,40 @@ class BpcProjectRunner(metaclass=ABCMeta):
             genie_clinicaldf['SAMPLE_CLASS'] != "cfDNA"
         ]
         # BPC retraction database
-        bpc_retraction_db = self.syn.tableQuery(
-            f"select SAMPLE_ID from {self._RETRACTION_SYNID} where "
+        bpc_sample_retraction_db = self.syn.tableQuery(
+            f"select SAMPLE_ID from {self._sample_retraction_synid} where "
             f"{self._SPONSORED_PROJECT} is true"
         )
-        bpc_retractiondf = bpc_retraction_db.asDataFrame()
+        bpc_sample_retractiondf = bpc_sample_retraction_db.asDataFrame()
 
-        # TODO: add patient retraction database...
         bpc_patient_retraction_db = self.syn.tableQuery(
-            "select record_id from syn25998970 where "
+            f"select record_id from {self._patient_retraction_synid} where "
             f"{self._SPONSORED_PROJECT} is true"
         )
         bpc_patient_retraction_df = bpc_patient_retraction_db.asDataFrame()
 
         bpc_temp_patient_retraction_db = self.syn.tableQuery(
-            "select record_id from syn29266682 where "
+            f"select record_id from {self._temporary_patient_retraction_synid} where "
             f"cohort = '{self._SPONSORED_PROJECT}'"
         )
         bpc_temp_patient_retraction_df = bpc_temp_patient_retraction_db.asDataFrame()
+
+        retraction_at_release = self.syn.tableQuery(
+            f"select patient_id from {self._retraction_at_release_synid} where "
+            f"cohort = '{self._SPONSORED_PROJECT}'"
+        )
+        retraction_at_release_df = retraction_at_release.asDataFrame()
         # Retract samples from sample retraction db
         keep_clinicaldf = genie_clinicaldf[
-            ~genie_clinicaldf["SAMPLE_ID"].isin(bpc_retractiondf["SAMPLE_ID"])
+            ~genie_clinicaldf["SAMPLE_ID"].isin(bpc_sample_retractiondf["SAMPLE_ID"])
         ]
         # Retract patients from patient retraction db
         keep_clinicaldf = keep_clinicaldf[
             ~keep_clinicaldf["PATIENT_ID"].isin(bpc_patient_retraction_df["record_id"])
+        ]
+        # Retract patients for at release retraction table
+        keep_clinicaldf = keep_clinicaldf[
+            ~keep_clinicaldf["PATIENT_ID"].isin(retraction_at_release_df["patient_id"])
         ]
         # Retract patients from temporary patient retraction db
         keep_clinicaldf = keep_clinicaldf[
