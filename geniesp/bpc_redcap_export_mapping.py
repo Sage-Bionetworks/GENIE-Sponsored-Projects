@@ -17,6 +17,7 @@ import logging
 from typing import List
 
 from genie import create_case_lists, process_functions
+import numpy as np
 import pandas as pd
 from synapseclient import File, Folder, Synapse
 
@@ -1787,9 +1788,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             if col in df_sample_subset:
                 years = df_sample_subset[col].apply(change_days_to_years)
                 df_sample_subset[col] = years
+        # Use np.floor because np handles NaN values
         df_sample_subset["AGE_AT_SEQUENCING"] = df_sample_subset[
             "AGE_AT_SEQUENCING"
-        ].apply(math.floor)
+        ].apply(np.floor)
         # Remove CPT_SEQ_DATE because the values are incorrect
         del df_sample_subset["CPT_SEQ_DATE"]
         # Obtain this information from the main GENIE cohort
