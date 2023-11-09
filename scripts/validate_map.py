@@ -101,7 +101,7 @@ def check_code_name_absent(
     res = syn.tableQuery(query)
 
     # only examine released codes
-    df = df[df[cohort].str.lower() == "y"]
+    df = df[df[cohort]]
 
     for row in res:
 
@@ -159,7 +159,7 @@ def check_dataset_names(
 def check_release_status_ambiguous(
     df: pd.DataFrame, syn: Synapse, config: Dict, cohort: str, release: str
 ) -> List:
-    """Check for any codes with release status that is not y or n.
+    """Check for any codes with release status that is not TRUE or FALSE.
 
     Args:
         df (pd.DataFrame): dataframe representing map
@@ -171,8 +171,8 @@ def check_release_status_ambiguous(
     Returns:
         list: codes with ambiguous release status
     """
-    status = df[cohort].str.lower()
-    codes = df.loc[[item not in ["y", "n"] for item in status]]["code"]
+    status = df[cohort]
+    codes = df.loc[[item not in [True, False] for item in status]]["code"]
     return codes
 
 
@@ -192,10 +192,10 @@ def check_release_status_map_yes_sor_not(
     Returns:
         list: codes with lenient release status
     """
-    map_status = df[cohort].str.lower()
+    map_status = df[cohort]
     map_type = df["data_type"].str.lower()
     map_codes = df.loc[
-        ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
+        ((map_status == True) & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
     column_name = get_sor_column_name(
@@ -230,10 +230,10 @@ def check_release_status_sor_yes_map_not(
     Returns:
         list: codes with lenient release status
     """
-    map_status = df[cohort].str.lower()
+    map_status = df[cohort]
     map_type = df["data_type"].str.lower()
     map_codes = df.loc[
-        ((map_status == "y") & ((map_type == "derived") | (map_type == "curated")))
+        ((map_status == True) & ((map_type == "derived") | (map_type == "curated")))
     ]["code"]
 
     column_name = get_sor_column_name(
@@ -366,7 +366,7 @@ def validate_map(
         ):
             fxn_name = config["check"][check_no]["function"]
             result = fxns[fxn_name](df, syn, config, cohort, release)
-            errors = errors.append(format_result(result, config, check_no))
+            errors = pd.concat([errors, format_result(result, config, check_no)])
             logging.info(f"  Found {len(result)} error(s).")
         else:
             logging.info("  Check deprecated or not implemented.")
