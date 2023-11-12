@@ -1312,7 +1312,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
             ]
         )
         timeline_infodf.index = timeline_infodf["code"]
-
+        timeline_data = get_file_data(
+            syn=self.syn,
+            mappingdf=timeline_infodf,
+            sampletype="TIMELINE-TREATMENT-RT",
+            cohort=self._SPONSORED_PROJECT
+        )
         treatment_rad_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-TREATMENT-RT"
         )
