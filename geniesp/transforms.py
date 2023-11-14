@@ -342,5 +342,5 @@ class TimelineDxTransform(Transforms):
         return timelinedf
 
 
-class TimelineImagingTransform(Transforms):
+class TimelineTransform(Transforms):
     pass

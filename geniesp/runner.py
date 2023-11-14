@@ -11,8 +11,7 @@ from transforms import (
     TimelinePerformanceTransform,
     TimelineTreatmentRadTransform,
     TimelineTreatmentTransform,
-    TimelineDxTransform,
-    TimelineImagingTransform
+    TimelineTransform,
 )
 
 
@@ -61,7 +60,9 @@ timeline_files = {
     # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
     # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
     # "TIMELINE-DX": TimelineDxTransform,
-    "TIMELINE-IMAGING": TimelineImagingTransform,
+    "TIMELINE-IMAGING": TimelineTransform,
+    "TIMELINE-MEDONC": TimelineTransform,
+    "TIMELINE-PATHOLOGY": TimelineTransform
 }
 # Exception for timeline treatment file
 temp_extract = Extract(
@@ -76,7 +77,6 @@ temp_transform = TimelineTreatmentTransform(
 )
 
 timeline_treatment_df = temp_transform.create_timeline_file()
-print(timeline_treatment_df)
 
 for sample_type, transform_cls in timeline_files.items():
     temp_extract = Extract(
