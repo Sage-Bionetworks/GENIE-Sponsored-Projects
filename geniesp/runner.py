@@ -11,7 +11,8 @@ from transforms import (
     TimelinePerformanceTransform,
     TimelineTreatmentRadTransform,
     TimelineTreatmentTransform,
-    TimelineDxTransform
+    TimelineDxTransform,
+    TimelineImagingTransform
 )
 
 
@@ -59,7 +60,8 @@ config = BpcConfig()
 timeline_files = {
     # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
     # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
-    "TIMELINE-DX": TimelineDxTransform,
+    # "TIMELINE-DX": TimelineDxTransform,
+    "TIMELINE-IMAGING": TimelineImagingTransform,
 }
 # Exception for timeline treatment file
 temp_extract = Extract(

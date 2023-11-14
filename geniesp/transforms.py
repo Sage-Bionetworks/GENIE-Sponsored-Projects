@@ -340,3 +340,7 @@ class TimelineDxTransform(Transforms):
             ~timelinedf["START_DATE"].isnull()
         ]
         return timelinedf
+
+
+class TimelineImagingTransform(Transforms):
+    pass
