@@ -1,38 +1,40 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 
 @dataclass
-class BpcConfig():
+class BpcConfig:
     # json_path: str
-    cohort = "BLADDER"
+    cohort: str = "BLADDER"
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38, 42 were last stable version(s)
-    redcap_to_cbio_mapping_synid = "syn25712693.49"
+    redcap_to_cbio_mapping_synid: str = "syn25712693.49"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     # github_repo = None
     # Mapping from Synapse Table to derived variables
     # TODO: Make versioned
-    data_tables_id = "syn22296821"
+    data_tables_id: str = "syn22296821"
     # Storage of not found samples
-    sp_redcap_exports_synid = "syn21446571"
+    sp_redcap_exports_synid: str = "syn21446571"
     # main GENIE release folder (14.8-consortium)
     # Must use consortium release, because SEQ_YEAR is used
-    mg_release_synid = "syn52794528"
+    mg_release_synid: str = "syn52794528"
     # PRISSMM documentation table
-    prissmm_synid = "syn22684834"
+    prissmm_synid: str = "syn22684834"
     # BPC sample retraction table
-    sample_retraction_synid = "syn25779833"
-    patient_retraction_synid = "syn25998970"
-    retraction_at_release_synid = "syn52915299"
-    temporary_patient_retraction_synid = "syn29266682"
+    sample_retraction_synid: str = "syn25779833"
+    patient_retraction_synid: str = "syn25998970"
+    retraction_at_release_synid: str = "syn52915299"
+    temporary_patient_retraction_synid: str = "syn29266682"
     # main GENIE assay information table
-    mg_assay_synid = "syn17009222"
+    mg_assay_synid: str = "syn17009222"
     # exclude files to be created for cbioportal
     # TODO: need to support this feature in rest of code, for now
     # This is added for metadata files
-    exclude_files = []
+    exclude_files: List[str] = field(default_factory=list)
     # cohort-generic link to documentation for BPC datasets
-    url_bpc = "https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h"
+    url_bpc: str = "https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h"
     # cohort-generic link to documentation for cBio files
-    url_cbio = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
+    url_cbio: str = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
     # syn: Synapse
+    oncotreelink: str = "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"

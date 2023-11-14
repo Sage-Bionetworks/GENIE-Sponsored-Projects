@@ -14,7 +14,8 @@ from transforms import (
     TimelineTransform,
     TimelineSampleTransform,
     TimelineSequenceTransform,
-    TimelineDxTransform
+    TimelineDxTransform,
+    SurvivalTransform
 )
 
 
@@ -61,17 +62,20 @@ def write_and_storedf(
 syn = synapseclient.login()
 cohort = "BLADDER"
 
-config = BpcConfig()
+config = BpcConfig(
+    cohort = cohort
+)
 timeline_files = {
-    "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
-    "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
-    "TIMELINE-DX": TimelineDxTransform,
-    "TIMELINE-IMAGING": TimelineTransform,
-    "TIMELINE-MEDONC": TimelineTransform,
-    "TIMELINE-PATHOLOGY": TimelineTransform,
-    "TIMELINE-SAMPLE": TimelineSampleTransform,
-    "TIMELINE-SEQUENCE": TimelineSequenceTransform,
-    "TIMELINE-LAB": TimelineTransform
+    # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
+    # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
+    # "TIMELINE-DX": TimelineDxTransform,
+    # "TIMELINE-IMAGING": TimelineTransform,
+    # "TIMELINE-MEDONC": TimelineTransform,
+    # "TIMELINE-PATHOLOGY": TimelineTransform,
+    # "TIMELINE-SAMPLE": TimelineSampleTransform,
+    # "TIMELINE-SEQUENCE": TimelineSequenceTransform,
+    # "TIMELINE-LAB": TimelineTransform,
+    "SURVIVAL": SurvivalTransform
 }
 # Exception for timeline treatment file
 temp_extract = Extract(
@@ -142,3 +146,4 @@ for sample_type, transform_cls in timeline_files.items():
         filepath=os.path.join(cohort, f"{sample_type}.txt"),
         used_entities = used_entities
     )
+    # TODO: need to have a write clinical method

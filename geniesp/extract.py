@@ -105,8 +105,14 @@ class Extract:
                             "cbio": "DPT_REPORT_DAYS",
                             "id": "syn22296816",  # HACK: hard coded synapse id
                         },
+                        {
+                            "code": "first_index_ca_days",
+                            "sampleType": "SURVIVAL",
+                            "dataset": "Cancer-level index dataset",
+                            "cbio": "CANCER_INDEX",
+                        }
                     ],
-                    index=["rt_rt_int", "redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days"],
+                    index=["rt_rt_int", "redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days", "first_index_ca_days"],
                 ),
             ]
         )

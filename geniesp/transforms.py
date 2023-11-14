@@ -6,34 +6,14 @@ import pandas as pd
 
 from extract import Extract
 from config import BpcConfig
-
-
-def _convert_to_int(value):
-    """Convert object to integer or return nan"""
-    try:
-        return int(value)
-    except ValueError:
-        return float('nan')
-
-
-def fill_cancer_dx_start_date(finaldf: pd.DataFrame) -> pd.DataFrame:
-    """Fills in cancer dx start date for those missing start dates
-    with zero.
-
-    Args:
-        finaldf (pd.DataFrame): Mapped cancer diagnosis timeline dataframe
-
-    Returns:
-        pd.DataFrame: dataframe with filled START_DATEs
-    """
-    # Get all time0 points for all records
-    time0_dates_idx = finaldf["INDEX_CANCER"] == "Yes"
-    # Make all time0 points 0
-    finaldf["diagnosis_int"] = finaldf["START_DATE"]
-    finaldf["START_DATE"][time0_dates_idx] = 0
-    # Remove unused variable
-    del finaldf["diagnosis_int"]
-    return finaldf
+from bpc_redcap_export_mapping import (
+    _convert_to_int,
+    fill_cancer_dx_start_date,
+    create_regimens,
+    get_drug_mapping,
+    remap_os_values,
+    remap_pfs_values,
+)
 
 
 @dataclass
@@ -386,3 +366,124 @@ class TimelineSequenceTransform(Transforms):
         seq_df = seq_df[cols_to_order]
         seq_df.drop_duplicates(inplace=True)
         return seq_df
+
+
+class SurvivalTransform(Transforms):
+
+    def configure_clinicaldf(
+        self, clinicaldf: pd.DataFrame, redcap_to_cbiomappingdf: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Create clinical file from sponsored project mapped dataframe
+
+        Args:
+            clinicaldf (pd.DataFrame): clinical information
+            redcap_to_cbiomappingdf (pd.DataFrame): cBio mapping info
+
+        Raises:
+            ValueError: All column names must be in mapping dataframe
+            ValueError: Must have no null patient ids
+            ValueError: Must have no null sample ids
+
+        Returns:
+            pd.DataFrame: configured clinical information
+        """
+        print(clinicaldf.columns[~clinicaldf.columns.isin(redcap_to_cbiomappingdf["code"])])
+        print(redcap_to_cbiomappingdf["code"])
+        if not clinicaldf.columns.isin(redcap_to_cbiomappingdf["code"]).all():
+            raise ValueError("All column names must be in mapping dataframe")
+        mapping = redcap_to_cbiomappingdf["cbio"].to_dict()
+        clinicaldf = clinicaldf.rename(columns=mapping)
+        clinicaldf = clinicaldf.drop_duplicates()
+        if sum(clinicaldf["PATIENT_ID"].isnull()) > 0:
+            raise ValueError("Must have no null patient ids")
+        # Remove white spaces for PATIENT/SAMPLE ID
+        clinicaldf["PATIENT_ID"] = [
+            patient.strip() for patient in clinicaldf["PATIENT_ID"]
+        ]
+
+        if clinicaldf.get("SAMPLE_ID") is not None:
+            # This line should not be here
+            clinicaldf = clinicaldf[~clinicaldf["SAMPLE_ID"].isnull()]
+            if sum(clinicaldf["SAMPLE_ID"].isnull()) > 0:
+                raise ValueError("Must have no null sample ids")
+            clinicaldf["SAMPLE_ID"] = [
+                sample.strip() for sample in clinicaldf["SAMPLE_ID"]
+            ]
+        # JIRA: GEN-10- Must standardize SEQ_ASSAY_ID values to be uppercase
+        if clinicaldf.get("SEQ_ASSAY_ID") is not None:
+            clinicaldf["SEQ_ASSAY_ID"] = clinicaldf["SEQ_ASSAY_ID"].str.upper()
+
+        clinicaldf["SP"] = self.bpc_config.cohort
+
+        for col in clinicaldf:
+            num_missing = sum(clinicaldf[col].isnull())
+            if num_missing > 0:
+                logging.warning(f"Number of missing {col}: {num_missing}")
+
+        return clinicaldf
+
+    def transforms(self, timelinedf, filter_start) -> dict:
+
+        df_final_survival = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
+
+        # Only take rows where cancer index is null
+        df_final_survival = df_final_survival[
+            df_final_survival["CANCER_INDEX"].isnull()
+        ]
+        # Remove cancer index column
+        del df_final_survival["CANCER_INDEX"]
+        # remove a row if patient ID is duplicated and PFS_I_ADV_STATUS is null or empty
+        # tested on current survival data file and produces unique patient list
+        if "PFS_I_ADV_STATUS" in df_final_survival.columns:
+            pfs_not_null_idx = ~df_final_survival["PFS_I_ADV_STATUS"].isnull()
+            pfs_not_blank_idx = df_final_survival["PFS_I_ADV_STATUS"] != ""
+            nondup_patients_idx = ~df_final_survival["PATIENT_ID"].duplicated(
+                keep=False
+            )
+            df_final_survival = df_final_survival[
+                (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
+            ]
+        # TODO Fix this code chunk
+        # Only patients and samples that exist in the
+        # df_file = self.extract.data_tables_df
+        # df_map = self.extract.timeline_infodf
+        # # Patient and Sample mapping values
+        # patient_sample_idx = df_map["sampleType"].isin(
+        #     ["PATIENT", "SAMPLE", "SURVIVAL"]
+        # )
+        # infodf = df_map[patient_sample_idx].merge(df_file, on="dataset", how="left")
+        # infodf.index = infodf["code"]
+
+        # # Regimen mapping values
+        # regimen_idx = df_map["sampleType"].isin(["REGIMEN"])
+        # regimen_infodf = df_map[regimen_idx].merge(df_file, on="dataset", how="left")
+        # regimen_infodf.index = regimen_infodf["code"]
+
+        # # Create regimens data for patient file
+        # drug_mapping = get_drug_mapping(
+        #     syn=self.syn,
+        #     cohort=self._SPONSORED_PROJECT,
+        #     synid_table_prissmm=self._PRISSMM_SYNID,
+        # )
+        # regimens_data = create_regimens(
+        #     self.syn,
+        #     regimen_infodf,
+        #     mapping=drug_mapping,
+        #     top_x_regimens=20,
+        #     cohort=self._SPONSORED_PROJECT,
+        # )
+
+        # survival_info = pd.concat([infodf, regimens_data["info"]])
+
+        # TODO check the above
+        # Only patients and samples that exist in the
+        # sponsored project uploads are going to be pulled into the SP project
+        subset_survivaldf = self.retract_samples_and_patients(df_final_survival)
+
+        del subset_survivaldf["SP"]
+        subset_survivaldf = remap_os_values(df=subset_survivaldf)
+        subset_survivaldf = remap_pfs_values(df=subset_survivaldf)
+        cols_to_order = ["PATIENT_ID"]
+        cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
+
+        return subset_survivaldf[cols_to_order]

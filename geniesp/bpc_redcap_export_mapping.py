@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 from synapseclient import File, Folder, Synapse
 
-from . import metafiles
+from metafiles import *
 
 # All cbioportal file formats written in BPC
 CBIO_FILEFORMATS_ALL = [
