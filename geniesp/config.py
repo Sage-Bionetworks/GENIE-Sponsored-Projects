@@ -1,9 +1,4 @@
 from dataclasses import dataclass
-from functools import cached_property
-
-import pandas as pd
-import synapseclient
-from synapseclient import Synapse
 
 
 @dataclass

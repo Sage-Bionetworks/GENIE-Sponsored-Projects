@@ -13,13 +13,14 @@ from transforms import (
     TimelineTreatmentTransform,
     TimelineTransform,
     TimelineSampleTransform,
-    TimelineSequenceTransform
+    TimelineSequenceTransform,
+    TimelineDxTransform
 )
 
 
 
 def write_and_storedf(
-    df: pd.DataFrame, filepath: str
+    syn, df: pd.DataFrame, filepath: str, used_entities: list = []
 ):
     """Write and, if applicable, store data frame.
 
@@ -32,6 +33,9 @@ def write_and_storedf(
     df_text = process_functions.removePandasDfFloat(df)
     with open(filepath, "w") as file_f:
         file_f.write(df_text)
+    ent = synapseclient.File(filepath, parent="syn52950402")
+    syn.store(ent, executed="https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects", used=used_entities)
+
 
 # @dataclass
 # class ETL:
@@ -59,14 +63,14 @@ cohort = "BLADDER"
 
 config = BpcConfig()
 timeline_files = {
-    # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
-    # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
-    # "TIMELINE-DX": TimelineDxTransform,
-    # "TIMELINE-IMAGING": TimelineTransform,
-    # "TIMELINE-MEDONC": TimelineTransform,
-    # "TIMELINE-PATHOLOGY": TimelineTransform,
-    # "TIMELINE-SAMPLE": TimelineSampleTransform,
-    # "TIMELINE-SEQUENCE": TimelineSequenceTransform,
+    "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
+    "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
+    "TIMELINE-DX": TimelineDxTransform,
+    "TIMELINE-IMAGING": TimelineTransform,
+    "TIMELINE-MEDONC": TimelineTransform,
+    "TIMELINE-PATHOLOGY": TimelineTransform,
+    "TIMELINE-SAMPLE": TimelineSampleTransform,
+    "TIMELINE-SEQUENCE": TimelineSequenceTransform,
     "TIMELINE-LAB": TimelineTransform
 }
 # Exception for timeline treatment file
@@ -84,13 +88,23 @@ temp_transform = TimelineTreatmentTransform(
 timeline_treatment_df = temp_transform.create_timeline_file()
 
 for sample_type, transform_cls in timeline_files.items():
+    # Conditions to skip
     if sample_type == "TIMELINE-LAB" and cohort in ["NSCLC", "BLADDER"]:
         continue
+    if sample_type == "TIMELINE-PERFORMANCE" and cohort not in ['BLADDER']:
+        continue
+    if sample_type == "TIMELINE-TREATMENT-RT" and cohort in ["BrCa", "CRC"]:
+        continue
+
+    # Download all the files required for processing
     temp_extract = Extract(
         bpc_config = config,
         sample_type = sample_type,
         syn = syn
     )
+    derived_variables = temp_extract.get_derived_variable_files()
+
+    # Leverage the cbioportal mapping and derived variables to create the timeline files
     temp_transform = transform_cls(
         # timeline_infodf= temp_extract.timeline_infodf,
         extract = temp_extract,
@@ -100,15 +114,31 @@ for sample_type, transform_cls in timeline_files.items():
         filter_start = False
     else:
         filter_start = True
+
     performance_data = temp_transform.create_timeline_file(filter_start=filter_start)
+    # This is specific to the timeline treatment file where it is concatenated with
+    # the timeline file
     if sample_type == "TIMELINE-TREATMENT-RT":
         performance_data = pd.concat(
             [timeline_treatment_df, performance_data]
         )
-    # Retraction...
+    # store the files with provenance
+    # Generate provenance
+    used_entities = [
+        config.redcap_to_cbio_mapping_synid,
+        config.data_tables_id,
+        config.mg_release_synid,
+        config.prissmm_synid,
+        config.sample_retraction_synid,
+        config.patient_retraction_synid,
+        config.retraction_at_release_synid,
+        config.temporary_patient_retraction_synid,
+        config.mg_assay_synid,
+    ]
+    used_entities.extend(derived_variables['used'])
     write_and_storedf(
+        syn=syn,
         df=performance_data,
-        filepath=os.path.join(
-            cohort, f"{sample_type}.txt"
-        )
+        filepath=os.path.join(cohort, f"{sample_type}.txt"),
+        used_entities = used_entities
     )
