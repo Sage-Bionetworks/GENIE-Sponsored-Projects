@@ -5,8 +5,6 @@ import os
 
 import pandas as pd
 import synapseclient
-from genie import process_functions
-
 
 from geniesp.bpc_redcap_export_mapping import get_survival_info
 from geniesp.config import Brca, Crc, Nsclc, Panc, Prostate, Bladder
@@ -24,7 +22,7 @@ from geniesp.transforms import (
     SampleTransform,
     PatientTransform
 )
-from geniesp.runner import write_and_storedf, write_clinical_file
+from geniesp.loads import write_and_storedf, write_clinical_file
 
 
 BPC_MAPPING = {
@@ -86,15 +84,15 @@ def main():
     config = BPC_MAPPING[args.sp]
 
     timeline_files = {
-        "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
-        "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
-        "TIMELINE-DX": TimelineDxTransform,
-        "TIMELINE-IMAGING": TimelineTransform,
-        "TIMELINE-MEDONC": TimelineTransform,
-        "TIMELINE-PATHOLOGY": TimelineTransform,
-        "TIMELINE-SAMPLE": TimelineSampleTransform,
-        "TIMELINE-SEQUENCE": TimelineSequenceTransform,
-        "TIMELINE-LAB": TimelineTransform,
+        # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
+        # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
+        # "TIMELINE-DX": TimelineDxTransform,
+        # "TIMELINE-IMAGING": TimelineTransform,
+        # "TIMELINE-MEDONC": TimelineTransform,
+        # "TIMELINE-PATHOLOGY": TimelineTransform,
+        # "TIMELINE-SAMPLE": TimelineSampleTransform,
+        # "TIMELINE-SEQUENCE": TimelineSequenceTransform,
+        # "TIMELINE-LAB": TimelineTransform,
         "SURVIVAL": SurvivalTransform,
         "REGIMEN": SurvivalTreatmentTransform,
         "SAMPLE": SampleTransform,

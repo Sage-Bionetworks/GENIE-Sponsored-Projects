@@ -513,17 +513,18 @@ def get_survival_info(syn, df_map, df_file, cohort, prissm_synid):
     drug_mapping = get_drug_mapping(
         syn=syn,
         cohort=cohort,
-        synid_table_prissmm=prissm_synid,
+        synid_table_prissmm=prissm_synid
     )
     regimens_data = create_regimens(
         syn,
         regimen_infodf,
         mapping=drug_mapping,
         top_x_regimens=20,
-        cohort=cohort,
+        cohort=cohort
     )
     survival_info = pd.concat([infodf, regimens_data["info"]])
     return survival_info
+
 
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
