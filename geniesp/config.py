@@ -38,3 +38,51 @@ class BpcConfig:
     url_cbio: str = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
     # syn: Synapse
     oncotreelink: str = "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
+
+
+class Brca(BpcConfig):
+    """BrCa BPC sponsored project"""
+
+    # Sponsored project name
+    cohort = "BrCa"
+    exclude_files = ["data_timeline_performance_status.txt"]
+
+
+class Crc(BpcConfig):
+    """CRC BPC sponsored project"""
+
+    # Sponsored project name
+    cohort = "CRC"
+    exclude_files = ["data_timeline_performance_status.txt"]
+
+
+class Nsclc(BpcConfig):
+    """NSCLC BPC sponsored project"""
+
+    # Sponsored project name
+    cohort = "NSCLC"
+    exclude_files = ["data_timeline_labtest.txt", "data_timeline_performance_status.txt"]
+
+
+class Panc(BpcConfig):
+    """PANC BPC sponsored project"""
+
+    # Sponsored project name
+    cohort = "PANC"
+    exclude_files = ["data_timeline_performance_status.txt"]
+
+
+class Prostate(BpcConfig):
+    """Prostate BPC sponsored project"""
+
+    # Sponsored project name
+    cohort = "Prostate"
+    exclude_files = ["data_timeline_performance_status.txt"]
+
+
+class Bladder(BpcConfig):
+    """BLADDER BPC sponsored project"""
+
+    # Sponsored project name
+    cohort = "BLADDER"
+    exclude_files = ["data_timeline_labtest.txt"]

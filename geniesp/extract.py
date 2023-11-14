@@ -5,7 +5,7 @@ from functools import cached_property
 import pandas as pd
 from synapseclient import Synapse
 
-from config import BpcConfig
+from geniesp.config import BpcConfig
 
 
 @dataclass

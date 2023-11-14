@@ -5,9 +5,9 @@ import logging
 import pandas as pd
 import numpy as np
 
-from extract import Extract
-from config import BpcConfig
-from bpc_redcap_export_mapping import (
+from geniesp.extract import Extract
+from geniesp.config import BpcConfig
+from geniesp.bpc_redcap_export_mapping import (
     _convert_to_int,
     fill_cancer_dx_start_date,
     create_regimens,
