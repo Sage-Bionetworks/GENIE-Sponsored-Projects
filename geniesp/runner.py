@@ -7,7 +7,11 @@ from genie import process_functions
 
 from config import BpcConfig
 from extract import Extract
-from transforms import Transforms, TimelinePerformanceTransform
+from transforms import (
+    TimelinePerformanceTransform,
+    TimelineTreatmentRadTransform,
+    TimelineTreatmentTransform
+)
 
 
 
@@ -51,23 +55,45 @@ syn = synapseclient.login()
 cohort = "BLADDER"
 
 config = BpcConfig()
+timeline_files = {
+    "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
+    "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
+}
 temp_extract = Extract(
     bpc_config = config,
-    sample_type = "TIMELINE-PERFORMANCE",
+    sample_type = "TIMELINE-TREATMENT",
     syn = syn
 )
-temp_transform = TimelinePerformanceTransform(
-    timeline_data= temp_extract.map_to_cbioportal_format(),
-    timeline_infodf= temp_extract.timeline_infodf,
-    extract = temp_extract
+temp_transform = TimelineTreatmentTransform(
+    # timeline_infodf= temp_extract.timeline_infodf,
+    extract = temp_extract,
+    bpc_config = config
 )
 
-performance_data = temp_transform.create_timeline_file()
+timeline_treatment_df = temp_transform.create_timeline_file()
+print(timeline_treatment_df)
 
-# Retraction...
-write_and_storedf(
-    df=performance_data,
-    filepath=os.path.join(
-        cohort, "data_timeline_performance_status.txt"
+for sample_type, transform_cls in timeline_files.items():
+    temp_extract = Extract(
+        bpc_config = config,
+        sample_type = sample_type,
+        syn = syn
     )
-)
+    temp_transform = transform_cls(
+        # timeline_infodf= temp_extract.timeline_infodf,
+        extract = temp_extract,
+        bpc_config = config
+    )
+
+    performance_data = temp_transform.create_timeline_file()
+    if sample_type == "TIMELINE-TREATMENT-RT":
+        performance_data = pd.concat(
+            [timeline_treatment_df, performance_data]
+        )
+    # Retraction...
+    write_and_storedf(
+        df=performance_data,
+        filepath=os.path.join(
+            cohort, f"{sample_type}.txt"
+        )
+    )

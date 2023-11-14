@@ -76,6 +76,7 @@ class Extract:
         timeline_infodf = pd.concat(
             [
                 timeline_infodf,
+                # For TIMELINE-PERFORMANCE and timeline treatment rad
                 pd.DataFrame(
                     {
                         "code": "rt_rt_int",
@@ -91,7 +92,7 @@ class Extract:
 
         return subset_infodf
 
-    def map_to_cbioportal_format(
+    def get_derived_variable_files(
         self
     ) -> dict:
         """Extracts the sample, patient and timeline data frame
@@ -106,55 +107,19 @@ class Extract:
             dict: dictionary with two keys ('df' and 'used') corresponding to data frame
             of data for sample type and a list of Synapse IDs used
         """
-        print(self.timeline_infodf)
-        mappingdf = self.timeline_infodf[self.timeline_infodf["data_type"] != "portal_value"]
+        used_entities = []
+        derived_variable_entities = {}
         # Group by dataset because different datasets could have the
         # same variable
-        datasets = mappingdf.groupby("dataset")
-        finaldf = pd.DataFrame()
-        used_entities = []
-
-        for _, df in datasets:
+        datasets = self.timeline_infodf.groupby("dataset")
+        for dataset, df in datasets:
             # Get synapse id
             synid = df["id"].unique()[0]
-            table = self.syn.get(synid)
-            used_entities.append(f"{synid}.{table.versionNumber}")
-            # obtain columns to subset df
-            cols = df["code"][df["sampleType"] == self.sample_type]
-            cols = cols.tolist()
-            if "record_id" not in cols:
-                cols.append("record_id")
-            # Must add path_rep_number for sample and sample acquisition file
-            if self.sample_type in ["SAMPLE", "TIMELINE-SAMPLE"]:
-                cols.append("path_rep_number")
-            # Must add path_proc_number to sample file
-            if self.sample_type == "SAMPLE":
-                cols.append("path_proc_number")
-            # Only get specific cohort and subset cols
-            tabledf = pd.read_csv(table.path, low_memory=False)
-            tabledf = tabledf[tabledf["cohort"] == self.bpc_config.cohort]
-            tabledf = tabledf[cols]
+            file_entity = self.syn.get(synid)
+            derived_variable_entities[dataset] = file_entity
+            used_entities.append(f"{synid}.{file_entity.versionNumber}")
 
-            # Append to final dataframe if empty
-            if finaldf.empty:
-                finaldf = pd.concat([finaldf, tabledf])
-            else:
-                # Records missing pathology reports still have to be present
-                # So a left merge has to happen.  This logic also assumes that
-                # The pathology report dataset mapping info isn't first.
-                # This also assumes that the TIMELINE-PATHOLOGY file only
-                # uses columns from the pathology-report dataset
-                if df["dataset"].iloc[0] == "Pathology-report level dataset":
-                    finaldf = finaldf.merge(
-                        tabledf,
-                        on=["record_id", "path_proc_number", "path_rep_number"],
-                        how="left",
-                    )
-                    del finaldf["path_rep_number"]
-                else:
-                    finaldf = finaldf.merge(tabledf, on="record_id")
-
-        return {"df": finaldf, "used": used_entities}
+        return {"derived_variable_entities": derived_variable_entities, "used": used_entities}
 
 
     @cached_property
