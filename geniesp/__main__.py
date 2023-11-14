@@ -8,6 +8,7 @@ import synapseclient
 from genie import process_functions
 
 
+from geniesp.bpc_redcap_export_mapping import get_survival_info
 from geniesp.config import Brca, Crc, Nsclc, Panc, Prostate, Bladder
 from geniesp.extract import Extract
 from geniesp.transforms import (
@@ -23,7 +24,7 @@ from geniesp.transforms import (
     SampleTransform,
     PatientTransform
 )
-from geniesp.runner import write_and_storedf
+from geniesp.runner import write_and_storedf, write_clinical_file
 
 
 BPC_MAPPING = {
@@ -112,6 +113,13 @@ def main():
     )
 
     timeline_treatment_df = temp_transform.create_timeline_file()
+    survival_info = get_survival_info(
+        syn,
+        temp_extract.mapping_df,
+        temp_extract.data_tables_df,
+        config.cohort,
+        config.prissmm_synid
+    )
 
     for sample_type, transform_cls in timeline_files.items():
         # Conditions to skip
@@ -129,14 +137,13 @@ def main():
             syn = syn
         )
         derived_variables = temp_extract.get_derived_variable_files()
-
         # Leverage the cbioportal mapping and derived variables to create the timeline files
         temp_transform = transform_cls(
             # timeline_infodf= temp_extract.timeline_infodf,
             extract = temp_extract,
             bpc_config = config
         )
-        if 'TIMELINE-DX':
+        if sample_type == 'TIMELINE-DX':
             filter_start = False
         else:
             filter_start = True
@@ -162,13 +169,25 @@ def main():
             config.mg_assay_synid,
         ]
         used_entities.extend(derived_variables['used'])
-        write_and_storedf(
-            syn=syn,
-            df=performance_data,
-            filepath=os.path.join(args.sp, f"{sample_type}.txt"),
-            used_entities = used_entities
-        )
-
+        if sample_type.startswith("TIMELINE"):
+            write_and_storedf(
+                syn=syn,
+                df=performance_data,
+                filepath=os.path.join(args.sp, f"{sample_type}.txt"),
+                used_entities = used_entities
+            )
+        else:
+            clinical_path = write_clinical_file(
+                performance_data,
+                survival_info,
+                os.path.join(args.sp, f"{sample_type}.txt"),
+            )
+            ent = synapseclient.File(
+                clinical_path, parent="syn52950402"
+            )
+            ent = syn.store(
+                ent, used=used_entities, executed="https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects"
+            )
     # BPC_MAPPING[args.sp](syn, cbiopath, release=args.release, upload=args.upload).run()
 
 
