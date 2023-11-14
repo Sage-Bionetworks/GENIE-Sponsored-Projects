@@ -19,6 +19,26 @@ def _convert_to_int(value):
         return float('nan')
 
 
+def fill_cancer_dx_start_date(finaldf: pd.DataFrame) -> pd.DataFrame:
+    """Fills in cancer dx start date for those missing start dates
+    with zero.
+
+    Args:
+        finaldf (pd.DataFrame): Mapped cancer diagnosis timeline dataframe
+
+    Returns:
+        pd.DataFrame: dataframe with filled START_DATEs
+    """
+    # Get all time0 points for all records
+    time0_dates_idx = finaldf["INDEX_CANCER"] == "Yes"
+    # Make all time0 points 0
+    finaldf["diagnosis_int"] = finaldf["START_DATE"]
+    finaldf["START_DATE"][time0_dates_idx] = 0
+    # Remove unused variable
+    del finaldf["diagnosis_int"]
+    return finaldf
+
+
 @dataclass
 class Transforms(metaclass=ABCMeta):
     """Timeline data class."""
@@ -308,3 +328,15 @@ class TimelineTreatmentRadTransform(Transforms):
         del rad_df["INDEX_CANCER"]
         del rad_df["TEMP"]
         return rad_df
+
+
+class TimelineDxTransform(Transforms):
+
+    def custom_transform(
+        self, timelinedf
+    ) -> pd.DataFrame:
+        timelinedf = fill_cancer_dx_start_date(timelinedf)
+        timelinedf = timelinedf[
+            ~timelinedf["START_DATE"].isnull()
+        ]
+        return timelinedf

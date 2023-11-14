@@ -10,7 +10,8 @@ from extract import Extract
 from transforms import (
     TimelinePerformanceTransform,
     TimelineTreatmentRadTransform,
-    TimelineTreatmentTransform
+    TimelineTreatmentTransform,
+    TimelineDxTransform
 )
 
 
@@ -56,9 +57,11 @@ cohort = "BLADDER"
 
 config = BpcConfig()
 timeline_files = {
-    "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
-    "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
+    # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
+    # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
+    "TIMELINE-DX": TimelineDxTransform,
 }
+# Exception for timeline treatment file
 temp_extract = Extract(
     bpc_config = config,
     sample_type = "TIMELINE-TREATMENT",
@@ -84,8 +87,11 @@ for sample_type, transform_cls in timeline_files.items():
         extract = temp_extract,
         bpc_config = config
     )
-
-    performance_data = temp_transform.create_timeline_file()
+    if 'TIMELINE-DX':
+        filter_start = False
+    else:
+        filter_start = True
+    performance_data = temp_transform.create_timeline_file(filter_start=filter_start)
     if sample_type == "TIMELINE-TREATMENT-RT":
         performance_data = pd.concat(
             [timeline_treatment_df, performance_data]
