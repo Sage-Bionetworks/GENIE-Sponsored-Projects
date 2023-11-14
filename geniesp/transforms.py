@@ -487,3 +487,34 @@ class SurvivalTransform(Transforms):
         cols_to_order.extend(subset_survivaldf.columns.drop(cols_to_order).tolist())
 
         return subset_survivaldf[cols_to_order]
+
+
+class SurvivalTreatmentTransform(Transforms):
+
+    def map_to_cbioportal_format(self):
+        # TODO: Make sure these are in the extract class
+        drug_mapping = get_drug_mapping(
+            syn=self.extract.syn,
+            cohort=self.bpc_config.cohort,
+            synid_table_prissmm=self.bpc_config.prissmm_synid,
+        )
+        regimens_data = create_regimens(
+            self.extract.syn,
+            self.extract.timeline_infodf,
+            mapping=drug_mapping,
+            top_x_regimens=20,
+            cohort=self.bpc_config.cohort,
+        )
+
+        df_survival_treatment = regimens_data["df"]
+        df_survival_treatment = remap_os_values(df=df_survival_treatment)
+        df_survival_treatment = remap_pfs_values(df=df_survival_treatment)
+        cols_to_order = ["PATIENT_ID"]
+        cols_to_order.extend(df_survival_treatment.columns.drop(cols_to_order).tolist())
+        # Retract patients from survival treatment file
+        df_survival_treatment = self.retract_samples_and_patients(df_survival_treatment)
+
+        return df_survival_treatment[cols_to_order]
+
+    def transforms(self, timelinedf, filter_start):
+        return timelinedf
