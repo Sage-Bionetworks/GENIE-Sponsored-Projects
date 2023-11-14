@@ -16,7 +16,8 @@ from transforms import (
     TimelineSequenceTransform,
     TimelineDxTransform,
     SurvivalTransform,
-    SurvivalTreatmentTransform
+    SurvivalTreatmentTransform,
+    SampleTransform
 )
 
 
@@ -76,8 +77,8 @@ timeline_files = {
     # "TIMELINE-SAMPLE": TimelineSampleTransform,
     # "TIMELINE-SEQUENCE": TimelineSequenceTransform,
     # "TIMELINE-LAB": TimelineTransform,
-    "SURVIVAL": SurvivalTransform,
-    "REGIMEN": SurvivalTreatmentTransform
+    # "SURVIVAL": SurvivalTransform,
+    "SAMPLE": SampleTransform,
 }
 # Exception for timeline treatment file
 temp_extract = Extract(

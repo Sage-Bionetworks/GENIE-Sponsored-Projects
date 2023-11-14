@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import logging
 
 import pandas as pd
+import numpy as np
 
 from extract import Extract
 from config import BpcConfig
@@ -13,6 +14,7 @@ from bpc_redcap_export_mapping import (
     get_drug_mapping,
     remap_os_values,
     remap_pfs_values,
+    change_days_to_years,
 )
 
 
@@ -109,7 +111,7 @@ class Transforms(metaclass=ABCMeta):
         if filter_start:
             timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         return timelinedf[cols_to_order].drop_duplicates()
-    
+
     def custom_transform(self, timelinedf):
         return timelinedf
 
@@ -518,3 +520,40 @@ class SurvivalTreatmentTransform(Transforms):
 
     def transforms(self, timelinedf, filter_start):
         return timelinedf
+
+
+class SampleTransform(SurvivalTransform):
+
+    def transforms(self, timelinedf, filter_start) -> dict:
+        del timelinedf["path_proc_number"]
+        df_sample = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
+        df_sample_subset = self.retract_samples_and_patients(df_sample)
+
+        del df_sample_subset["SP"]
+        days_to_years_col = [
+            "AGE_AT_SEQ_REPORT_YEARS",
+            "CPT_ORDER_INT",
+            "CPT_REPORT_INT",
+        ]
+        for col in days_to_years_col:
+            # not all columns could exist, so check if column exists
+            if col in df_sample_subset:
+                years = df_sample_subset[col].apply(change_days_to_years)
+                df_sample_subset[col] = years
+        # Use np.floor because np handles NaN values
+        df_sample_subset["AGE_AT_SEQUENCING"] = df_sample_subset[
+            "AGE_AT_SEQUENCING"
+        ].apply(np.floor)
+        # Remove CPT_SEQ_DATE because the values are incorrect
+        del df_sample_subset["CPT_SEQ_DATE"]
+        # Obtain this information from the main GENIE cohort
+        df_sample_subset = df_sample_subset.merge(
+            self.extract.to_keep_samples_and_patients[["SAMPLE_ID", "SEQ_YEAR"]],
+            on="SAMPLE_ID",
+            how="left",
+        )
+        df_sample_subset.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
+        df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
+        df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
+
+        return df_sample_subset
