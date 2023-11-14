@@ -76,15 +76,37 @@ class Extract:
         timeline_infodf = pd.concat(
             [
                 timeline_infodf,
-                # For TIMELINE-PERFORMANCE and timeline treatment rad
                 pd.DataFrame(
-                    {
-                        "code": "rt_rt_int",
-                        "sampleType": "TIMELINE-TREATMENT-RT",
-                        "dataset": "Cancer-Directed Radiation Therapy dataset",
-                        "cbio": "TEMP",
-                    },
-                    index=["rt_rt_int"],
+                    [
+                        {
+                            "code": "rt_rt_int",
+                            "sampleType": "TIMELINE-TREATMENT-RT",
+                            "dataset": "Cancer-Directed Radiation Therapy dataset",
+                            "cbio": "TEMP",
+                        },
+                        {
+                            "code": "redcap_ca_index",
+                            "sampleType": "TIMELINE-SEQUENCE",
+                            "dataset": "Cancer-level dataset",
+                            "cbio": "INDEX_CANCER",
+                            "id": "syn22296816",  # HACK: hard coded synapse id
+                        },
+                        {
+                            "code": "dob_ca_dx_days",
+                            "sampleType": "TIMELINE-SEQUENCE",
+                            "dataset": "Cancer-level dataset",
+                            "cbio": "CA_DX_DAYS",
+                            "id": "syn22296816",  # HACK: hard coded synapse id
+                        },
+                        {
+                            "code": "dob_cpt_report_days",
+                            "sampleType": "TIMELINE-SEQUENCE",
+                            "dataset": "Cancer panel test level dataset",
+                            "cbio": "DPT_REPORT_DAYS",
+                            "id": "syn22296816",  # HACK: hard coded synapse id
+                        },
+                    ],
+                    index=["rt_rt_int", "redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days"],
                 ),
             ]
         )

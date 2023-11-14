@@ -1,12 +1,8 @@
 from abc import ABCMeta
 from dataclasses import dataclass
-import os
 import logging
 
 import pandas as pd
-import synapseclient
-from synapseclient import Synapse
-from genie import process_functions
 
 from extract import Extract
 from config import BpcConfig
@@ -363,3 +359,30 @@ class TimelineSampleTransform(Transforms):
             )
             timelinedf = timelinedf[~null_dates_idx]
         return timelinedf
+
+
+class TimelineSequenceTransform(Transforms):
+
+    def custom_transform(
+        self, timelinedf
+    ) -> pd.DataFrame:
+        # HACK: Manually calculate the START_DATE based on criteria defined
+        # in GEN-94
+        # sequence_data["df"]["START_DATE"]
+        seq_df =timelinedf
+        index_seq_df = seq_df[seq_df["INDEX_CANCER"] == "Yes"]
+        index_seq_df["START_DATE"] = (
+            index_seq_df["DPT_REPORT_DAYS"] - index_seq_df["CA_DX_DAYS"]
+        )
+        del seq_df["START_DATE"]
+        seq_df = seq_df.merge(index_seq_df[["SAMPLE_ID", "START_DATE"]], on="SAMPLE_ID")
+        # Delete unneeded columns
+        del seq_df["DPT_REPORT_DAYS"]
+        del seq_df["INDEX_CANCER"]
+        del seq_df["CA_DX_DAYS"]
+        # reorder Columns to match requirement
+        cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
+        cols_to_order.extend(seq_df.columns.drop(cols_to_order).tolist())
+        seq_df = seq_df[cols_to_order]
+        seq_df.drop_duplicates(inplace=True)
+        return seq_df

@@ -12,7 +12,8 @@ from transforms import (
     TimelineTreatmentRadTransform,
     TimelineTreatmentTransform,
     TimelineTransform,
-    TimelineSampleTransform
+    TimelineSampleTransform,
+    TimelineSequenceTransform
 )
 
 
@@ -61,10 +62,11 @@ timeline_files = {
     # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
     # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
     # "TIMELINE-DX": TimelineDxTransform,
-    "TIMELINE-IMAGING": TimelineTransform,
-    "TIMELINE-MEDONC": TimelineTransform,
-    "TIMELINE-PATHOLOGY": TimelineTransform,
-    "TIMELINE-SAMPLE": TimelineSampleTransform
+    # "TIMELINE-IMAGING": TimelineTransform,
+    # "TIMELINE-MEDONC": TimelineTransform,
+    # "TIMELINE-PATHOLOGY": TimelineTransform,
+    # "TIMELINE-SAMPLE": TimelineSampleTransform,
+    "TIMELINE-SEQUENCE": TimelineSequenceTransform
 }
 # Exception for timeline treatment file
 temp_extract = Extract(
