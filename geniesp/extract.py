@@ -114,6 +114,7 @@ class Extract:
                             "code": "redcap_ca_index",
                             "sampleType": "PATIENT",
                             "dataset": "Cancer-level dataset",
+                            "cbio": "INDEX_CANCER",
                         }
                     ],
                     index=["rt_rt_int", "redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days", "first_index_ca_days", "redcap_ca_index"],

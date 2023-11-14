@@ -53,15 +53,15 @@ def write_clinical_file(
     #         "supp_survival_treatment"
     #     )
     # Must have this for the dict mappings after
-    print(redcap_to_cbiomappingdf)
     redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf["cbio"]
+    # HACK this is to remove the index cancer for the patient file
+    # redcap_to_cbiomappingdf = redcap_to_cbiomappingdf[redcap_to_cbiomappingdf['cbio'] != "INDEX_CANCER"]
     label_map = redcap_to_cbiomappingdf["labels"].to_dict()
     description_map = redcap_to_cbiomappingdf["description"].to_dict()
     coltype_map = redcap_to_cbiomappingdf["colType"].to_dict()
     # Priority column will determine which columns are shown on cBioPortal
     # Must columns should be shown on cBioPortal will have a 1
     # but survival columns should all be 0
-    print(clinicaldf)
     priority_map = redcap_to_cbiomappingdf["priority"].to_dict()
     labels = [str(label_map[col]) for col in clinicaldf]
     descriptions = [str(description_map[col]) for col in clinicaldf]

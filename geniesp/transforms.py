@@ -565,7 +565,7 @@ class PatientTransform(SurvivalTransform):
     def transforms(self, timelinedf, filter_start) -> dict:
         df_patient = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
         df_patient.drop(columns="redcap_ca_index", inplace=True)
-        df_patient_final = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
+        df_patient_final = self.configure_clinicaldf(df_patient, self.extract.timeline_infodf)
 
         df_patient_subset = self.retract_samples_and_patients(df_patient_final)
 

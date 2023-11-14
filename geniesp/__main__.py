@@ -175,6 +175,7 @@ def main():
                 used_entities = used_entities
             )
         else:
+            print(sample_type)
             clinical_path = write_clinical_file(
                 performance_data,
                 survival_info,
