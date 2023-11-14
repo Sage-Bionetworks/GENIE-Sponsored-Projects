@@ -66,7 +66,8 @@ timeline_files = {
     # "TIMELINE-MEDONC": TimelineTransform,
     # "TIMELINE-PATHOLOGY": TimelineTransform,
     # "TIMELINE-SAMPLE": TimelineSampleTransform,
-    "TIMELINE-SEQUENCE": TimelineSequenceTransform
+    # "TIMELINE-SEQUENCE": TimelineSequenceTransform,
+    "TIMELINE-LAB": TimelineTransform
 }
 # Exception for timeline treatment file
 temp_extract = Extract(
@@ -83,6 +84,8 @@ temp_transform = TimelineTreatmentTransform(
 timeline_treatment_df = temp_transform.create_timeline_file()
 
 for sample_type, transform_cls in timeline_files.items():
+    if sample_type == "TIMELINE-LAB" and cohort in ["NSCLC", "BLADDER"]:
+        continue
     temp_extract = Extract(
         bpc_config = config,
         sample_type = sample_type,
