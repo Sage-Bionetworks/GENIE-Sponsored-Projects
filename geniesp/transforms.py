@@ -1,6 +1,7 @@
 from abc import ABCMeta
 from dataclasses import dataclass
 import os
+import logging
 
 import pandas as pd
 import synapseclient
@@ -344,3 +345,21 @@ class TimelineDxTransform(Transforms):
 
 class TimelineTransform(Transforms):
     pass
+
+
+class TimelineSampleTransform(Transforms):
+
+    def custom_transform(
+        self, timelinedf
+    ) -> pd.DataFrame:
+        # TODO: Can add getting of samples with NULL start dates in
+        # self.create_fixed_timeline_files
+        null_dates_idx = timelinedf["START_DATE"].isnull()
+        if null_dates_idx.any():
+            logging.warning(
+                "timeline sample with null START_DATE: {}".format(
+                    ", ".join(timelinedf["SAMPLE_ID"][null_dates_idx])
+                )
+            )
+            timelinedf = timelinedf[~null_dates_idx]
+        return timelinedf
