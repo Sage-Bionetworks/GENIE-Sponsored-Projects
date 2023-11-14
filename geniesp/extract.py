@@ -72,7 +72,6 @@ class Extract:
         timeline_infodf = self.mapping_df.query(f'sampleType == "{self.sample_type}"').merge(
             self.data_tables_df, on="dataset", how="left"
         )
-        timeline_infodf.index = timeline_infodf["code"]
         timeline_infodf = pd.concat(
             [
                 timeline_infodf,
@@ -110,13 +109,19 @@ class Extract:
                             "sampleType": "SURVIVAL",
                             "dataset": "Cancer-level index dataset",
                             "cbio": "CANCER_INDEX",
+                        },
+                        {
+                            "code": "redcap_ca_index",
+                            "sampleType": "PATIENT",
+                            "dataset": "Cancer-level dataset",
                         }
                     ],
-                    index=["rt_rt_int", "redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days", "first_index_ca_days"],
+                    index=["rt_rt_int", "redcap_ca_index", "dob_ca_dx_days", "dob_cpt_report_days", "first_index_ca_days", "redcap_ca_index"],
                 ),
             ]
         )
         subset_infodf = timeline_infodf[timeline_infodf["sampleType"] == self.sample_type]
+        subset_infodf.index = subset_infodf["code"]
 
         return subset_infodf
 

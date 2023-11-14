@@ -15,6 +15,7 @@ from bpc_redcap_export_mapping import (
     remap_os_values,
     remap_pfs_values,
     change_days_to_years,
+    hack_remap_laterality
 )
 
 
@@ -370,6 +371,7 @@ class TimelineSequenceTransform(Transforms):
         return seq_df
 
 
+# TODO: Create a ClinicalTransform class
 class SurvivalTransform(Transforms):
 
     def configure_clinicaldf(
@@ -389,11 +391,10 @@ class SurvivalTransform(Transforms):
         Returns:
             pd.DataFrame: configured clinical information
         """
-        print(clinicaldf.columns[~clinicaldf.columns.isin(redcap_to_cbiomappingdf["code"])])
-        print(redcap_to_cbiomappingdf["code"])
         if not clinicaldf.columns.isin(redcap_to_cbiomappingdf["code"]).all():
             raise ValueError("All column names must be in mapping dataframe")
         mapping = redcap_to_cbiomappingdf["cbio"].to_dict()
+        print(mapping)
         clinicaldf = clinicaldf.rename(columns=mapping)
         clinicaldf = clinicaldf.drop_duplicates()
         if sum(clinicaldf["PATIENT_ID"].isnull()) > 0:
@@ -557,3 +558,34 @@ class SampleTransform(SurvivalTransform):
         df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
 
         return df_sample_subset
+
+
+class PatientTransform(SurvivalTransform):
+
+    def transforms(self, timelinedf, filter_start) -> dict:
+        df_patient = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
+        df_patient.drop(columns="redcap_ca_index", inplace=True)
+        df_patient_final = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
+
+        df_patient_subset = self.retract_samples_and_patients(df_patient_final)
+
+        # Fix patient duplicated values due to cancer index DOB
+        # Take the larger DX_LASTALIVE_INT_MOS value for all records
+        # subset_patientdf.sort_values("DX_LASTALIVE_INT_MOS", inplace=True,
+        #                              ascending=False)
+        df_patient_subset.drop_duplicates("PATIENT_ID", inplace=True)
+        duplicated = df_patient_subset.PATIENT_ID.duplicated()
+        if duplicated.any():
+            logging.warning(
+                "DUPLICATED PATIENT_IDs: {}".format(
+                    ",".join(df_patient_subset["PATIENT_ID"][duplicated])
+                )
+            )
+
+        del df_patient_subset["SP"]
+        cols_to_order = ["PATIENT_ID"]
+        cols_to_order.extend(df_patient_subset.columns.drop(cols_to_order).tolist())
+
+        df_patient_subset = hack_remap_laterality(df_patient_subset=df_patient_subset)
+
+        return df_patient_subset[cols_to_order]
