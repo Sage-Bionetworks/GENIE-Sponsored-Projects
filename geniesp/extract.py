@@ -8,6 +8,182 @@ from synapseclient import Synapse
 from geniesp.config import BpcConfig
 
 
+def get_regimen_abbr(regimen: str, mapping: dict) -> str:
+    """Given a BPC regimen and mapping between drug names and NCIT codes,
+    return the regimen abbreviation consisting of NCIT codes.
+
+    Args:
+        regimen (str): string representing a comma delimited list of drug names in the regimen
+        mapping (dict): map where keys are BPC drug short names and value is the
+                corresponding NCIT drug code
+
+    Returns:
+        str: regimen abbreviation with NCIT codes
+    """
+
+    abbr = ""
+    drugs = regimen.split(",")
+    for drug in drugs:
+        if drug == drugs[0]:
+            abbr = mapping[drug.strip()]
+        else:
+            abbr = abbr + "_" + mapping[drug.strip()]
+    return abbr
+
+
+def create_regimens(
+    syn: Synapse,
+    regimen_infodf: pd.DataFrame,
+    mapping: dict,
+    top_x_regimens: int = 5,
+    cohort: str = "NSCLC",
+) -> dict:
+    """Create regimens to merge into the patient file.
+
+    Args:
+        syn (Synapse): Synapse connection
+        regimen_infodf (pd.DataFrame): data frame containing regimen info
+        mapping (dict): map where keys are BPC drug short names and value is the
+                corresponding NCIT drug code
+        top_x_regimens (int, optional): number of regimens to catalog. Defaults to 5.
+        cohort (str, optional): cohort label. Defaults to "NSCLC".
+
+    Returns:
+        dict: dictionary with three keys ('df', 'used', 'info')
+    """
+
+    regimen_synid = regimen_infodf["id"].unique()[0]
+    regimens_to_exclude = ["Investigational Drug"]
+    regimen_ent = syn.get(regimen_synid)
+    regimendf = pd.read_csv(regimen_ent.path, low_memory=False)
+    # Get only NSCLC cohort
+    regimendf = regimendf[regimendf["cohort"] == cohort]
+    # Use redcap_ca_index == Yes
+    regimendf = regimendf[regimendf["redcap_ca_index"] == "Yes"]
+    # Exclude regimens
+    regimendf = regimendf[~regimendf["regimen_drugs"].isin(regimens_to_exclude)]
+    regimendf = regimendf[
+        ~regimendf["regimen_drugs"].str.contains("Investigational Drug")
+    ]
+    # Exclude all regimens with "Other"
+    regimendf = regimendf[~regimendf["regimen_drugs"].str.contains("Other")]
+    # sort file by regimen_number and drop rest of duplicates
+    # (not all duplicates), if duplicated keep the first regimen
+    regimendf.sort_values("regimen_number", inplace=True)
+    regimendf.drop_duplicates(["record_id", "regimen_drugs"], inplace=True)
+
+    count_of_regimens = regimendf["regimen_drugs"].value_counts()
+    # Obtain top X number of regimens
+    to_include_regimens = count_of_regimens[:top_x_regimens].index.tolist()
+
+    subset_regimendf = regimendf[regimendf["regimen_drugs"].isin(to_include_regimens)]
+    regimen_groups = subset_regimendf.groupby("regimen_drugs")
+    new_regimen_info = pd.DataFrame()
+    # Create regimen clinical headers
+    final_regimendf = pd.DataFrame()
+    for regimen, df in regimen_groups:
+        regimen_drug_info = regimen_infodf.copy()
+        # Create regimen drug abbreviations
+        regimen_abbr = get_regimen_abbr(regimen, mapping)
+
+        # Create correct column mappings for the clinical patient file
+        regimen_drug_info["cbio"] = [
+            value.format(regimen_abbr=regimen_abbr) for value in regimen_infodf["cbio"]
+        ]
+        regimen_drug_info["labels"] = [
+            value.format(regimen=regimen) for value in regimen_infodf["labels"]
+        ]
+        regimen_drug_info["description"] = [
+            value.format(regimen=regimen) for value in regimen_infodf["description"]
+        ]
+        regimen_drug_info["priority"] = [
+            int(value) for value in regimen_infodf["priority"]
+        ]
+        new_regimen_info = pd.concat([new_regimen_info, regimen_drug_info])
+
+        col_map = regimen_drug_info["cbio"].to_dict()
+        col_map["record_id"] = "PATIENT_ID"
+        regimen_patientdf = df[list(col_map.keys())].rename(columns=col_map)
+        # Merge final regimen dataframe
+        if final_regimendf.empty:
+            final_regimendf = regimen_patientdf
+        else:
+            final_regimendf = final_regimendf.merge(
+                regimen_patientdf, on="PATIENT_ID", how="outer"
+            )
+    return {"df": final_regimendf, "info": new_regimen_info, "used": regimen_synid}
+
+
+def _get_synid_dd(syn: Synapse, cohort: str, synid_table_prissmm: str) -> str:
+    """Get Synapse ID of the most current PRISSMM non-PHI data dictionary for the BPC cohort.
+
+    Args:
+        syn (Synapse): Synapse connection
+        cohort (str): cohort label
+        synid_table_prissmm (str): Synapse ID of PRISSMM documentation table
+
+    Returns:
+        str: Synapse ID of cohort PRISSMM data dictionary
+    """
+
+    query = f"SELECT id FROM {synid_table_prissmm} WHERE cohort = '{cohort}' ORDER BY name DESC LIMIT 1"
+    query_results = syn.tableQuery(query)
+
+    synid_folder_prissmm = query_results.asDataFrame()["id"][0]
+
+    synid_prissmm_children = syn.getChildren(synid_folder_prissmm)
+
+    for child in synid_prissmm_children:
+        if child["name"] == "Data Dictionary non-PHI":
+            return child["id"]
+    return None
+
+
+def get_drug_mapping(
+    syn: Synapse, cohort: str, synid_table_prissmm: str
+) -> dict:
+    """Get a mapping between drug short names and NCIT code from BPC data dictionary
+    and BPC global response set for a given BPC cohort.
+
+    Args:
+        syn (Synapse): Synapse connection
+        cohort (str): cohort label
+        synid_table_prissmm (str): Synapse ID of PRISSMM documentation table
+
+    Returns:
+        dict: map where keys are BPC drug short names and value is the
+                corresponding NCIT drug code
+    """
+
+    mapping = {}
+    var_names = []
+
+    synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
+
+    dd = pd.read_csv(
+        syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False
+    )
+
+    for i in ["1", "2", "3", "4", "5"]:
+        var_names.append("drugs_drug_" + i)
+        var_names.append("drugs_drug_oth" + i)
+
+    for var_name in var_names:
+        if var_name in dd["Variable / Field Name"].unique():
+            choice_str = dd[dd["Variable / Field Name"] == var_name][
+                "Choices, Calculations, OR Slider Labels"
+            ].values[0]
+            choice_str = choice_str.replace('"', "")
+
+            for pair in choice_str.split("|"):
+                if pair.strip() != "":
+                    code = pair.split(",")[0].strip()
+                    value = pair.split(",")[1].strip()
+                    label = value.split("(")[0].strip()
+                    mapping[label] = code
+    return mapping
+
+
 @dataclass
 class Extract:
     """Timeline data class."""
@@ -66,6 +242,41 @@ class Extract:
         data_tables = self.syn.tableQuery(f"SELECT id, dataset FROM {self.bpc_config.data_tables_id}")
         data_tablesdf = data_tables.asDataFrame()
         return data_tablesdf
+
+    @cached_property
+    def survival_info_df(self):
+        # Patient and Sample mapping values
+        df_map = self.mapping_df
+        df_file = self.data_tables_df
+        cohort = self.bpc_config.cohort
+        prissm_synid = self.bpc_config.prissmm_synid
+
+        patient_sample_idx = df_map["sampleType"].isin(
+            ["PATIENT", "SAMPLE", "SURVIVAL"]
+        )
+        infodf = df_map[patient_sample_idx].merge(df_file, on="dataset", how="left")
+        infodf.index = infodf["code"]
+
+        # Regimen mapping values
+        regimen_idx = df_map["sampleType"].isin(["REGIMEN"])
+        regimen_infodf = df_map[regimen_idx].merge(df_file, on="dataset", how="left")
+        regimen_infodf.index = regimen_infodf["code"]
+
+        # Create regimens data for patient file
+        drug_mapping = get_drug_mapping(
+            syn=self.syn,
+            cohort=cohort,
+            synid_table_prissmm=prissm_synid
+        )
+        regimens_data = create_regimens(
+            self.syn,
+            regimen_infodf,
+            mapping=drug_mapping,
+            top_x_regimens=20,
+            cohort=cohort
+        )
+        survival_info = pd.concat([infodf, regimens_data["info"]])
+        return survival_info
 
     @cached_property
     def timeline_infodf(self):

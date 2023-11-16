@@ -84,15 +84,15 @@ def main():
     config = BPC_MAPPING[args.sp]
 
     timeline_files = {
-        # "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
-        # "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
-        # "TIMELINE-DX": TimelineDxTransform,
-        # "TIMELINE-IMAGING": TimelineTransform,
-        # "TIMELINE-MEDONC": TimelineTransform,
-        # "TIMELINE-PATHOLOGY": TimelineTransform,
-        # "TIMELINE-SAMPLE": TimelineSampleTransform,
-        # "TIMELINE-SEQUENCE": TimelineSequenceTransform,
-        # "TIMELINE-LAB": TimelineTransform,
+        "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
+        "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
+        "TIMELINE-DX": TimelineDxTransform,
+        "TIMELINE-IMAGING": TimelineTransform,
+        "TIMELINE-MEDONC": TimelineTransform,
+        "TIMELINE-PATHOLOGY": TimelineTransform,
+        "TIMELINE-SAMPLE": TimelineSampleTransform,
+        "TIMELINE-SEQUENCE": TimelineSequenceTransform,
+        "TIMELINE-LAB": TimelineTransform,
         "SURVIVAL": SurvivalTransform,
         "REGIMEN": SurvivalTreatmentTransform,
         "SAMPLE": SampleTransform,
@@ -108,16 +108,10 @@ def main():
     temp_transform = TimelineTreatmentTransform(
         extract = temp_extract,
         bpc_config = config
+
     )
 
     timeline_treatment_df = temp_transform.create_timeline_file()
-    survival_info = get_survival_info(
-        syn,
-        temp_extract.mapping_df,
-        temp_extract.data_tables_df,
-        config.cohort,
-        config.prissmm_synid
-    )
 
     for sample_type, transform_cls in timeline_files.items():
         # Conditions to skip
@@ -136,10 +130,12 @@ def main():
         )
         derived_variables = temp_extract.get_derived_variable_files()
         # Leverage the cbioportal mapping and derived variables to create the timeline files
+        filepath = f"{sample_type}.txt"
+
         temp_transform = transform_cls(
-            # timeline_infodf= temp_extract.timeline_infodf,
             extract = temp_extract,
-            bpc_config = config
+            bpc_config = config,
+            filepath = filepath
         )
         if sample_type == 'TIMELINE-DX':
             filter_start = False
@@ -153,6 +149,8 @@ def main():
             performance_data = pd.concat(
                 [timeline_treatment_df, performance_data]
             )
+        # write the dataframe
+        temp_transform.write(df = performance_data)
         # store the files with provenance
         # Generate provenance
         used_entities = [
@@ -167,26 +165,12 @@ def main():
             config.mg_assay_synid,
         ]
         used_entities.extend(derived_variables['used'])
-        if sample_type.startswith("TIMELINE"):
-            write_and_storedf(
-                syn=syn,
-                df=performance_data,
-                filepath=os.path.join(args.sp, f"{sample_type}.txt"),
-                used_entities = used_entities
-            )
-        else:
-            print(sample_type)
-            clinical_path = write_clinical_file(
-                performance_data,
-                survival_info,
-                os.path.join(args.sp, f"{sample_type}.txt"),
-            )
-            ent = synapseclient.File(
-                clinical_path, parent="syn52950402"
-            )
-            ent = syn.store(
-                ent, used=used_entities, executed="https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects"
-            )
+        ent = synapseclient.File(
+            filepath, parent="syn52950402"
+        )
+        ent = syn.store(
+            ent, used=used_entities, executed="https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects"
+        )
     # BPC_MAPPING[args.sp](syn, cbiopath, release=args.release, upload=args.upload).run()
 
 

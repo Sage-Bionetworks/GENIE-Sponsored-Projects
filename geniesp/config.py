@@ -28,6 +28,8 @@ class BpcConfig:
     temporary_patient_retraction_synid: str = "syn29266682"
     # main GENIE assay information table
     mg_assay_synid: str = "syn17009222"
+    # staging release folder to upload cbioportal exports
+    staging_release_folder = "syn50876969"
     # exclude files to be created for cbioportal
     # TODO: need to support this feature in rest of code, for now
     # This is added for metadata files
