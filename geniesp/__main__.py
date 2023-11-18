@@ -130,7 +130,7 @@ def main():
         )
         derived_variables = temp_extract.get_derived_variable_files()
         # Leverage the cbioportal mapping and derived variables to create the timeline files
-        filepath = f"{sample_type}.txt"
+        filepath = os.path.join(config.cohort, f"{sample_type}.txt")
 
         temp_transform = transform_cls(
             extract = temp_extract,
