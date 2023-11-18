@@ -169,7 +169,7 @@ def main():
         cbioportal_folders = get_cbioportal_upload_folders(
             syn=syn,
             staging_release_folder=config.staging_release_folder,
-            cohort=args.cohort,
+            cohort=config.cohort,
             release=args.release
         )
         ent = synapseclient.File(
