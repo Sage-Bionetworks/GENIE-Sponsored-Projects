@@ -21,6 +21,7 @@ from geniesp.transforms import (
     SampleTransform,
     PatientTransform
 )
+from geniesp.loads import get_cbioportal_upload_folders
 
 
 BPC_MAPPING = {
@@ -165,12 +166,19 @@ def main():
             config.mg_assay_synid,
         ]
         used_entities.extend(derived_variables['used'])
+        cbioportal_folders = get_cbioportal_upload_folders(
+            syn=syn,
+            staging_release_folder=config.staging_release_folder,
+            cohort=args.cohort,
+            release=args.release
+        )
         ent = synapseclient.File(
-            filepath, parent="syn52950402"
+            filepath, parent=cbioportal_folders['release']
         )
-        ent = syn.store(
-            ent, used=used_entities, executed=config.github_url
-        )
+        if args.upload:
+            ent = syn.store(
+                ent, used=used_entities, executed=config.github_url
+            )
     from geniesp.transforms import MainGenie
     MainGenie(
         bpc_config = config,
@@ -178,10 +186,10 @@ def main():
         sample_df = sample_type_dfs['SAMPLE'],
         patient_df = sample_type_dfs['PATIENT'],
         release = args.release,
-        cbioportal_folders = temp_extract.cbioportal_folders,
+        cbioportal_folders = cbioportal_folders,
         syn = syn,
         upload = args.upload
-    )
+    ).run()
 
 
 if __name__ == "__main__":
