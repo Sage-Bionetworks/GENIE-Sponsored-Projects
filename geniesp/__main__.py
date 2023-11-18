@@ -19,7 +19,8 @@ from geniesp.transforms import (
     SurvivalTransform,
     SurvivalTreatmentTransform,
     SampleTransform,
-    PatientTransform
+    PatientTransform,
+    MainGenie
 )
 from geniesp.loads import get_cbioportal_upload_folders
 
@@ -179,7 +180,6 @@ def main():
             ent = syn.store(
                 ent, used=used_entities, executed=config.github_url
             )
-    from geniesp.transforms import MainGenie
     MainGenie(
         bpc_config = config,
         extract = temp_extract,
