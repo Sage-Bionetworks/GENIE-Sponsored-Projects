@@ -1,11 +1,18 @@
 from abc import ABCMeta
 from dataclasses import dataclass
+from datetime import date
 import logging
+import os
+from typing import List
 
-import pandas as pd
+
+from genie import create_case_lists, process_functions
 import numpy as np
-from genie import process_functions
+import pandas as pd
+import synapseclient
+from synapseclient import File
 
+from geniesp import metafiles
 from geniesp.extract import Extract, get_synid_data
 from geniesp.config import BpcConfig
 from geniesp.utils import (
@@ -18,6 +25,29 @@ from geniesp.utils import (
     change_days_to_years,
     hack_remap_laterality
 )
+
+# All cbioportal file formats written in BPC
+CBIO_FILEFORMATS_ALL = [
+    "data_timeline_treatment.txt",
+    "data_timeline_cancer_diagnosis.txt",
+    "data_timeline_pathology.txt",
+    "data_timeline_sample_acquisition.txt",
+    "data_timeline_performance_status.txt",
+    "data_timeline_medonc.txt",
+    "data_timeline_imaging.txt",
+    "data_timeline_sequencing.txt",
+    "data_timeline_labtest.txt",
+    "data_clinical_supp_survival.txt",
+    "data_clinical_supp_survival_treatment.txt",
+    "data_clinical_sample.txt",
+    "data_clinical_patient.txt",
+    "data_mutations_extended.txt",
+    "data_gene_matrix.txt",
+    "data_cna_hg19.seg",
+    "data_fusions.txt",
+    "data_sv.txt",
+    "data_CNA.txt",
+]
 
 
 @dataclass
@@ -462,39 +492,6 @@ class SurvivalTransform(Transforms):
             df_final_survival = df_final_survival[
                 (pfs_not_null_idx & pfs_not_blank_idx) | (nondup_patients_idx)
             ]
-        # TODO Fix this code chunk
-        # Only patients and samples that exist in the
-        # df_file = self.extract.data_tables_df
-        # df_map = self.extract.timeline_infodf
-        # # Patient and Sample mapping values
-        # patient_sample_idx = df_map["sampleType"].isin(
-        #     ["PATIENT", "SAMPLE", "SURVIVAL"]
-        # )
-        # infodf = df_map[patient_sample_idx].merge(df_file, on="dataset", how="left")
-        # infodf.index = infodf["code"]
-
-        # # Regimen mapping values
-        # regimen_idx = df_map["sampleType"].isin(["REGIMEN"])
-        # regimen_infodf = df_map[regimen_idx].merge(df_file, on="dataset", how="left")
-        # regimen_infodf.index = regimen_infodf["code"]
-
-        # # Create regimens data for patient file
-        # drug_mapping = get_drug_mapping(
-        #     syn=self.syn,
-        #     cohort=self._SPONSORED_PROJECT,
-        #     synid_table_prissmm=self._PRISSMM_SYNID,
-        # )
-        # regimens_data = create_regimens(
-        #     self.syn,
-        #     regimen_infodf,
-        #     mapping=drug_mapping,
-        #     top_x_regimens=20,
-        #     cohort=self._SPONSORED_PROJECT,
-        # )
-
-        # survival_info = pd.concat([infodf, regimens_data["info"]])
-
-        # TODO check the above
         # Only patients and samples that exist in the
         # sponsored project uploads are going to be pulled into the SP project
         subset_survivaldf = self.retract_samples_and_patients(df_final_survival)
@@ -524,7 +521,7 @@ class SurvivalTransform(Transforms):
         Returns:
             str: file path to clinical info
         """
-
+        # TODO fix this
         # if filetype not in [
         #     "patient",
         #     "sample",
@@ -670,35 +667,6 @@ class PatientTransform(SurvivalTransform):
 
         return df_patient_subset[cols_to_order]
 
-# ! This needs to be redone
-from typing import List
-from datetime import date
-# All cbioportal file formats written in BPC
-CBIO_FILEFORMATS_ALL = [
-    "data_timeline_treatment.txt",
-    "data_timeline_cancer_diagnosis.txt",
-    "data_timeline_pathology.txt",
-    "data_timeline_sample_acquisition.txt",
-    "data_timeline_performance_status.txt",
-    "data_timeline_medonc.txt",
-    "data_timeline_imaging.txt",
-    "data_timeline_sequencing.txt",
-    "data_timeline_labtest.txt",
-    "data_clinical_supp_survival.txt",
-    "data_clinical_supp_survival_treatment.txt",
-    "data_clinical_sample.txt",
-    "data_clinical_patient.txt",
-    "data_mutations_extended.txt",
-    "data_gene_matrix.txt",
-    "data_cna_hg19.seg",
-    "data_fusions.txt",
-    "data_sv.txt",
-    "data_CNA.txt",
-]
-from geniesp import metafiles
-from synapseclient import File
-import synapseclient
-import os
 
 def configure_mafdf(mafdf: pd.DataFrame, keep_samples: list) -> pd.DataFrame:
     """Configures a maf dataframe
@@ -1064,7 +1032,6 @@ class MainGenie:
         # Hard coded most up to date oncotree version
         # oncotreelink = self.syn.get("syn13890902").externalURL
         # Use the old oncotree link for now
-        # TODO: need to update oncotree link for 11.0 public
         # oncotreelink = (
         #     "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
         # )
@@ -1113,7 +1080,6 @@ class MainGenie:
             includeRowIdAndRowVersion=False,
             separator="\t",
         )
-        from genie import create_case_lists
         create_case_lists.main(
             os.path.join(self.bpc_config.cohort, "data_clinical.txt"),
             assay_info.filepath,

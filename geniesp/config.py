@@ -46,7 +46,7 @@ class BpcConfig:
     # cohort-generic link to documentation for cBio files
     url_cbio: str = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
     # syn: Synapse
-    oncotreelink: str = "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
+    oncotreelink: str = "https://oncotree.info/api/tumorTypes/tree?version=oncotree_2021_11_02"
     github_url: str = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
 
