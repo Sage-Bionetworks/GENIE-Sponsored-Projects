@@ -6,7 +6,6 @@ import os
 import pandas as pd
 import synapseclient
 
-from geniesp.bpc_redcap_export_mapping import get_survival_info
 from geniesp.config import Brca, Crc, Nsclc, Panc, Prostate, Bladder
 from geniesp.extract import Extract
 from geniesp.transforms import (
@@ -22,7 +21,6 @@ from geniesp.transforms import (
     SampleTransform,
     PatientTransform
 )
-from geniesp.loads import write_and_storedf, write_clinical_file
 
 
 BPC_MAPPING = {
@@ -112,6 +110,7 @@ def main():
     )
 
     timeline_treatment_df = temp_transform.create_timeline_file()
+    sample_type_dfs = {"TIMELINE-TREATMENT": timeline_treatment_df}
 
     for sample_type, transform_cls in timeline_files.items():
         # Conditions to skip
@@ -149,6 +148,7 @@ def main():
             performance_data = pd.concat(
                 [timeline_treatment_df, performance_data]
             )
+        sample_type_dfs[sample_type] = performance_data
         # write the dataframe
         temp_transform.write(df = performance_data)
         # store the files with provenance
@@ -169,9 +169,19 @@ def main():
             filepath, parent="syn52950402"
         )
         ent = syn.store(
-            ent, used=used_entities, executed="https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects"
+            ent, used=used_entities, executed=config.github_url
         )
-    # BPC_MAPPING[args.sp](syn, cbiopath, release=args.release, upload=args.upload).run()
+    from geniesp.transforms import MainGenie
+    MainGenie(
+        bpc_config = config,
+        extract = temp_extract,
+        sample_df = sample_type_dfs['SAMPLE'],
+        patient_df = sample_type_dfs['PATIENT'],
+        release = args.release,
+        cbioportal_folders = temp_extract.cbioportal_folders,
+        syn = syn,
+        upload = args.upload
+    )
 
 
 if __name__ == "__main__":

@@ -1,5 +1,12 @@
 from dataclasses import dataclass, field
+import subprocess
 from typing import List
+
+
+def get_git_sha() -> str:
+    """get git sha digest"""
+    text = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True)
+    return text.stdout.rstrip("\n")
 
 
 @dataclass
@@ -40,6 +47,7 @@ class BpcConfig:
     url_cbio: str = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
     # syn: Synapse
     oncotreelink: str = "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
+    github_url: str = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
 
 class Brca(BpcConfig):

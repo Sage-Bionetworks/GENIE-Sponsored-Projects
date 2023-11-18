@@ -1,6 +1,7 @@
 from abc import ABCMeta
 from dataclasses import dataclass
 from functools import cached_property
+from typing import List
 
 import pandas as pd
 from synapseclient import Synapse
@@ -182,6 +183,31 @@ def get_drug_mapping(
                     label = value.split("(")[0].strip()
                     mapping[label] = code
     return mapping
+
+
+def get_synid_data(
+    df_map: pd.DataFrame,
+    df_file: pd.DataFrame,
+    sampletype: list,
+    cohort: str,
+) -> List:
+    """Get Synapse IDs of data files used to create the corresponding
+    sample type data frames.
+
+    Args:
+        df_map (pd.DataFrame): REDCap to cBioPortal mapping data frame
+        df_file (pd.DataFrame): Synapse ID to dataset label data frame
+        sampletype (list): list of sample type labels
+        cohort (str): cohort label
+
+    Returns:
+        List: List of used synapse ids
+    """
+    datasets = df_map[(df_map["sampleType"].isin(sampletype)) & (df_map[cohort])][
+        "dataset"
+    ].unique()
+    used = df_file[df_file["dataset"].isin(datasets)]["id"]
+    return list(used)
 
 
 @dataclass

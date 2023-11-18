@@ -6,9 +6,9 @@ import pandas as pd
 import numpy as np
 from genie import process_functions
 
-from geniesp.extract import Extract
+from geniesp.extract import Extract, get_synid_data
 from geniesp.config import BpcConfig
-from geniesp.bpc_redcap_export_mapping import (
+from geniesp.utils import (
     _convert_to_int,
     fill_cancer_dx_start_date,
     create_regimens,
@@ -179,7 +179,7 @@ class Transforms(metaclass=ABCMeta):
 @dataclass
 class TimelinePerformanceTransform(Transforms):
     """TimelinePerformance data class."""
-
+    filepath = "data_timeline_performance_status.txt"
     def custom_transform(
         self, timelinedf
     ) -> dict:
@@ -669,3 +669,502 @@ class PatientTransform(SurvivalTransform):
         df_patient_subset = hack_remap_laterality(df_patient_subset=df_patient_subset)
 
         return df_patient_subset[cols_to_order]
+
+# ! This needs to be redone
+from typing import List
+from datetime import date
+# All cbioportal file formats written in BPC
+CBIO_FILEFORMATS_ALL = [
+    "data_timeline_treatment.txt",
+    "data_timeline_cancer_diagnosis.txt",
+    "data_timeline_pathology.txt",
+    "data_timeline_sample_acquisition.txt",
+    "data_timeline_performance_status.txt",
+    "data_timeline_medonc.txt",
+    "data_timeline_imaging.txt",
+    "data_timeline_sequencing.txt",
+    "data_timeline_labtest.txt",
+    "data_clinical_supp_survival.txt",
+    "data_clinical_supp_survival_treatment.txt",
+    "data_clinical_sample.txt",
+    "data_clinical_patient.txt",
+    "data_mutations_extended.txt",
+    "data_gene_matrix.txt",
+    "data_cna_hg19.seg",
+    "data_fusions.txt",
+    "data_sv.txt",
+    "data_CNA.txt",
+]
+from geniesp import metafiles
+from synapseclient import File
+import synapseclient
+import os
+
+def configure_mafdf(mafdf: pd.DataFrame, keep_samples: list) -> pd.DataFrame:
+    """Configures a maf dataframe
+
+    Args:
+        mafdf (pd.DataFrame): Chunk of maf dataframe
+        keep_samples (list):  Samples to keep in the maf file
+
+    Returns:
+        pd.DataFrame: Configured maf dataframe
+    """
+    keep_mafdf = mafdf[mafdf["Tumor_Sample_Barcode"].isin(keep_samples.tolist())]
+    if not keep_mafdf.empty:
+        fillnas = [
+            "t_depth",
+            "t_ref_count",
+            "t_alt_count",
+            "n_depth",
+            "n_ref_count",
+            "n_alt_count",
+        ]
+        for col in fillnas:
+            keep_mafdf[col].loc[keep_mafdf[col] == "."] = ""
+        keep_mafdf["Validation_Status"] = ""
+    return keep_mafdf
+
+
+@dataclass
+class MainGenie:
+    """BPC redcap to cbioportal export"""
+    bpc_config: BpcConfig
+    extract: Extract
+    sample_df: pd.DataFrame
+    patient_df: pd.DataFrame
+    release: str
+    cbioportal_folders: dict
+    syn: synapseclient.Synapse
+    upload: bool = False
+
+    def create_bpc_cbio_metafiles(self) -> List:
+        """Create BPC cBioPortal meta* files.
+
+        Returns:
+            List: file paths of meta files.
+        """
+
+        mg_release_ent = self.syn.get(self.bpc_config.mg_release_synid)
+        name = f"GENIE BPC {self.bpc_config.cohort} v{self.release}"
+        description = (
+            f"{self.bpc_config.cohort} cohort v{self.release} "
+            f"(GENIE {date.today().year}) GENIE {mg_release_ent.name}. "
+            f"Several hundred different variables are collected for each of "
+            f'the BPC cohorts; consult the <a href="{self.bpc_config.url_bpc}">Documentation</a> '
+            f"for further detail. To learn more about which variables are "
+            f"visualized in cBioPortal and how, see the cBioPortal "
+            f'<a href="{self.bpc_config.url_cbio}">ReadMe</a>. '
+            '<font color="red">Although these data are de-identified, your analysis '
+            "may require institutional review prior to publication.</font>"
+        )
+        short_name = f"{self.bpc_config.cohort} GENIE"
+        study_identifier = f"{self.bpc_config.cohort.lower()}_genie_bpc"
+        # Get list of files to create cBioPortal metadata files for
+        to_create_meta = list(set(CBIO_FILEFORMATS_ALL) - set(self.bpc_config.exclude_files))
+
+        meta_files = metafiles.create_cbio_metafiles(
+            study_identifier=study_identifier,
+            outdir=self.bpc_config.cohort,
+            cbio_fileformats=to_create_meta,
+        )
+        meta_study = metafiles.create_study_meta_file(
+            study_identifier=study_identifier,
+            type_of_cancer="mixed",
+            name=name,
+            description=description,
+            groups="GENIE",
+            short_name=short_name,
+        )
+        study_file = metafiles.write_meta_file(
+            meta_info=meta_study,
+            filename="meta_study.txt",
+            outdir=self.bpc_config.cohort,
+        )
+        meta_files.append(study_file)
+        return meta_files
+
+    def create_and_write_genematrix(
+        self, clinicaldf: pd.DataFrame, cna_samples: list, used_ent: list = None
+    ) -> None:
+        """Create gene matrix dataframe.
+
+        Args:
+            clinicaldf (pd.DataFrame): sample information
+            cna_samples (list): sample IDs with CNA data
+            used_ent (list, optional): Synapse IDs used. Defaults to None.
+        """
+
+        data_gene_panel = clinicaldf[["SAMPLE_ID", "SEQ_ASSAY_ID"]]
+        data_gene_panel = data_gene_panel.rename(columns={"SEQ_ASSAY_ID": "mutations"})
+        data_gene_panel = data_gene_panel[data_gene_panel["SAMPLE_ID"] != ""]
+        data_gene_panel.drop_duplicates("SAMPLE_ID", inplace=True)
+        cna_seqids = data_gene_panel["mutations"][
+            data_gene_panel["SAMPLE_ID"].isin(cna_samples)
+        ].unique()
+        data_gene_panel["cna"] = data_gene_panel["mutations"]
+        data_gene_panel["cna"][~data_gene_panel["cna"].isin(cna_seqids)] = "NA"
+        data_gene_panel.fillna("NA", inplace=True)
+        gene_matrix_filepath = os.path.join(
+            self.bpc_config.cohort, "data_gene_matrix.txt"
+        )
+        data_gene_panel.to_csv(gene_matrix_filepath, sep="\t", index=False)
+        if self.upload:
+            file_ent = File(
+                gene_matrix_filepath, parent=self.cbioportal_folders["release"]
+            )
+            self.syn.store(file_ent, used=used_ent, executed=self.bpc_config.github_url)
+
+    def write_and_storedf(
+        self, df: pd.DataFrame, filepath: str, used_entities: list = []
+    ):
+        """Write and, if applicable, store data frame.
+
+        Args:
+            df (pd.DataFrame): data frame to store
+            filepath (str): path to written file
+            used_entities (list, optional): Synapse IDs used to generate the file. Defaults to [].
+        """
+
+        df_text = process_functions.removePandasDfFloat(df)
+        with open(filepath, "w") as file_f:
+            file_f.write(df_text)
+
+        if self.upload:
+            # Add the mapping file to the release file provenance
+            used_entities.append(self.bpc_config.redcap_to_cbio_mapping_synid)
+            ent = File(filepath, parent=self.cbioportal_folders["release"])
+            self.syn.store(ent, executed=self.bpc_config.github_url, used=used_entities)
+
+    def create_and_write_maf(self, keep_samples: list) -> str:
+        """Create maf file from release maf
+
+        Args:
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            str: file path to written data
+        """
+        file_name = "data_mutations_extended.txt"
+        mafpath = os.path.join(self.bpc_config.cohort, file_name)
+        maf_synid = self.extract.get_mg_synid(self.bpc_config.mg_release_synid, file_name)
+        maf_ent = self.syn.get(maf_synid, followLink=True)
+        maf_chunks = pd.read_table(maf_ent.path, chunksize=50000, low_memory=False)
+        index = 0
+        for maf_chunk in maf_chunks:
+            mafdf = configure_mafdf(maf_chunk, keep_samples)
+            # Skip to next chunk if empty
+            if mafdf.empty:
+                continue
+            # If maf file has not been created
+            if index == 0:
+                maf_text = process_functions.removePandasDfFloat(mafdf)
+                with open(mafpath, "w") as maf_f:
+                    maf_f.write(maf_text)
+            else:
+                maf_text = mafdf.to_csv(sep="\t", header=None, index=False)
+                maf_text = process_functions.removeStringFloat(maf_text)
+                with open(mafpath, "a") as maf_f:
+                    maf_f.write(maf_text)
+            index += 1
+        if self.upload:
+            file_ent = File(mafpath, parent=self.cbioportal_folders["release"])
+            self.syn.store(file_ent, used=[maf_synid], executed=self.bpc_config.github_url)
+
+        return mafpath
+
+    def create_and_write_cna(self, keep_samples: list) -> dict:
+        """Create CNA file
+
+        Args:
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            dict: "filepath" with path to written file
+                    "cna_sample" list of CNA sample IDs
+        """
+        file_name = "data_CNA.txt"
+        cna_synid = self.extract.get_mg_synid(self.bpc_config.mg_release_synid, file_name)
+        cna_path = os.path.join(self.bpc_config.cohort, file_name)
+        cna_ent = self.syn.get(cna_synid, followLink=True)
+        cnadf = pd.read_table(cna_ent.path, low_memory=False)
+        keep_cols = ["Hugo_Symbol"]
+        keep_cols.extend(cnadf.columns[cnadf.columns.isin(keep_samples)].tolist())
+        cnadf = cnadf[keep_cols]
+        cna_text = process_functions.removePandasDfFloat(cnadf)
+        # Must do this replace twice because \t\t\t ->
+        # \tNA\t\t -> \tNA\tNA\t
+        cna_text = (
+            cna_text.replace("\t\t", "\tNA\t")
+            .replace("\t\t", "\tNA\t")
+            .replace("\t\n", "\tNA\n")
+        )
+
+        with open(cna_path, "w") as cna_file:
+            cna_file.write(cna_text)
+
+        if self.upload:
+            file_ent = File(cna_path, parent=self.cbioportal_folders["release"])
+            self.syn.store(file_ent, used=[cna_synid], executed=self.bpc_config.github_url)
+        return {"filepath": cna_file, "cna_samples": cnadf.columns.tolist()}
+
+    def create_and_write_fusion(self, keep_samples: list) -> str:
+        """Create fusion file
+
+        Args:
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            str: file path to written data
+        """
+        file_name = "data_fusions.txt"
+        fusion_synid = self.extract.get_mg_synid(self.bpc_config.mg_release_synid, file_name)
+        fusion_ent = self.syn.get(fusion_synid, followLink=True)
+        fusiondf = pd.read_table(fusion_ent.path, low_memory=False)
+        fusiondf = fusiondf[fusiondf["Tumor_Sample_Barcode"].isin(keep_samples)]
+        # cBioPortal validation fails when Hugo Symbol is null
+        fusiondf = fusiondf[~fusiondf["Hugo_Symbol"].isnull()]
+        fusion_path = os.path.join(self.bpc_config.cohort, file_name)
+        self.write_and_storedf(fusiondf, fusion_path, used_entities=[fusion_synid])
+        return fusion_path
+
+    def create_and_write_seg(self, keep_samples: list) -> str:
+        """Create seg file
+
+        Args:
+            keep_samples (list): List of samples to keep
+
+        Returns:
+            str: file path to written data
+        """
+        # TODO: the seg filename will change 13.X release.
+        file_name = "data_cna_hg19.seg"
+        seg_synid = self.extract.get_mg_synid(self.bpc_config.mg_release_synid, file_name)
+        seg_ent = self.syn.get(seg_synid, followLink=True)
+        segdf = pd.read_table(seg_ent.path, low_memory=False)
+        segdf = segdf[segdf["ID"].isin(keep_samples)]
+        seg_path = os.path.join(self.bpc_config.cohort, "data_cna_hg19.seg")
+        self.write_and_storedf(segdf, seg_path, used_entities=[seg_synid])
+        return seg_path
+
+    def create_and_write_sv(self, keep_samples):
+        """Create sv file
+
+        Args:
+            keep_samples: List of samples to keep
+        """
+        file_name = "data_sv.txt"
+        # TODO: remove try except after using main genie release >= 13
+        try:
+            sv_synid = self.extract.get_mg_synid(self.bpc_config.mg_release_synid, file_name)
+        except ValueError:
+            sv_synid = None
+            logging.warning(
+                f"data_sv.txt doesn't exist in main genie release: {self.bpc_config.mg_release_synid}"
+            )
+        if sv_synid is not None:
+            sv_ent = self.syn.get(sv_synid, followLink=True)
+            svdf = pd.read_table(sv_ent.path, low_memory=False)
+            svdf = svdf[svdf["Sample_Id"].isin(keep_samples)]
+            sv_path = os.path.join(self.bpc_config.cohort, "data_sv.txt")
+            self.write_and_storedf(svdf, sv_path, used_entities=[sv_synid])
+
+    def create_and_write_gene_panels(self, keep_seq_assay_ids: list) -> List:
+        """Create gene panels.
+
+        Args:
+            keep_seq_assay_ids (list): list of sequence assay IDs
+
+        Returns:
+            list: file paths of written data
+        """
+
+        gene_panel_paths = []
+        file_name = "genomic_information.txt"
+        genomic_info_synid = self.extract.get_mg_synid(self.bpc_config.mg_release_synid, file_name)
+        genomic_info_ent = self.syn.get(genomic_info_synid, followLink=True)
+        genomic_infodf = pd.read_table(genomic_info_ent.path, low_memory=False)
+        # Filter by SEQ_ASSAY_ID and only exonic regions
+        genomic_infodf = genomic_infodf[
+            (genomic_infodf["SEQ_ASSAY_ID"].isin(keep_seq_assay_ids))
+            & (genomic_infodf["Feature_Type"] == "exon")
+            & (~genomic_infodf["Hugo_Symbol"].isnull())
+            & (genomic_infodf["includeInPanel"])
+        ]
+
+        seq_assay_groups = genomic_infodf.groupby("SEQ_ASSAY_ID")
+        for seq_assay_id, seqdf in seq_assay_groups:
+            unique_genes = seqdf.Hugo_Symbol.unique()
+            gene_panel_text = (
+                "stable_id: {seq_assay_id}\n"
+                "description: {seq_assay_id}, "
+                "Number of Genes - {num_genes}\n"
+                "gene_list:\t{genelist}".format(
+                    seq_assay_id=seq_assay_id,
+                    num_genes=len(unique_genes),
+                    genelist="\t".join(unique_genes),
+                )
+            )
+            gene_panel_name = f"data_gene_panel_{seq_assay_id}.txt"
+            gene_panel_path = os.path.join(self.bpc_config.cohort, gene_panel_name)
+            gene_panel_paths.append(gene_panel_path)
+            with open(gene_panel_path, "w+") as f:
+                f.write(gene_panel_text)
+            if self.upload:
+                fileEnt = File(
+                    gene_panel_path, parent=self.cbioportal_folders["release"]
+                )
+                self.syn.store(
+                    fileEnt, used=[genomic_info_synid], executed=self.bpc_config.github_url
+                )
+        return gene_panel_paths
+
+    def create_and_write_case_lists(
+        self, subset_sampledf: pd.DataFrame, subset_patientdf: pd.DataFrame, used: list
+    ) -> None:
+        """Create, write, and, if applicable, store case list files.
+
+        Args:
+            subset_sampledf: Dataframe of sample information
+            subset_patientdf: Dataframe of patient information
+            used: Synapse IDs used to construct the case file data.
+        """
+        # Merged clinical file is created here because it is needed
+        # for the case lists
+        # Remove oncotree code here, because no longer need it
+        merged_clinicaldf = subset_sampledf.merge(
+            subset_patientdf, on="PATIENT_ID", how="outer"
+        )
+        missing_sample_idx = merged_clinicaldf["SAMPLE_ID"].isnull()
+        # Make sure there are no missing sample ids
+        if sum(missing_sample_idx) > 0:
+            logging.info(
+                "MISSING SAMPLE_ID for: {}".format(
+                    ",".join(merged_clinicaldf["PATIENT_ID"][missing_sample_idx])
+                )
+            )
+            merged_clinicaldf = merged_clinicaldf[~missing_sample_idx]
+
+        # TODO Add this back in
+        # # upload samples that are not part of the main GENIE cohort
+        # if merged_clinicaldf.get("SAMPLE_ID") is not None:
+        #     logging.info("Samples not in GENIE clinical databases (SP and normal)")
+        #     not_found_samples = merged_clinicaldf["SAMPLE_ID"][
+        #         ~merged_clinicaldf["SAMPLE_ID"].isin(self.genie_clinicaldf["SAMPLE_ID"])
+        #     ]
+        #     if not not_found_samples.empty:
+        #         logging.info(not_found_samples[~not_found_samples.isnull()])
+        #         not_found_samples.to_csv("notfoundsamples.csv")
+        #         if self.upload:
+        #             self.syn.store(
+        #                 File(
+        #                     "notfoundsamples.csv", parent=self.bpc_config.sp_redcap_exports_synid
+        #                 )
+        #             )
+        # Hard coded most up to date oncotree version
+        # oncotreelink = self.syn.get("syn13890902").externalURL
+        # Use the old oncotree link for now
+        # TODO: need to update oncotree link for 11.0 public
+        # oncotreelink = (
+        #     "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
+        # )
+        oncotreelink = self.bpc_config.oncotreelink
+        oncotree_dict = process_functions.get_oncotree_code_mappings(oncotreelink)
+        # Map cancer type and cancer type detailed
+        # This is to create case list files
+        merged_clinicaldf["CANCER_TYPE"] = [
+            oncotree_dict[code.upper()].get("CANCER_TYPE", float("nan"))
+            for code in merged_clinicaldf["ONCOTREE_CODE"]
+        ]
+        merged_clinicaldf["CANCER_TYPE_DETAILED"] = [
+            oncotree_dict[code.upper()].get("CANCER_TYPE_DETAILED", float("nan"))
+            for code in merged_clinicaldf["ONCOTREE_CODE"]
+        ]
+        merged_clinicaldf["ONCOTREE_PRIMARY_NODE"] = [
+            oncotree_dict[code.upper()].get("ONCOTREE_PRIMARY_NODE", float("nan"))
+            for code in merged_clinicaldf["ONCOTREE_CODE"]
+        ]
+        merged_clinicaldf["ONCOTREE_SECONDARY_NODE"] = [
+            oncotree_dict[code.upper()].get("ONCOTREE_SECONDARY_NODE", float("nan"))
+            for code in merged_clinicaldf["ONCOTREE_CODE"]
+        ]
+        # Remove duplicated sample ids (there shouldn't be any)
+        merged_clinicaldf = merged_clinicaldf.drop_duplicates("SAMPLE_ID")
+        merged_clinicaldf.to_csv(
+            os.path.join(self.bpc_config.cohort, "data_clinical.txt"),
+            index=False,
+            sep="\t",
+        )
+
+        # Create case lists
+        case_list_path = os.path.join(self.bpc_config.cohort, "case_lists")
+
+        if not os.path.exists(case_list_path):
+            os.mkdir(case_list_path)
+        else:
+            caselists = os.listdir(case_list_path)
+            for caselist in caselists:
+                os.remove(os.path.join(case_list_path, caselist))
+
+        # Write out cases sequenced so people can tell
+        # which samples were sequenced
+        assay_info = self.syn.tableQuery(
+            f"select * from {self.bpc_config.mg_assay_synid}",
+            includeRowIdAndRowVersion=False,
+            separator="\t",
+        )
+        from genie import create_case_lists
+        create_case_lists.main(
+            os.path.join(self.bpc_config.cohort, "data_clinical.txt"),
+            assay_info.filepath,
+            case_list_path,
+            f"{self.bpc_config.cohort.lower()}_genie_bpc",
+        )
+
+        case_list_files = os.listdir(case_list_path)
+        for casepath in case_list_files:
+            casepath = os.path.join(case_list_path, casepath)
+            if self.upload:
+                file_ent = File(casepath, parent=self.cbioportal_folders["case_lists"])
+                self.syn.store(
+                    file_ent,
+                    used=used,
+                    executed=self.bpc_config.github_url,
+                )
+
+    def run(self):
+        """Runs the redcap export to export all files"""
+
+        logging.info("writing CLINICAL-SAMPLE...")
+        df_sample_final = self.sample_df
+        df_patient_final = self.patient_df
+        logging.info("writing genomic data files...")
+        self.create_and_write_maf(df_sample_final["SAMPLE_ID"])
+        dict_cna = self.create_and_write_cna(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_genematrix(df_sample_final, dict_cna["cna_samples"])
+        # self.create_and_write_fusion(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_seg(df_sample_final["SAMPLE_ID"])
+        self.create_and_write_sv(df_sample_final["SAMPLE_ID"])
+        # TODO: probably add this in bpc_config or extract
+        ids = get_synid_data(
+            df_map=self.extract.mapping_df,
+            df_file=self.extract.data_tables_df,
+            sampletype=["PATIENT", "SAMPLE"],
+            cohort=self.bpc_config.cohort,
+        )
+        self.create_and_write_case_lists(
+            subset_sampledf=df_sample_final, subset_patientdf=df_patient_final, used=ids
+        )
+        self.create_and_write_gene_panels(df_sample_final["SEQ_ASSAY_ID"].unique())
+
+        logging.info("writing metadata files...")
+        metadata_files = self.create_bpc_cbio_metafiles()
+        if self.upload:
+            for metadata_file in metadata_files:
+                file_ent = synapseclient.File(
+                    metadata_file, parent=self.cbioportal_folders["release"]
+                )
+                self.syn.store(
+                    file_ent,
+                    executed=self.bpc_config.github_url
+                )
