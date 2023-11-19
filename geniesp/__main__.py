@@ -81,37 +81,43 @@ def main():
     else:
         cbiopath = args.cbioportal
 
-    config = BPC_MAPPING[args.sp]
+    bpc_config = BPC_MAPPING[args.sp]
 
+    # Create a mapping between the timeline file types and the transform classes
     timeline_files = {
-        "TIMELINE-PERFORMANCE": TimelinePerformanceTransform,
-        "TIMELINE-TREATMENT-RT":  TimelineTreatmentRadTransform,
-        "TIMELINE-DX": TimelineDxTransform,
-        "TIMELINE-IMAGING": TimelineTransform,
-        "TIMELINE-MEDONC": TimelineTransform,
-        "TIMELINE-PATHOLOGY": TimelineTransform,
-        "TIMELINE-SAMPLE": TimelineSampleTransform,
-        "TIMELINE-SEQUENCE": TimelineSequenceTransform,
-        "TIMELINE-LAB": TimelineTransform,
-        "SURVIVAL": SurvivalTransform,
-        "REGIMEN": SurvivalTreatmentTransform,
-        "SAMPLE": SampleTransform,
-        "PATIENT": PatientTransform,
+        "TIMELINE-PERFORMANCE": {
+            'cls': TimelinePerformanceTransform,
+            'filename': "data_timeline_performance_status.txt"
+        },
+        "TIMELINE-TREATMENT-RT": {
+            'cls': TimelineTreatmentRadTransform,
+            'filename': "data_timeline_treatment.txt"
+        },
+        "TIMELINE-DX": {'cls': TimelineDxTransform, 'filename': "data_timeline_cancer_diagnosis.txt"},
+        "TIMELINE-IMAGING": {'cls': TimelineTransform, 'filename': "data_timeline_imaging.txt"},
+        "TIMELINE-MEDONC": {'cls': TimelineTransform, 'filename': "data_timeline_medonc.txt"},
+        "TIMELINE-PATHOLOGY": {'cls': TimelineTransform, 'filename': "data_timeline_pathology.txt"},
+        "TIMELINE-SAMPLE": {'cls': TimelineSampleTransform, 'filename': "data_timeline_sample_acquisition.txt"},
+        "TIMELINE-SEQUENCE": {'cls': TimelineSequenceTransform, 'filename': "data_timeline_sequencing.txt"},
+        "TIMELINE-LAB": {'cls': TimelineTransform, 'filename': "data_timeline_labtest.txt"},
+        "SURVIVAL": {'cls': SurvivalTransform, 'filename': "data_clinical_supp_survival.txt"},
+        "REGIMEN": {'cls': SurvivalTreatmentTransform, 'filename': "data_clinical_supp_survival_treatment.txt"},
+        "SAMPLE": {'cls': SampleTransform, 'filename': "data_clinical_sample.txt"},
+        "PATIENT": {'cls': PatientTransform, 'filename': "data_clinical_patient.txt"},
 
     }
     # Exception for timeline treatment file
-    temp_extract = Extract(
-        bpc_config = config,
+    extract_raw_treatment_data = Extract(
+        bpc_config = bpc_config,
         sample_type = "TIMELINE-TREATMENT",
         syn = syn
     )
-    temp_transform = TimelineTreatmentTransform(
-        extract = temp_extract,
-        bpc_config = config
-
+    treatment_transform = TimelineTreatmentTransform(
+        extract = extract_raw_treatment_data,
+        bpc_config = bpc_config,
+        filepath = os.path.join(args.sp, "data_timeline_treatment.txt")
     )
-
-    timeline_treatment_df = temp_transform.create_timeline_file()
+    timeline_treatment_df = treatment_transform.create_timeline_file()
     sample_type_dfs = {"TIMELINE-TREATMENT": timeline_treatment_df}
 
     for sample_type, transform_cls in timeline_files.items():
@@ -120,22 +126,22 @@ def main():
             continue
         if sample_type == "TIMELINE-PERFORMANCE" and args.sp not in ['BLADDER']:
             continue
-        if sample_type == "TIMELINE-TREATMENT-RT" and args.sp in ["BrCa", "CRC"]:
-            continue
+        # if sample_type == "TIMELINE-TREATMENT-RT" and args.sp in ["BrCa", "CRC"]:
+        #     continue
 
         # Download all the files required for processing
-        temp_extract = Extract(
-            bpc_config = config,
+        extract_for_sample_type = Extract(
+            bpc_config = bpc_config,
             sample_type = sample_type,
             syn = syn
         )
-        derived_variables = temp_extract.get_derived_variable_files()
+        derived_variables = extract_for_sample_type.get_derived_variable_files()
         # Leverage the cbioportal mapping and derived variables to create the timeline files
-        filepath = os.path.join(config.cohort, f"{sample_type}.txt")
+        filepath = os.path.join(bpc_config.cohort, transform_cls['filename'])
 
-        temp_transform = transform_cls(
-            extract = temp_extract,
-            bpc_config = config,
+        transform_for_sample_type = transform_cls['cls'](
+            extract = extract_for_sample_type,
+            bpc_config = bpc_config,
             filepath = filepath
         )
         if sample_type == 'TIMELINE-DX':
@@ -143,34 +149,38 @@ def main():
         else:
             filter_start = True
 
-        performance_data = temp_transform.create_timeline_file(filter_start=filter_start)
+        # HACK this is because timeline treatment RT isn't created for two cohorts
+        if sample_type != "TIMELINE-TREATMENT-RT" and args.sp not in ["BrCa", "CRC"]:
+            sample_type_df = transform_for_sample_type.create_timeline_file(filter_start=filter_start)
+        else:
+            sample_type_df = pd.DataFrame()
         # This is specific to the timeline treatment file where it is concatenated with
         # the timeline file
         if sample_type == "TIMELINE-TREATMENT-RT":
-            performance_data = pd.concat(
-                [timeline_treatment_df, performance_data]
+            sample_type_df = pd.concat(
+                [timeline_treatment_df, sample_type_df]
             )
-        sample_type_dfs[sample_type] = performance_data
+        sample_type_dfs[sample_type] = sample_type_df
         # write the dataframe
-        temp_transform.write(df = performance_data)
+        transform_for_sample_type.write(df = sample_type_df)
         # store the files with provenance
         # Generate provenance
         used_entities = [
-            config.redcap_to_cbio_mapping_synid,
-            config.data_tables_id,
-            config.mg_release_synid,
-            config.prissmm_synid,
-            config.sample_retraction_synid,
-            config.patient_retraction_synid,
-            config.retraction_at_release_synid,
-            config.temporary_patient_retraction_synid,
-            config.mg_assay_synid,
+            bpc_config.redcap_to_cbio_mapping_synid,
+            bpc_config.data_tables_id,
+            bpc_config.mg_release_synid,
+            bpc_config.prissmm_synid,
+            bpc_config.sample_retraction_synid,
+            bpc_config.patient_retraction_synid,
+            bpc_config.retraction_at_release_synid,
+            bpc_config.temporary_patient_retraction_synid,
+            bpc_config.mg_assay_synid,
         ]
         used_entities.extend(derived_variables['used'])
         cbioportal_folders = get_cbioportal_upload_folders(
             syn=syn,
-            staging_release_folder=config.staging_release_folder,
-            cohort=config.cohort,
+            staging_release_folder=bpc_config.staging_release_folder,
+            cohort=bpc_config.cohort,
             release=args.release
         )
         ent = synapseclient.File(
@@ -178,11 +188,11 @@ def main():
         )
         if args.upload:
             ent = syn.store(
-                ent, used=used_entities, executed=config.github_url
+                ent, used=used_entities, executed=bpc_config.github_url
             )
     MainGenie(
-        bpc_config = config,
-        extract = temp_extract,
+        bpc_config = bpc_config,
+        extract = extract_raw_treatment_data,
         sample_df = sample_type_dfs['SAMPLE'],
         patient_df = sample_type_dfs['PATIENT'],
         release = args.release,

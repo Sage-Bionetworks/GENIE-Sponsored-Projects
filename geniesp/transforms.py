@@ -73,7 +73,6 @@ class Transforms(metaclass=ABCMeta):
             dict: dictionary with two keys ('df' and 'used') corresponding to data frame
             of data for sample type and a list of Synapse IDs used
         """
-        print(self.extract.timeline_infodf)
         mappingdf = self.extract.timeline_infodf[self.extract.timeline_infodf["data_type"] != "portal_value"]
         # Group by dataset because different datasets could have the
         # same variable
@@ -123,7 +122,6 @@ class Transforms(metaclass=ABCMeta):
     def transforms(self, timelinedf, filter_start):
         # Obtain portal value (EVENT_TYPE)
         subset_infodf = self.extract.timeline_infodf
-        print(subset_infodf)
         portal_value_idx = subset_infodf["data_type"] == "portal_value"
         # HACK: Passing in data mapping without portal_values should
         # still generate a file.
@@ -209,7 +207,7 @@ class Transforms(metaclass=ABCMeta):
 @dataclass
 class TimelinePerformanceTransform(Transforms):
     """TimelinePerformance data class."""
-    filepath = "data_timeline_performance_status.txt"
+
     def custom_transform(
         self, timelinedf
     ) -> dict:
@@ -440,7 +438,6 @@ class SurvivalTransform(Transforms):
         if not clinicaldf.columns.isin(redcap_to_cbiomappingdf["code"]).all():
             raise ValueError("All column names must be in mapping dataframe")
         mapping = redcap_to_cbiomappingdf["cbio"].to_dict()
-        print(mapping)
         clinicaldf = clinicaldf.rename(columns=mapping)
         clinicaldf = clinicaldf.drop_duplicates()
         if sum(clinicaldf["PATIENT_ID"].isnull()) > 0:
@@ -1029,14 +1026,7 @@ class MainGenie:
         #                     "notfoundsamples.csv", parent=self.bpc_config.sp_redcap_exports_synid
         #                 )
         #             )
-        # Hard coded most up to date oncotree version
-        # oncotreelink = self.syn.get("syn13890902").externalURL
-        # Use the old oncotree link for now
-        # oncotreelink = (
-        #     "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
-        # )
-        oncotreelink = self.bpc_config.oncotreelink
-        oncotree_dict = process_functions.get_oncotree_code_mappings(oncotreelink)
+        oncotree_dict = process_functions.get_oncotree_code_mappings(self.bpc_config.oncotreelink)
         # Map cancer type and cancer type detailed
         # This is to create case list files
         merged_clinicaldf["CANCER_TYPE"] = [
@@ -1075,6 +1065,7 @@ class MainGenie:
 
         # Write out cases sequenced so people can tell
         # which samples were sequenced
+        # TODO Add this to extract
         assay_info = self.syn.tableQuery(
             f"select * from {self.bpc_config.mg_assay_synid}",
             includeRowIdAndRowVersion=False,
