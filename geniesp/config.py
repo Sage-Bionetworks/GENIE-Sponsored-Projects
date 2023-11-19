@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import subprocess
+import os
 from typing import List
 
 
@@ -12,7 +13,7 @@ def get_git_sha() -> str:
 @dataclass
 class BpcConfig:
     # json_path: str
-    cohort: str = "BLADDER"
+    cohort: str
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38, 42 were last stable version(s)
     redcap_to_cbio_mapping_synid: str = "syn25712693.49"
@@ -48,6 +49,17 @@ class BpcConfig:
     # syn: Synapse
     oncotreelink: str = "https://oncotree.info/api/tumorTypes/tree?version=oncotree_2021_11_02"
     github_url: str = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
+
+    def __post_init__(self):
+        if self.cohort is None:
+            raise ValueError("cohort must be specified")
+        if not os.path.exists(self.cohort):
+            os.mkdir(self.cohort)
+        else:
+            import glob
+            filelists = glob.glob("**/*", recursive=True)
+            for each_file in filelists:
+                os.remove(os.path.join(self.cohort, each_file))
 
 
 class Brca(BpcConfig):
