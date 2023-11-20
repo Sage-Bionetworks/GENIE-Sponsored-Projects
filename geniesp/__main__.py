@@ -2,6 +2,7 @@
 import argparse
 import logging
 import os
+import subprocess
 
 import pandas as pd
 import synapseclient
@@ -22,6 +23,7 @@ from geniesp.transforms import (
     PatientTransform,
     MainGenie
 )
+from geniesp.utils import create_release_folders
 from geniesp.loads import get_cbioportal_upload_folders
 
 
@@ -81,6 +83,7 @@ def main():
     else:
         cbiopath = args.cbioportal
 
+    create_release_folders(args.sp)
     bpc_config = BPC_MAPPING[args.sp]
 
     # Create a mapping between the timeline file types and the transform classes
@@ -200,7 +203,17 @@ def main():
         syn = syn,
         upload = args.upload
     ).run()
-
+    logging.info("cBioPortal validation")
+    cmd = [
+        "python",
+        os.path.join(
+            cbiopath, "core/src/main/scripts/importer/validateData.py"
+        ),
+        "-s",
+        args.sp,
+        "-n",
+    ]
+    subprocess.run(cmd)
 
 if __name__ == "__main__":
     main()

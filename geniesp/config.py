@@ -50,17 +50,6 @@ class BpcConfig:
     oncotreelink: str = "https://oncotree.info/api/tumorTypes/tree?version=oncotree_2021_11_02"
     github_url: str = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
-    def __post_init__(self):
-        if self.cohort is None:
-            raise ValueError("cohort must be specified")
-        if not os.path.exists(self.cohort):
-            os.mkdir(self.cohort)
-        else:
-            import glob
-            filelists = glob.glob("**/*", recursive=True)
-            for each_file in filelists:
-                os.remove(os.path.join(self.cohort, each_file))
-
 
 class Brca(BpcConfig):
     """BrCa BPC sponsored project"""
