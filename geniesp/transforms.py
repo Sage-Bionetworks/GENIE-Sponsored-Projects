@@ -1091,8 +1091,6 @@ class MainGenie:
 
     def run(self):
         """Runs the redcap export to export all files"""
-
-        logging.info("writing CLINICAL-SAMPLE...")
         df_sample_final = self.sample_df
         df_patient_final = self.patient_df
         logging.info("writing genomic data files...")

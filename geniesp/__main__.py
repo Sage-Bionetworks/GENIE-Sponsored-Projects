@@ -122,7 +122,7 @@ def main():
     )
     timeline_treatment_df = treatment_transform.create_timeline_file()
     sample_type_dfs = {"TIMELINE-TREATMENT": timeline_treatment_df}
-
+    # TODO don't create folders if upload is false
     cbioportal_folders = get_cbioportal_upload_folders(
         syn=syn,
         staging_release_folder=bpc_config.staging_release_folder,
