@@ -1,6 +1,7 @@
 """GENIE SP/BPC cBioPortal exporter CLI"""
 import argparse
 import logging
+import json
 import os
 import subprocess
 
@@ -84,8 +85,10 @@ def main():
         cbiopath = args.cbioportal
 
     create_release_folders(args.sp)
-    bpc_config = BPC_MAPPING[args.sp]
-
+    bpc_conf = BPC_MAPPING[args.sp]
+    bpc_config = bpc_conf(syn=syn, cohort=bpc_conf.cohort, exclude_files=bpc_conf.exclude_files)
+    logging.info("using config")
+    logging.info(json.dumps(bpc_config.to_dict(), indent=4))
     # Create a mapping between the timeline file types and the transform classes
     timeline_files = {
         "TIMELINE-PERFORMANCE": {
@@ -132,12 +135,15 @@ def main():
     for sample_type, transform_cls in timeline_files.items():
         # Conditions to skip
         if sample_type == "TIMELINE-LAB" and args.sp in ["NSCLC", "BLADDER"]:
+            logging.info(f"skipping {sample_type}...")
             continue
+
         if sample_type == "TIMELINE-PERFORMANCE" and args.sp not in ['BLADDER']:
+            logging.info(f"skipping {sample_type}...")
             continue
         # if sample_type == "TIMELINE-TREATMENT-RT" and args.sp in ["BrCa", "CRC"]:
         #     continue
-
+        logging.info(f"writing {sample_type}...")
         # Download all the files required for processing
         extract_for_sample_type = Extract(
             bpc_config = bpc_config,

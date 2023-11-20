@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
 import subprocess
-import os
 from typing import List
+
+from synapseclient import Synapse
 
 
 def get_git_sha() -> str:
@@ -10,15 +11,30 @@ def get_git_sha() -> str:
     return text.stdout.rstrip("\n")
 
 
+def get_latest_entity_version(syn: Synapse, synid: str) -> str:
+    """Get latest version of an entity
+
+    Args:
+        syn (Synapse): Synapse connection
+        synid (str): Synapse Id
+
+    Returns:
+        dict:
+            id: Synapse Id
+            versionNumber: version of entity
+    """
+    versions = syn.restGET(f"/entity/{synid}/version")
+    return versions['results'][0]
+
+
 @dataclass
 class BpcConfig:
     # json_path: str
     cohort: str
+    syn: Synapse
     # Redcap codes to cbioportal mapping synid and form key is in
-    # version 38, 42 were last stable version(s)
-    redcap_to_cbio_mapping_synid: str = "syn25712693.49"
-    # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
-    # github_repo = None
+    # version 49 were last stable version(s)
+    redcap_to_cbio_mapping_synid: str = "syn25712693"
     # Mapping from Synapse Table to derived variables
     # TODO: Make versioned
     data_tables_id: str = "syn22296821"
@@ -46,11 +62,55 @@ class BpcConfig:
     url_bpc: str = "https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h"
     # cohort-generic link to documentation for cBio files
     url_cbio: str = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
-    # syn: Synapse
     oncotreelink: str = "https://oncotree.info/api/tumorTypes/tree?version=oncotree_2021_11_02"
     github_url: str = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
 
+    def __post_init__(self):
+        redcap_to_cbio_mapping = get_latest_entity_version(
+            syn=self.syn,
+            synid=self.redcap_to_cbio_mapping_synid
+        )
+        self.redcap_to_cbio_mapping_synid = '{}.{}'.format(
+            redcap_to_cbio_mapping['id'],
+            redcap_to_cbio_mapping['versionNumber']
+        )
+        mg_assay = get_latest_entity_version(
+            syn=self.syn,
+            synid=self.mg_assay_synid
+        )
+        self.mg_assay_synid = '{}.{}'.format(
+            mg_assay['id'],
+            mg_assay['versionNumber']
+        )
 
+    def to_dict(self) -> dict:
+        """Return configuration used
+
+        Returns:
+            dict: Configuration
+        """
+        return {
+            "cohort": self.cohort,
+            "redcap_to_cbio_mapping_synid": self.redcap_to_cbio_mapping_synid,
+            "data_tables_id": self.data_tables_id,
+            "sp_redcap_exports_synid": self.sp_redcap_exports_synid,
+            "mg_release_synid": self.mg_release_synid,
+            "prissmm_synid": self.prissmm_synid,
+            "sample_retraction_synid": self.sample_retraction_synid,
+            "patient_retraction_synid": self.patient_retraction_synid,
+            "retraction_at_release_synid": self.retraction_at_release_synid,
+            "temporary_patient_retraction_synid": self.temporary_patient_retraction_synid,
+            "mg_assay_synid": self.mg_assay_synid,
+            "staging_release_folder": self.staging_release_folder,
+            "exclude_files": self.exclude_files,
+            "url_bpc": self.url_bpc,
+            "url_cbio": self.url_cbio,
+            "oncotreelink": self.oncotreelink,
+            "github_url": self.github_url
+        }
+
+
+@dataclass
 class Brca(BpcConfig):
     """BrCa BPC sponsored project"""
 
@@ -59,6 +119,7 @@ class Brca(BpcConfig):
     exclude_files = ["data_timeline_performance_status.txt"]
 
 
+@dataclass
 class Crc(BpcConfig):
     """CRC BPC sponsored project"""
 
@@ -67,6 +128,7 @@ class Crc(BpcConfig):
     exclude_files = ["data_timeline_performance_status.txt"]
 
 
+@dataclass
 class Nsclc(BpcConfig):
     """NSCLC BPC sponsored project"""
 
@@ -75,6 +137,7 @@ class Nsclc(BpcConfig):
     exclude_files = ["data_timeline_labtest.txt", "data_timeline_performance_status.txt"]
 
 
+@dataclass
 class Panc(BpcConfig):
     """PANC BPC sponsored project"""
 
@@ -83,6 +146,7 @@ class Panc(BpcConfig):
     exclude_files = ["data_timeline_performance_status.txt"]
 
 
+@dataclass
 class Prostate(BpcConfig):
     """Prostate BPC sponsored project"""
 
@@ -91,6 +155,7 @@ class Prostate(BpcConfig):
     exclude_files = ["data_timeline_performance_status.txt"]
 
 
+@dataclass
 class Bladder(BpcConfig):
     """BLADDER BPC sponsored project"""
 
