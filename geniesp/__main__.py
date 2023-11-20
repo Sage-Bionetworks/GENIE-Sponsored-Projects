@@ -123,6 +123,12 @@ def main():
     timeline_treatment_df = treatment_transform.create_timeline_file()
     sample_type_dfs = {"TIMELINE-TREATMENT": timeline_treatment_df}
 
+    cbioportal_folders = get_cbioportal_upload_folders(
+        syn=syn,
+        staging_release_folder=bpc_config.staging_release_folder,
+        cohort=args.sp,
+        release=args.release
+    )
     for sample_type, transform_cls in timeline_files.items():
         # Conditions to skip
         if sample_type == "TIMELINE-LAB" and args.sp in ["NSCLC", "BLADDER"]:
@@ -180,12 +186,7 @@ def main():
             bpc_config.mg_assay_synid,
         ]
         used_entities.extend(derived_variables['used'])
-        cbioportal_folders = get_cbioportal_upload_folders(
-            syn=syn,
-            staging_release_folder=bpc_config.staging_release_folder,
-            cohort=bpc_config.cohort,
-            release=args.release
-        )
+
         ent = synapseclient.File(
             filepath, parent=cbioportal_folders['release']
         )

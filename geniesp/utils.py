@@ -34,7 +34,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_mutations_extended.txt",
     "data_gene_matrix.txt",
     "data_cna_hg19.seg",
-    "data_fusions.txt",
+    # "data_fusions.txt",
     "data_sv.txt",
     "data_CNA.txt",
 ]
