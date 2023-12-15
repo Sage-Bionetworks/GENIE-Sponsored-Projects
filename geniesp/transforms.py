@@ -52,22 +52,22 @@ CBIO_FILEFORMATS_ALL = [
 
 @dataclass
 class Transforms(metaclass=ABCMeta):
-    """Timeline data class."""
-    # timeline_infodf: pd.DataFrame
+    """Transforms base class"""
     extract: Extract
+    """Extract instance with all the downloaded files and loaded dataframes"""
     bpc_config: BpcConfig
+    """Bpc config instance with all the configurations"""
     filepath: str = None
+    """Path to write file"""
     sample_type: str = None
+    """cBioPortal sample type"""
 
-    def _map_to_cbioportal_format(
-        self
-    ) -> pd.DataFrame:
+    def _map_to_cbioportal_format(self) -> pd.DataFrame:
         """Uses the cbioportal mapping file and derived variable file to map to
         a non transformed dataframe that matches the respective cbioportal file format
 
         Returns:
-            dict: dictionary with two keys ('df' and 'used') corresponding to data frame
-            of data for sample type and a list of Synapse IDs used
+            pd.DataFrame: data frame of data for sample type
         """
         mappingdf = self.extract.timeline_infodf[self.extract.timeline_infodf["data_type"] != "portal_value"]
         # Group by dataset because different datasets could have the
@@ -115,7 +115,20 @@ class Transforms(metaclass=ABCMeta):
 
         return finaldf
 
-    def transforms(self):
+    def transforms(self) -> pd.DataFrame:
+        """Create final cBioPortal final file format.  Steps include
+
+        1. Get raw cbioportal format dataframe
+        2. Set EVENT_TYPE to be the portal_value in the mapping file
+        3. Map record_id column to PATIENT_ID
+        4. Rename all columns cbio labels
+        5. Fill STOP_DATE with blank values
+        6. reorder columns in a specific order
+        7. retract samples and patients
+
+        Returns:
+            pd.DataFrame: cBioPortal final file format
+        """
         timelinedf = self._map_to_cbioportal_format()
         # Obtain portal value (EVENT_TYPE)
         subset_infodf = self.extract.timeline_infodf
@@ -137,7 +150,17 @@ class Transforms(metaclass=ABCMeta):
         timelinedf = self.retract_samples_and_patients(timelinedf)
         return timelinedf[cols_to_order].drop_duplicates()
 
-    def custom_transform(self, timelinedf):
+    def custom_transform(self, timelinedf: pd.DataFrame) -> pd.DataFrame:
+        """Custom Transformations required
+
+        1. Remove all null START_DATE rows
+
+        Args:
+            timelinedf: Timeline DataFrame
+
+        Returns:
+            pd.DataFrame: Final dataframe
+        """
         # Remove all null START_DATE rows
         # This is here because not all null START_DATE rows are removed immediately
         timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
