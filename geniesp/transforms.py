@@ -57,17 +57,13 @@ class Transforms(metaclass=ABCMeta):
     extract: Extract
     bpc_config: BpcConfig
     filepath: str = None
+    sample_type: str = None
 
     def map_to_cbioportal_format(
         self
-    ) -> dict:
-        """Extracts the sample, patient and timeline data frame
-
-        Args:
-            syn (Synapse): Synapse connection
-            mappingdf (pd.DataFrame): Mapping dataframe
-            sampletype (str): sample type label
-            cohort (str, optional): cohort label. Defaults to "NSCLC".
+    ) -> pd.DataFrame:
+        """Uses the cbioportal mapping file and derived variable file to map to
+        a non transformed dataframe that matches the respective cbioportal file format
 
         Returns:
             dict: dictionary with two keys ('df' and 'used') corresponding to data frame
@@ -79,7 +75,7 @@ class Transforms(metaclass=ABCMeta):
         datasets = mappingdf.groupby("dataset")
         finaldf = pd.DataFrame()
         dataset_map = self.extract.get_derived_variable_files()
-        sample_type = self.extract.sample_type
+        sample_type = self.sample_type
         for dataset, df in datasets:
             # obtain columns to subset df
             cols = df["code"][df["sampleType"] == sample_type]
@@ -146,24 +142,24 @@ class Transforms(metaclass=ABCMeta):
     def custom_transform(self, timelinedf):
         return timelinedf
 
-    def create_timeline_file(
-        self,
-        filter_start: bool = True,
-    ) -> dict:
-        """Create timeline files straight from derived variables.
+    # def create_timeline_file(
+    #     self,
+    #     filter_start: bool = True,
+    # ) -> dict:
+    #     """Create timeline files straight from derived variables.
 
-        Args:
-            timeline_infodf (pd.DataFrame): cBio mapping information relevant to the timeline
-            timeline_type (str): timeline label
-            filter_start (bool, optional): whether to filter out rows with null START_DATEs. Defaults to True.
+    #     Args:
+    #         timeline_infodf (pd.DataFrame): cBio mapping information relevant to the timeline
+    #         timeline_type (str): timeline label
+    #         filter_start (bool, optional): whether to filter out rows with null START_DATEs. Defaults to True.
 
-        Returns:
-            dict: 'df' mapped dataframe, 'used' list of entities
-        """
-        timelinedf = self.map_to_cbioportal_format()
-        timelinedf = self.transforms(timelinedf=timelinedf, filter_start=filter_start)
-        timelinedf = self.custom_transform(timelinedf=timelinedf)
-        return timelinedf
+    #     Returns:
+    #         dict: 'df' mapped dataframe, 'used' list of entities
+    #     """
+    #     timelinedf = self.map_to_cbioportal_format()
+    #     timelinedf = self.transforms(timelinedf=timelinedf, filter_start=filter_start)
+    #     timelinedf = self.custom_transform(timelinedf=timelinedf)
+    #     return timelinedf
 
     def retract_samples_and_patients(self, df: pd.DataFrame) -> pd.DataFrame:
         """Make sure samples and patients exist in the main genie
@@ -247,7 +243,7 @@ class TimelineTreatmentTransform(Transforms):
     def map_to_cbioportal_format(
         self
     ) -> dict:
-        subset_infodf = self.extract.timeline_infodf[self.extract.timeline_infodf["sampleType"] == self.extract.sample_type]
+        subset_infodf = self.extract.timeline_infodf[self.extract.timeline_infodf["sampleType"] == self.sample_type]
         # Exclude heme onc columns
         subset_infodf = subset_infodf[
             ~subset_infodf["data_type"].isin(["portal_value", "heme"])
@@ -518,17 +514,6 @@ class SurvivalTransform(Transforms):
         Returns:
             str: file path to clinical info
         """
-        # TODO fix this
-        # if filetype not in [
-        #     "patient",
-        #     "sample",
-        #     "supp_survival",
-        #     "supp_survival_treatment",
-        # ]:
-        #     raise ValueError(
-        #         "sample type must be patient, sample, supp_survival or "
-        #         "supp_survival_treatment"
-        #     )
         # Must have this for the dict mappings after
         redcap_to_cbiomappingdf = self.extract.survival_info_df
         redcap_to_cbiomappingdf.index = redcap_to_cbiomappingdf["cbio"]
@@ -996,7 +981,8 @@ class MainGenie:
         """
         # Merged clinical file is created here because it is needed
         # for the case lists
-        # Remove oncotree code here, because no longer need it
+        # TODO perhaps do merge outside of this, so that we do these checks
+        # outside of this function
         merged_clinicaldf = subset_sampledf.merge(
             subset_patientdf, on="PATIENT_ID", how="outer"
         )
@@ -1010,7 +996,7 @@ class MainGenie:
             )
             merged_clinicaldf = merged_clinicaldf[~missing_sample_idx]
 
-        # TODO Add this back in
+        # NOTE No longer need this because all samples are filtered anyhow
         # # upload samples that are not part of the main GENIE cohort
         # if merged_clinicaldf.get("SAMPLE_ID") is not None:
         #     logging.info("Samples not in GENIE clinical databases (SP and normal)")
