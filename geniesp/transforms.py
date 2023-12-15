@@ -115,7 +115,7 @@ class Transforms(metaclass=ABCMeta):
 
         return finaldf
 
-    def transforms(self, filter_start):
+    def transforms(self):
         timelinedf = self._map_to_cbioportal_format()
         # Obtain portal value (EVENT_TYPE)
         subset_infodf = self.extract.timeline_infodf
@@ -135,30 +135,27 @@ class Transforms(metaclass=ABCMeta):
         cols_to_order = ["PATIENT_ID", "START_DATE", "STOP_DATE", "EVENT_TYPE"]
         cols_to_order.extend(timelinedf.columns.drop(cols_to_order).tolist())
         timelinedf = self.retract_samples_and_patients(timelinedf)
-        # Remove all null START_DATE rows if requested
-        if filter_start:
-            timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         return timelinedf[cols_to_order].drop_duplicates()
 
     def custom_transform(self, timelinedf):
+        # Remove all null START_DATE rows
+        # This is here because not all null START_DATE rows are removed immediately
+        timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         return timelinedf
 
     def create_timeline_file(
-        self,
-        filter_start: bool = True,
+        self
     ) -> dict:
         """Create timeline files straight from derived variables.
 
         Args:
             timeline_infodf (pd.DataFrame): cBio mapping information relevant to the timeline
             timeline_type (str): timeline label
-            filter_start (bool, optional): whether to filter out rows with null START_DATEs. Defaults to True.
 
         Returns:
             dict: 'df' mapped dataframe, 'used' list of entities
         """
-        # timelinedf = self.map_to_cbioportal_format()
-        timelinedf = self.transforms(filter_start=filter_start)
+        timelinedf = self.transforms()
         timelinedf = self.custom_transform(timelinedf=timelinedf)
         return timelinedf
 
@@ -217,6 +214,7 @@ class TimelinePerformanceTransform(Transforms):
         Returns:
             dict: TIMELINE-PERFORMANCE data
         """
+        timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         # HACK: Due to remapping logic, we will re-create RESULT column with correct
         has_md_karnof = ~timelinedf['MD_KARNOF'].fillna('Not').str.startswith(("Not" ,"not"))
         has_md_ecog = ~timelinedf['MD_ECOG'].fillna('Not').str.startswith(("Not" ,"not"))
@@ -242,7 +240,7 @@ class TimelineTreatmentTransform(Transforms):
     """TimelinePerformance data class."""
 
     def transforms(
-        self, filter_start
+        self
     ) -> dict:
         subset_infodf = self.extract.timeline_infodf[self.extract.timeline_infodf["sampleType"] == self.sample_type]
         # Exclude heme onc columns
@@ -321,9 +319,6 @@ class TimelineTreatmentTransform(Transforms):
 
         return final_timelinedf[cols_to_order].drop_duplicates()
 
-    # def transforms(self, timelinedf, filter_start):
-    #     return timelinedf
-
 
 @dataclass
 class TimelineTreatmentRadTransform(Transforms):
@@ -341,7 +336,7 @@ class TimelineTreatmentRadTransform(Transforms):
         Returns:
             dict: TIMELINE-PERFORMANCE data
         """
-        rad_df = timelinedf
+        rad_df = timelinedf[~timelinedf["START_DATE"].isnull()]
         rad_df["STOP_DATE"] = rad_df["START_DATE"] + rad_df["TEMP"]
         rad_df = rad_df[rad_df["INDEX_CANCER"] == "Yes"]
         rad_df["EVENT_TYPE"] = "TREATMENT"
@@ -357,6 +352,7 @@ class TimelineDxTransform(Transforms):
         self, timelinedf
     ) -> pd.DataFrame:
         timelinedf = fill_cancer_dx_start_date(timelinedf)
+        # Filter out null start dates
         timelinedf = timelinedf[
             ~timelinedf["START_DATE"].isnull()
         ]
@@ -372,16 +368,15 @@ class TimelineSampleTransform(Transforms):
     def custom_transform(
         self, timelinedf
     ) -> pd.DataFrame:
-        # TODO: Can add getting of samples with NULL start dates in
-        # self.create_fixed_timeline_files
         null_dates_idx = timelinedf["START_DATE"].isnull()
         if null_dates_idx.any():
             logging.warning(
-                "timeline sample with null START_DATE: {}".format(
+                "timeline sample with null START_DATE removed: {}".format(
                     ", ".join(timelinedf["SAMPLE_ID"][null_dates_idx])
                 )
             )
             timelinedf = timelinedf[~null_dates_idx]
+        timelinedf = timelinedf[~timelinedf["START_DATE"].isnull()]
         return timelinedf
 
 
@@ -393,7 +388,7 @@ class TimelineSequenceTransform(Transforms):
         # HACK: Manually calculate the START_DATE based on criteria defined
         # in GEN-94
         # sequence_data["df"]["START_DATE"]
-        seq_df =timelinedf
+        seq_df = timelinedf[~timelinedf["START_DATE"].isnull()]
         index_seq_df = seq_df[seq_df["INDEX_CANCER"] == "Yes"]
         index_seq_df["START_DATE"] = (
             index_seq_df["DPT_REPORT_DAYS"] - index_seq_df["CA_DX_DAYS"]
@@ -414,6 +409,9 @@ class TimelineSequenceTransform(Transforms):
 
 # TODO: Create a ClinicalTransform class
 class SurvivalTransform(Transforms):
+
+    def custom_transform(self, timelinedf):
+        return timelinedf
 
     def configure_clinicaldf(
         self, clinicaldf: pd.DataFrame, redcap_to_cbiomappingdf: pd.DataFrame
@@ -465,7 +463,7 @@ class SurvivalTransform(Transforms):
 
         return clinicaldf
 
-    def transforms(self, filter_start) -> dict:
+    def transforms(self) -> dict:
         timelinedf = self._map_to_cbioportal_format()
         df_final_survival = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
 
@@ -553,7 +551,7 @@ class SurvivalTransform(Transforms):
 
 class SurvivalTreatmentTransform(SurvivalTransform):
 
-    def transforms(self, filter_start):
+    def transforms(self):
         # TODO: Make sure these are in the extract class
         drug_mapping = get_drug_mapping(
             syn=self.extract.syn,
@@ -581,7 +579,7 @@ class SurvivalTreatmentTransform(SurvivalTransform):
 
 class SampleTransform(SurvivalTransform):
 
-    def transforms(self, filter_start) -> dict:
+    def transforms(self) -> dict:
         timelinedf = self._map_to_cbioportal_format()
         del timelinedf["path_proc_number"]
         df_sample = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
@@ -619,7 +617,7 @@ class SampleTransform(SurvivalTransform):
 
 class PatientTransform(SurvivalTransform):
 
-    def transforms(self, filter_start) -> dict:
+    def transforms(self) -> dict:
         timelinedf = self._map_to_cbioportal_format()
         df_patient = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
         df_patient.drop(columns="redcap_ca_index", inplace=True)

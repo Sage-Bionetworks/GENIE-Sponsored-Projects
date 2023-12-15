@@ -145,8 +145,6 @@ def main():
             logging.info(f"skipping {sample_type}...")
             continue
 
-        # if sample_type == "TIMELINE-TREATMENT-RT" and args.sp in ["BrCa", "CRC"]:
-        #     continue
         logging.info(f"writing {sample_type}...")
         # Download all the files required for processing
         extract_for_sample_type = Extract(
@@ -164,16 +162,12 @@ def main():
             filepath = filepath,
             sample_type=sample_type
         )
-        if sample_type == 'TIMELINE-DX':
-            filter_start = False
-        else:
-            filter_start = True
 
         # HACK this is because timeline treatment RT isn't created for two cohorts
         if sample_type == "TIMELINE-TREATMENT-RT" and args.sp in ["BrCa", "CRC"]:
             sample_type_df = pd.DataFrame()
         else:
-            sample_type_df = sample_type_transform_cls.create_timeline_file(filter_start=filter_start)
+            sample_type_df = sample_type_transform_cls.create_timeline_file()
         # This is specific to the timeline treatment file where it is concatenated with
         # the timeline file
         if sample_type == "TIMELINE-TREATMENT-RT":
