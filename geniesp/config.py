@@ -126,7 +126,7 @@ class BpcConfig:
             "cohort": self.cohort,
             "redcap_to_cbio_mapping_synid": self.redcap_to_cbio_mapping_synid,
             "data_tables_id": self.data_tables_id,
-            "sp_redcap_exports_synid": self.sp_redcap_exports_synid,
+            # "sp_redcap_exports_synid": self.sp_redcap_exports_synid,
             "mg_release_synid": self.mg_release_synid,
             "prissmm_synid": self.prissmm_synid,
             "sample_retraction_synid": self.sample_retraction_synid,

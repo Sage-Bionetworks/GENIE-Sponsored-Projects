@@ -142,24 +142,24 @@ class Transforms(metaclass=ABCMeta):
     def custom_transform(self, timelinedf):
         return timelinedf
 
-    # def create_timeline_file(
-    #     self,
-    #     filter_start: bool = True,
-    # ) -> dict:
-    #     """Create timeline files straight from derived variables.
+    def create_timeline_file(
+        self,
+        filter_start: bool = True,
+    ) -> dict:
+        """Create timeline files straight from derived variables.
 
-    #     Args:
-    #         timeline_infodf (pd.DataFrame): cBio mapping information relevant to the timeline
-    #         timeline_type (str): timeline label
-    #         filter_start (bool, optional): whether to filter out rows with null START_DATEs. Defaults to True.
+        Args:
+            timeline_infodf (pd.DataFrame): cBio mapping information relevant to the timeline
+            timeline_type (str): timeline label
+            filter_start (bool, optional): whether to filter out rows with null START_DATEs. Defaults to True.
 
-    #     Returns:
-    #         dict: 'df' mapped dataframe, 'used' list of entities
-    #     """
-    #     timelinedf = self.map_to_cbioportal_format()
-    #     timelinedf = self.transforms(timelinedf=timelinedf, filter_start=filter_start)
-    #     timelinedf = self.custom_transform(timelinedf=timelinedf)
-    #     return timelinedf
+        Returns:
+            dict: 'df' mapped dataframe, 'used' list of entities
+        """
+        timelinedf = self.map_to_cbioportal_format()
+        timelinedf = self.transforms(timelinedf=timelinedf, filter_start=filter_start)
+        timelinedf = self.custom_transform(timelinedf=timelinedf)
+        return timelinedf
 
     def retract_samples_and_patients(self, df: pd.DataFrame) -> pd.DataFrame:
         """Make sure samples and patients exist in the main genie

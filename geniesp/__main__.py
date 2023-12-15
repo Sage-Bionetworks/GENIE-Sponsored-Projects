@@ -121,7 +121,8 @@ def main():
     treatment_transform = TimelineTreatmentTransform(
         extract = extract_raw_treatment_data,
         bpc_config = bpc_config,
-        filepath = os.path.join(args.sp, "data_timeline_treatment.txt")
+        filepath = os.path.join(args.sp, "data_timeline_treatment.txt"),
+        sample_type = "TIMELINE-TREATMENT"
     )
     timeline_treatment_df = treatment_transform.create_timeline_file()
     sample_type_dfs = {"TIMELINE-TREATMENT": timeline_treatment_df}
@@ -167,10 +168,10 @@ def main():
 
         # HACK this is because timeline treatment RT isn't created for two cohorts
         if sample_type != "TIMELINE-TREATMENT-RT" and args.sp not in ["BrCa", "CRC"]:
-            # sample_type_df = sample_type_transform_cls.create_timeline_file(filter_start=filter_start)
-            sample_type_df = sample_type_transform_cls.map_to_cbioportal_format()
-            sample_type_df = sample_type_transform_cls.transforms(timelinedf=sample_type_df, filter_start=filter_start)
-            sample_type_df = sample_type_transform_cls.custom_transform(timelinedf=sample_type_df)
+            sample_type_df = sample_type_transform_cls.create_timeline_file(filter_start=filter_start)
+            # sample_type_df = sample_type_transform_cls.map_to_cbioportal_format()
+            # sample_type_df = sample_type_transform_cls.transforms(timelinedf=sample_type_df, filter_start=filter_start)
+            # sample_type_df = sample_type_transform_cls.custom_transform(timelinedf=sample_type_df)
         else:
             sample_type_df = pd.DataFrame()
         # This is specific to the timeline treatment file where it is concatenated with
@@ -197,10 +198,10 @@ def main():
         ]
         used_entities.extend(derived_variables['used'])
 
-        ent = synapseclient.File(
-            filepath, parent=cbioportal_folders['release']
-        )
         if args.upload:
+            ent = synapseclient.File(
+                filepath, parent=cbioportal_folders['release']
+            )
             ent = syn.store(
                 ent, used=used_entities, executed=bpc_config.github_url
             )
