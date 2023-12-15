@@ -153,11 +153,12 @@ def main():
         derived_variables = extract_for_sample_type.get_derived_variable_files()
         # Leverage the cbioportal mapping and derived variables to create the timeline files
         filepath = os.path.join(bpc_config.cohort, transform_cls['filename'])
-
-        transform_for_sample_type = transform_cls['cls'](
+        # Transformation class
+        sample_type_transform_cls = transform_cls['cls'](
             extract = extract_for_sample_type,
             bpc_config = bpc_config,
-            filepath = filepath
+            filepath = filepath,
+            sample_type=sample_type
         )
         if sample_type == 'TIMELINE-DX':
             filter_start = False
@@ -166,7 +167,10 @@ def main():
 
         # HACK this is because timeline treatment RT isn't created for two cohorts
         if sample_type != "TIMELINE-TREATMENT-RT" and args.sp not in ["BrCa", "CRC"]:
-            sample_type_df = transform_for_sample_type.create_timeline_file(filter_start=filter_start)
+            # sample_type_df = sample_type_transform_cls.create_timeline_file(filter_start=filter_start)
+            sample_type_df = sample_type_transform_cls.map_to_cbioportal_format()
+            sample_type_df = sample_type_transform_cls.transforms(timelinedf=sample_type_df, filter_start=filter_start)
+            sample_type_df = sample_type_transform_cls.custom_transform(timelinedf=sample_type_df)
         else:
             sample_type_df = pd.DataFrame()
         # This is specific to the timeline treatment file where it is concatenated with
@@ -177,7 +181,7 @@ def main():
             )
         sample_type_dfs[sample_type] = sample_type_df
         # write the dataframe
-        transform_for_sample_type.write(df = sample_type_df)
+        sample_type_transform_cls.write(df = sample_type_df)
         # store the files with provenance
         # Generate provenance
         used_entities = [
