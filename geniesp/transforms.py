@@ -59,7 +59,7 @@ class Transforms(metaclass=ABCMeta):
     filepath: str = None
     sample_type: str = None
 
-    def map_to_cbioportal_format(
+    def _map_to_cbioportal_format(
         self
     ) -> pd.DataFrame:
         """Uses the cbioportal mapping file and derived variable file to map to
@@ -115,7 +115,8 @@ class Transforms(metaclass=ABCMeta):
 
         return finaldf
 
-    def transforms(self, timelinedf, filter_start):
+    def transforms(self, filter_start):
+        timelinedf = self._map_to_cbioportal_format()
         # Obtain portal value (EVENT_TYPE)
         subset_infodf = self.extract.timeline_infodf
         portal_value_idx = subset_infodf["data_type"] == "portal_value"
@@ -156,8 +157,8 @@ class Transforms(metaclass=ABCMeta):
         Returns:
             dict: 'df' mapped dataframe, 'used' list of entities
         """
-        timelinedf = self.map_to_cbioportal_format()
-        timelinedf = self.transforms(timelinedf=timelinedf, filter_start=filter_start)
+        # timelinedf = self.map_to_cbioportal_format()
+        timelinedf = self.transforms(filter_start=filter_start)
         timelinedf = self.custom_transform(timelinedf=timelinedf)
         return timelinedf
 
@@ -240,8 +241,8 @@ class TimelinePerformanceTransform(Transforms):
 class TimelineTreatmentTransform(Transforms):
     """TimelinePerformance data class."""
 
-    def map_to_cbioportal_format(
-        self
+    def transforms(
+        self, filter_start
     ) -> dict:
         subset_infodf = self.extract.timeline_infodf[self.extract.timeline_infodf["sampleType"] == self.sample_type]
         # Exclude heme onc columns
@@ -320,8 +321,8 @@ class TimelineTreatmentTransform(Transforms):
 
         return final_timelinedf[cols_to_order].drop_duplicates()
 
-    def transforms(self, timelinedf, filter_start):
-        return timelinedf
+    # def transforms(self, timelinedf, filter_start):
+    #     return timelinedf
 
 
 @dataclass
@@ -464,8 +465,8 @@ class SurvivalTransform(Transforms):
 
         return clinicaldf
 
-    def transforms(self, timelinedf, filter_start) -> dict:
-
+    def transforms(self, filter_start) -> dict:
+        timelinedf = self._map_to_cbioportal_format()
         df_final_survival = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
 
         # Only take rows where cancer index is null
@@ -539,9 +540,8 @@ class SurvivalTransform(Transforms):
             clin_file.write("#{}\n".format("\t".join(labels)))
             clin_file.write("#{}\n".format("\t".join(descriptions)))
             clin_file.write("#{}\n".format("\t".join(coltype)))
-            # TODO attributes in the supp file are PATIENT, so must
-            # specify that.
-            if "SURVIVAL" in self.filepath or "REGIMEN" in self.filepath:
+            # attributes in the supp survival files are PATIENT
+            if "supp_survival" in self.filepath:
                 clin_file.write("#{}\n".format("\t".join(["PATIENT"] * len(labels))))
             clin_file.write("#{}\n".format("\t".join(priority)))
             clin_file.write(
@@ -553,7 +553,7 @@ class SurvivalTransform(Transforms):
 
 class SurvivalTreatmentTransform(SurvivalTransform):
 
-    def map_to_cbioportal_format(self):
+    def transforms(self, filter_start):
         # TODO: Make sure these are in the extract class
         drug_mapping = get_drug_mapping(
             syn=self.extract.syn,
@@ -578,13 +578,11 @@ class SurvivalTreatmentTransform(SurvivalTransform):
 
         return df_survival_treatment[cols_to_order]
 
-    def transforms(self, timelinedf, filter_start):
-        return timelinedf
-
 
 class SampleTransform(SurvivalTransform):
 
-    def transforms(self, timelinedf, filter_start) -> dict:
+    def transforms(self, filter_start) -> dict:
+        timelinedf = self._map_to_cbioportal_format()
         del timelinedf["path_proc_number"]
         df_sample = self.configure_clinicaldf(timelinedf, self.extract.timeline_infodf)
         df_sample_subset = self.retract_samples_and_patients(df_sample)
@@ -621,7 +619,8 @@ class SampleTransform(SurvivalTransform):
 
 class PatientTransform(SurvivalTransform):
 
-    def transforms(self, timelinedf, filter_start) -> dict:
+    def transforms(self, filter_start) -> dict:
+        timelinedf = self._map_to_cbioportal_format()
         df_patient = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
         df_patient.drop(columns="redcap_ca_index", inplace=True)
         df_patient_final = self.configure_clinicaldf(df_patient, self.extract.timeline_infodf)

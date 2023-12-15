@@ -125,7 +125,9 @@ def main():
         sample_type = "TIMELINE-TREATMENT"
     )
     timeline_treatment_df = treatment_transform.create_timeline_file()
-    sample_type_dfs = {"TIMELINE-TREATMENT": timeline_treatment_df}
+    # TODO fix this later
+    # sample_type_dfs = {"TIMELINE-TREATMENT": timeline_treatment_df}
+    sample_type_dfs = {}
     # TODO don't create folders if upload is false
     cbioportal_folders = get_cbioportal_upload_folders(
         syn=syn,
@@ -142,6 +144,7 @@ def main():
         if sample_type == "TIMELINE-PERFORMANCE" and args.sp not in ['BLADDER']:
             logging.info(f"skipping {sample_type}...")
             continue
+
         # if sample_type == "TIMELINE-TREATMENT-RT" and args.sp in ["BrCa", "CRC"]:
         #     continue
         logging.info(f"writing {sample_type}...")
@@ -167,13 +170,10 @@ def main():
             filter_start = True
 
         # HACK this is because timeline treatment RT isn't created for two cohorts
-        if sample_type != "TIMELINE-TREATMENT-RT" and args.sp not in ["BrCa", "CRC"]:
-            sample_type_df = sample_type_transform_cls.create_timeline_file(filter_start=filter_start)
-            # sample_type_df = sample_type_transform_cls.map_to_cbioportal_format()
-            # sample_type_df = sample_type_transform_cls.transforms(timelinedf=sample_type_df, filter_start=filter_start)
-            # sample_type_df = sample_type_transform_cls.custom_transform(timelinedf=sample_type_df)
-        else:
+        if sample_type == "TIMELINE-TREATMENT-RT" and args.sp in ["BrCa", "CRC"]:
             sample_type_df = pd.DataFrame()
+        else:
+            sample_type_df = sample_type_transform_cls.create_timeline_file(filter_start=filter_start)
         # This is specific to the timeline treatment file where it is concatenated with
         # the timeline file
         if sample_type == "TIMELINE-TREATMENT-RT":
