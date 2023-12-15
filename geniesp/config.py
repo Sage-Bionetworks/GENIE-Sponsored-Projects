@@ -29,43 +29,74 @@ def get_latest_entity_version(syn: Synapse, synid: str) -> str:
 
 @dataclass
 class BpcConfig:
-    # json_path: str
+    """Configuration class for BPC sponsored projects
+    that will be leveraged throughout the code. All Synapse Ids
+    and configurations should be stored in this class.
+
+    Attributes:
+        cohort: BPC cohort (e.g. BLADDER, NSCLC, etc)
+        syn: Synapse connection
+        redcap_to_cbio_mapping_synid: Redcap to cbioportal mapping. Defaults to syn25712693.
+                                      The latest version will be used.
+        data_tables_id: Synapse file view containing derived variable files. Defaults to syn22296821.
+        mg_release_synid: Synapse folder containing main GENIE release. Defaults to syn52794528
+                          (14.8-consortium). Must use consortium release, because SEQ_YEAR is used.
+        prissmm_synid: PRISSMM documentation table. Defaults to syn22684834.
+        sample_retraction_synid: BPC sample retraction table. Defaults to syn25779833.
+        patient_retraction_synid: BPC patient retraction table. Defaults to syn25998970.
+        retraction_at_release_synid: BPC retraction at release table. Defaults to syn52915299.
+        temporary_patient_retraction_synid: BPC temporary patient retraction table. Defaults to syn29266682.
+        mg_assay_synid: Main GENIE assay information table. Defaults to syn17009222.
+                        The latest version will be used.
+        staging_release_folder: Staging release folder to upload cbioportal exports. Defaults to syn50876969.
+        exclude_files: Exclude files to be created for cbioportal.
+        url_bpc: Cohort-generic link to documentation for BPC datasets. Defaults to
+                 https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h.
+        url_cbio: Cohort-generic link to documentation for cBio files. Defaults to
+                  https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit.
+        oncotreelink: Link to oncotree api. Defaults to https://oncotree.info/api/tumorTypes/tree?version=oncotree_2021_11_02.
+        github_url: Link to github repo. Defaults to https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects.
+    """
     cohort: str
+    """BPC cohort (e.g. BLADDER, NSCLC, etc)"""
     syn: Synapse
-    # Redcap codes to cbioportal mapping synid and form key is in
-    # version 49 were last stable version(s)
+    """Synapse connection"""
     redcap_to_cbio_mapping_synid: str = "syn25712693"
-    # Mapping from Synapse Table to derived variables
+    """Redcap codes to cbioportal mapping synid and form key is in
+    version 49 were last stable version(s)"""
     # TODO: Make versioned
     data_tables_id: str = "syn22296821"
-    # Storage of not found samples
-    sp_redcap_exports_synid: str = "syn21446571"
-    # main GENIE release folder (14.8-consortium)
-    # Must use consortium release, because SEQ_YEAR is used
+    """Mapping from Synapse Table to derived variables"""
     mg_release_synid: str = "syn52794528"
-    # PRISSMM documentation table
+    """Main GENIE release folder (14.8-consortium)
+    Must use consortium release, because SEQ_YEAR is used"""
     prissmm_synid: str = "syn22684834"
-    # BPC sample retraction table
+    """PRISSMM documentation table"""
     sample_retraction_synid: str = "syn25779833"
+    """BPC sample retraction table"""
     patient_retraction_synid: str = "syn25998970"
+    """BPC patient retraction table"""
     retraction_at_release_synid: str = "syn52915299"
+    """Retract at release patients"""
     temporary_patient_retraction_synid: str = "syn29266682"
-    # main GENIE assay information table
+    """Temporary patient retraction table"""
     mg_assay_synid: str = "syn17009222"
-    # staging release folder to upload cbioportal exports
+    """main GENIE assay information table"""
     staging_release_folder = "syn50876969"
-    # exclude files to be created for cbioportal
-    # TODO: need to support this feature in rest of code, for now
-    # This is added for metadata files
+    """staging release folder to upload cbioportal exports"""
     exclude_files: List[str] = field(default_factory=list)
-    # cohort-generic link to documentation for BPC datasets
+    """exclude files to be created for cbioportal. This is added for metadata files"""
     url_bpc: str = "https://aacr.box.com/s/en5dyu9zfw1krg2u58wlcz01jttc6y9h"
-    # cohort-generic link to documentation for cBio files
+    """cohort-generic link to documentation for BPC datasets"""
     url_cbio: str = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
+    """cohort-generic link to documentation for cBio files"""
     oncotreelink: str = "https://oncotree.info/api/tumorTypes/tree?version=oncotree_2021_11_02"
-    github_url: str = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
+    """Oncotree Link"""
+    github_url: str = "https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects"
+    """GitHub URL to sponsored project repo"""
 
     def __post_init__(self):
+        """Post initialization"""
         redcap_to_cbio_mapping = get_latest_entity_version(
             syn=self.syn,
             synid=self.redcap_to_cbio_mapping_synid
@@ -82,6 +113,8 @@ class BpcConfig:
             mg_assay['id'],
             mg_assay['versionNumber']
         )
+        self.github_url = f"https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/tree/{get_git_sha()}"
+
 
     def to_dict(self) -> dict:
         """Return configuration used
@@ -113,8 +146,6 @@ class BpcConfig:
 @dataclass
 class Brca(BpcConfig):
     """BrCa BPC sponsored project"""
-
-    # Sponsored project name
     cohort = "BrCa"
     exclude_files = ["data_timeline_performance_status.txt"]
 
@@ -122,8 +153,6 @@ class Brca(BpcConfig):
 @dataclass
 class Crc(BpcConfig):
     """CRC BPC sponsored project"""
-
-    # Sponsored project name
     cohort = "CRC"
     exclude_files = ["data_timeline_performance_status.txt"]
 
@@ -131,8 +160,6 @@ class Crc(BpcConfig):
 @dataclass
 class Nsclc(BpcConfig):
     """NSCLC BPC sponsored project"""
-
-    # Sponsored project name
     cohort = "NSCLC"
     exclude_files = ["data_timeline_labtest.txt", "data_timeline_performance_status.txt"]
 
@@ -140,8 +167,6 @@ class Nsclc(BpcConfig):
 @dataclass
 class Panc(BpcConfig):
     """PANC BPC sponsored project"""
-
-    # Sponsored project name
     cohort = "PANC"
     exclude_files = ["data_timeline_performance_status.txt"]
 
@@ -149,8 +174,6 @@ class Panc(BpcConfig):
 @dataclass
 class Prostate(BpcConfig):
     """Prostate BPC sponsored project"""
-
-    # Sponsored project name
     cohort = "Prostate"
     exclude_files = ["data_timeline_performance_status.txt"]
 
@@ -158,7 +181,5 @@ class Prostate(BpcConfig):
 @dataclass
 class Bladder(BpcConfig):
     """BLADDER BPC sponsored project"""
-
-    # Sponsored project name
     cohort = "BLADDER"
     exclude_files = ["data_timeline_labtest.txt"]
