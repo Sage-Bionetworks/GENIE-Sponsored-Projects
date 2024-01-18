@@ -223,7 +223,7 @@ def _get_synid_dd(syn: Synapse, cohort: str, synid_table_prissmm: str) -> str:
 
 
 def get_drug_mapping(
-    syn: Synapse, cohort: str, synid_table_prissmm: str
+    syn: Synapse, cohort: str, synid_file_grs: str, synid_table_prissmm: str
 ) -> dict:
     """Get a mapping between drug short names and NCIT code from BPC data dictionary
     and BPC global response set for a given BPC cohort.
@@ -231,6 +231,7 @@ def get_drug_mapping(
     Args:
         syn (Synapse): Synapse connection
         cohort (str): cohort label
+        synid_file_grs (str): Synapse ID of REDCap global response set file.
         synid_table_prissmm (str): Synapse ID of PRISSMM documentation table
 
     Returns:
@@ -241,29 +242,35 @@ def get_drug_mapping(
     mapping = {}
     var_names = []
 
-    synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
+    # ! Not removing data dictionary code until 100% certain
+    # synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
 
-    dd = pd.read_csv(
-        syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False
+    # dd = pd.read_csv(
+    #     syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False
+    # )
+    grs = pd.read_csv(
+        syn.get(synid_file_grs).path, encoding="unicode_escape", low_memory=False
     )
+    grs.columns = ["Variable / Field Name", "Choices, Calculations, OR Slider Labels"]
 
     for i in ["1", "2", "3", "4", "5"]:
         var_names.append("drugs_drug_" + i)
         var_names.append("drugs_drug_oth" + i)
 
-    for var_name in var_names:
-        if var_name in dd["Variable / Field Name"].unique():
-            choice_str = dd[dd["Variable / Field Name"] == var_name][
-                "Choices, Calculations, OR Slider Labels"
-            ].values[0]
-            choice_str = choice_str.replace('"', "")
+    for obj in [grs]:
+        for var_name in var_names:
+            if var_name in obj["Variable / Field Name"].unique():
+                choice_str = obj[obj["Variable / Field Name"] == var_name][
+                    "Choices, Calculations, OR Slider Labels"
+                ].values[0]
+                choice_str = choice_str.replace('"', "")
 
-            for pair in choice_str.split("|"):
-                if pair.strip() != "":
-                    code = pair.split(",")[0].strip()
-                    value = pair.split(",")[1].strip()
-                    label = value.split("(")[0].strip()
-                    mapping[label] = code
+                for pair in choice_str.split("|"):
+                    if pair.strip() != "":
+                        code = pair.split(",")[0].strip()
+                        value = pair.split(",")[1].strip()
+                        label = value.split("(")[0].strip()
+                        mapping[label] = code
     return mapping
 
 
@@ -1617,6 +1624,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         drug_mapping = get_drug_mapping(
             syn=self.syn,
             cohort=self._SPONSORED_PROJECT,
+            synid_file_grs=self._GRS_SYNID,
             synid_table_prissmm=self._PRISSMM_SYNID,
         )
         regimens_data = create_regimens(
@@ -1662,6 +1670,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         drug_mapping = get_drug_mapping(
             syn=self.syn,
             cohort=self._SPONSORED_PROJECT,
+            synid_file_grs=self._GRS_SYNID,
             synid_table_prissmm=self._PRISSMM_SYNID,
         )
         regimens_data = create_regimens(
