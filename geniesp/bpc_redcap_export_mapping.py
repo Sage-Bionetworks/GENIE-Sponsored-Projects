@@ -227,6 +227,7 @@ def get_drug_mapping(
 ) -> dict:
     """Get a mapping between drug short names and NCIT code from BPC data dictionary
     and BPC global response set for a given BPC cohort.
+    https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/pull/24
 
     Args:
         syn (Synapse): Synapse connection
@@ -271,6 +272,11 @@ def get_drug_mapping(
                         value = pair.split(",")[1].strip()
                         label = value.split("(")[0].strip()
                         mapping[label] = code
+    # ! Remove this after DD and GRS is fixed
+    mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
+    mapping['Doxorubicin Hydrochloride'] = mapping['Doxorubicin HCL']
+    mapping['Irinotecan Hydrochloride'] = mapping['Irinotecan HCL']
+    mapping['Leucovorin Calcium'] = mapping['Leucovorin']
     return mapping
 
 
