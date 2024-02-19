@@ -273,10 +273,10 @@ def get_drug_mapping(
                         label = value.split("(")[0].strip()
                         mapping[label] = code
     # ! Remove this after DD and GRS is fixed
-    mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
-    mapping['Doxorubicin Hydrochloride'] = mapping['Doxorubicin HCL']
-    mapping['Irinotecan Hydrochloride'] = mapping['Irinotecan HCL']
-    mapping['Leucovorin Calcium'] = mapping['Leucovorin']
+    # mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
+    # mapping['Doxorubicin Hydrochloride'] = mapping['Doxorubicin HCL']
+    # mapping['Irinotecan Hydrochloride'] = mapping['Irinotecan HCL']
+    # mapping['Leucovorin Calcium'] = mapping['Leucovorin']
     return mapping
 
 
@@ -604,7 +604,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         bpc_patient_retraction_df = bpc_patient_retraction_db.asDataFrame()
 
         bpc_temp_patient_retraction_db = self.syn.tableQuery(
-            f"select record_id from {self._temporary_patient_retraction_synid} where "
+            f"select patient_id from {self._temporary_patient_retraction_synid} where "
             f"cohort = '{self._SPONSORED_PROJECT}'"
         )
         bpc_temp_patient_retraction_df = bpc_temp_patient_retraction_db.asDataFrame()
@@ -629,7 +629,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Retract patients from temporary patient retraction db
         keep_clinicaldf = keep_clinicaldf[
             ~keep_clinicaldf["PATIENT_ID"].isin(
-                bpc_temp_patient_retraction_df["record_id"]
+                bpc_temp_patient_retraction_df["patient_id"]
             )
         ]
         return keep_clinicaldf
