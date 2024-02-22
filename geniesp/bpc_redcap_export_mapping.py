@@ -223,14 +223,16 @@ def _get_synid_dd(syn: Synapse, cohort: str, synid_table_prissmm: str) -> str:
 
 
 def get_drug_mapping(
-    syn: Synapse, cohort: str, synid_table_prissmm: str
+    syn: Synapse, cohort: str, synid_file_grs: str, synid_table_prissmm: str
 ) -> dict:
     """Get a mapping between drug short names and NCIT code from BPC data dictionary
     and BPC global response set for a given BPC cohort.
+    https://github.com/Sage-Bionetworks/GENIE-Sponsored-Projects/pull/24
 
     Args:
         syn (Synapse): Synapse connection
         cohort (str): cohort label
+        synid_file_grs (str): Synapse ID of REDCap global response set file.
         synid_table_prissmm (str): Synapse ID of PRISSMM documentation table
 
     Returns:
@@ -241,29 +243,40 @@ def get_drug_mapping(
     mapping = {}
     var_names = []
 
-    synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
+    # ! Not removing data dictionary code until 100% certain
+    # synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
 
-    dd = pd.read_csv(
-        syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False
+    # dd = pd.read_csv(
+    #     syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False
+    # )
+    grs = pd.read_csv(
+        syn.get(synid_file_grs).path, encoding="unicode_escape", low_memory=False
     )
+    grs.columns = ["Variable / Field Name", "Choices, Calculations, OR Slider Labels"]
 
     for i in ["1", "2", "3", "4", "5"]:
         var_names.append("drugs_drug_" + i)
         var_names.append("drugs_drug_oth" + i)
 
-    for var_name in var_names:
-        if var_name in dd["Variable / Field Name"].unique():
-            choice_str = dd[dd["Variable / Field Name"] == var_name][
-                "Choices, Calculations, OR Slider Labels"
-            ].values[0]
-            choice_str = choice_str.replace('"', "")
+    for obj in [grs]:
+        for var_name in var_names:
+            if var_name in obj["Variable / Field Name"].unique():
+                choice_str = obj[obj["Variable / Field Name"] == var_name][
+                    "Choices, Calculations, OR Slider Labels"
+                ].values[0]
+                choice_str = choice_str.replace('"', "")
 
-            for pair in choice_str.split("|"):
-                if pair.strip() != "":
-                    code = pair.split(",")[0].strip()
-                    value = pair.split(",")[1].strip()
-                    label = value.split("(")[0].strip()
-                    mapping[label] = code
+                for pair in choice_str.split("|"):
+                    if pair.strip() != "":
+                        code = pair.split(",")[0].strip()
+                        value = pair.split(",")[1].strip()
+                        label = value.split("(")[0].strip()
+                        mapping[label] = code
+    # ! Remove this after DD and GRS is fixed
+    # mapping['Gemcitabine Hydrochloride'] = mapping['Gemcitabine HCL']
+    # mapping['Doxorubicin Hydrochloride'] = mapping['Doxorubicin HCL']
+    # mapping['Irinotecan Hydrochloride'] = mapping['Irinotecan HCL']
+    # mapping['Leucovorin Calcium'] = mapping['Leucovorin']
     return mapping
 
 
@@ -510,9 +523,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
     _SP_REDCAP_EXPORTS_SYNID = "syn21446571"
-    # main GENIE release folder (14.8-consortium)
+    # main GENIE release folder (15.4-consortium)
     # Must use consortium release, because SEQ_YEAR is used
-    _MG_RELEASE_SYNID = "syn52794528"
+    _MG_RELEASE_SYNID = "syn53170398"
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
@@ -591,7 +604,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         bpc_patient_retraction_df = bpc_patient_retraction_db.asDataFrame()
 
         bpc_temp_patient_retraction_db = self.syn.tableQuery(
-            f"select record_id from {self._temporary_patient_retraction_synid} where "
+            f"select patient_id from {self._temporary_patient_retraction_synid} where "
             f"cohort = '{self._SPONSORED_PROJECT}'"
         )
         bpc_temp_patient_retraction_df = bpc_temp_patient_retraction_db.asDataFrame()
@@ -616,7 +629,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # Retract patients from temporary patient retraction db
         keep_clinicaldf = keep_clinicaldf[
             ~keep_clinicaldf["PATIENT_ID"].isin(
-                bpc_temp_patient_retraction_df["record_id"]
+                bpc_temp_patient_retraction_df["patient_id"]
             )
         ]
         return keep_clinicaldf
@@ -1617,6 +1630,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         drug_mapping = get_drug_mapping(
             syn=self.syn,
             cohort=self._SPONSORED_PROJECT,
+            synid_file_grs=self._GRS_SYNID,
             synid_table_prissmm=self._PRISSMM_SYNID,
         )
         regimens_data = create_regimens(
@@ -1662,6 +1676,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         drug_mapping = get_drug_mapping(
             syn=self.syn,
             cohort=self._SPONSORED_PROJECT,
+            synid_file_grs=self._GRS_SYNID,
             synid_table_prissmm=self._PRISSMM_SYNID,
         )
         regimens_data = create_regimens(
