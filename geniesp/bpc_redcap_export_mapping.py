@@ -1185,7 +1185,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             self.write_and_storedf(svdf, sv_path, used_entities=[sv_synid])
 
     def create_and_write_gene_panels(self, keep_seq_assay_ids: list) -> List:
-        """Create gene panels.
+        """Create gene panels and genomic information
 
         Args:
             keep_seq_assay_ids (list): list of sequence assay IDs
@@ -1200,13 +1200,23 @@ class BpcProjectRunner(metaclass=ABCMeta):
         genomic_info_ent = self.syn.get(genomic_info_synid, followLink=True)
         genomic_infodf = pd.read_table(genomic_info_ent.path, low_memory=False)
         # Filter by SEQ_ASSAY_ID and only exonic regions
+        subset_genomic_infodf = genomic_infodf[
+            genomic_infodf["SEQ_ASSAY_ID"].isin(keep_seq_assay_ids)
+        ]
+        if genomic_info_synid is not None:
+            genomic_path = os.path.join(self._SPONSORED_PROJECT, "genomic_information.txt")
+            self.write_and_storedf(
+                df=subset_genomic_infodf,
+                filepath=genomic_path,
+                used_entities=[genomic_info_synid]
+            )
+
         genomic_infodf = genomic_infodf[
             (genomic_infodf["SEQ_ASSAY_ID"].isin(keep_seq_assay_ids))
             & (genomic_infodf["Feature_Type"] == "exon")
             & (~genomic_infodf["Hugo_Symbol"].isnull())
             & (genomic_infodf["includeInPanel"])
         ]
-
         seq_assay_groups = genomic_infodf.groupby("SEQ_ASSAY_ID")
         for seq_assay_id, seqdf in seq_assay_groups:
             unique_genes = seqdf.Hugo_Symbol.unique()
@@ -1232,7 +1242,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                 self.syn.store(
                     fileEnt, used=[genomic_info_synid], executed=self._GITHUB_REPO
                 )
-        return gene_panel_paths
+        return gene_panel_paths, genomic_path
 
     def get_timeline_treatment(
         self, df_map: pd.DataFrame, df_file: pd.DataFrame
