@@ -129,6 +129,7 @@ def get_synid_data(
     Returns:
         List: List of used synapse ids
     """
+    cohort = cohort.replace("2", "")
     datasets = df_map[(df_map["sampleType"].isin(sampletype)) & (df_map[cohort])][
         "dataset"
     ].unique()
@@ -406,6 +407,7 @@ def get_bpc_to_cbio_mapping_df(
     Returns:
         pd.DataFrame: data frame of all mapping columns for released variables
     """
+    cohort = cohort.replace("2", "")
     redcap_to_cbiomapping = syn.tableQuery(
         f"SELECT * FROM {synid_table_cbio} where "
         f"{cohort} is true AND sampleType <> 'TIMELINE-STATUS'"
@@ -1962,7 +1964,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.get_timeline_treatment(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
-        if self._SPONSORED_PROJECT not in ["BrCa"]:
+        if self._SPONSORED_PROJECT not in ["BrCa", "NSCLC2"]:
             logging.info("writing TIMELINE-TREATMENT-RT...")
             rad_df = self.get_timeline_treatment_rad(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
@@ -2040,7 +2042,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=sequence_data["used"],
         )
 
-        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
+        if self._SPONSORED_PROJECT not in ["NSCLC", "NSCLC2", "BLADDER"]:
             logging.info("writing TIMELINE-LABTEST...")
             lab_data = self.get_timeline_lab(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf

@@ -4,11 +4,12 @@ import logging
 
 import synapseclient
 
-from .bpc_config import Brca, Crc, Nsclc, Panc, Prostate, Bladder
+from .bpc_config import Brca, Crc, Nsclc, Nsclc2, Panc, Prostate, Bladder
 from .sp_config import Akt1, Erbb2, Fgfr4
 
 BPC_MAPPING = {
     "NSCLC": Nsclc,
+    "NSCLC2": Nsclc2,
     "CRC": Crc,
     "BrCa": Brca,
     "PANC": Panc,
