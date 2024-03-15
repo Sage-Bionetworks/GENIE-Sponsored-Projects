@@ -870,7 +870,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         used_entity = f"{synid}.{ent.versionNumber}"
         timelinedf = pd.read_csv(ent.path, low_memory=False)
         # Only take lung cohort
-        timelinedf = timelinedf[timelinedf["cohort"] == self._SPONSORED_PROJECT]
+        timelinedf = timelinedf[timelinedf["cohort_internal"] == self._SPONSORED_PROJECT]
         # Only take samples where redcap_ca_index is Yes
         timelinedf = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
         # Flatten multiple columns values into multiple rows
