@@ -407,7 +407,7 @@ def get_bpc_to_cbio_mapping_df(
     Returns:
         pd.DataFrame: data frame of all mapping columns for released variables
     """
-    cohort = cohort.replace("2", "")
+    # cohort = cohort.replace("2", "")
     redcap_to_cbiomapping = syn.tableQuery(
         f"SELECT * FROM {synid_table_cbio} where "
         f"{cohort} is true AND sampleType <> 'TIMELINE-STATUS'"
