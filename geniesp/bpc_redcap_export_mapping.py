@@ -2042,7 +2042,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=sequence_data["used"],
         )
 
-        if self._SPONSORED_PROJECT not in ["NSCLC", "NSCLC2", "BLADDER"]:
+        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
             logging.info("writing TIMELINE-LABTEST...")
             lab_data = self.get_timeline_lab(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
