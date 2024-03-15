@@ -87,7 +87,7 @@ def get_file_data(
             cols.append("path_proc_number")
         # Only get specific cohort and subset cols
         tabledf = pd.read_csv(table.path, low_memory=False)
-        tabledf = tabledf[tabledf["cohort"] == cohort]
+        tabledf = tabledf[tabledf["cohort_internal"] == cohort]
         tabledf = tabledf[cols]
         # Append to final dataframe if empty
         if finaldf.empty:
@@ -129,7 +129,7 @@ def get_synid_data(
     Returns:
         List: List of used synapse ids
     """
-    cohort = cohort.replace("2", "")
+    # cohort = cohort.replace("2", "")
     datasets = df_map[(df_map["sampleType"].isin(sampletype)) & (df_map[cohort])][
         "dataset"
     ].unique()
