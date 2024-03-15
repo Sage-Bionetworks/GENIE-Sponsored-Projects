@@ -336,7 +336,7 @@ def create_regimens(
     regimen_ent = syn.get(regimen_synid)
     regimendf = pd.read_csv(regimen_ent.path, low_memory=False)
     # Get only NSCLC cohort
-    regimendf = regimendf[regimendf["cohort"] == cohort]
+    regimendf = regimendf[regimendf["cohort_internal"] == cohort]
     # Use redcap_ca_index == Yes
     regimendf = regimendf[regimendf["redcap_ca_index"] == "Yes"]
     # Exclude regimens
@@ -1964,7 +1964,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.get_timeline_treatment(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
-        if self._SPONSORED_PROJECT not in ["BrCa", "NSCLC2"]:
+        if self._SPONSORED_PROJECT not in ["BrCa", "NSCLC", "NSCLC2"]:
             logging.info("writing TIMELINE-TREATMENT-RT...")
             rad_df = self.get_timeline_treatment_rad(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
