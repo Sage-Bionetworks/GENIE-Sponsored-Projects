@@ -68,7 +68,7 @@ def get_file_data(
     datasets = mappingdf.groupby("dataset")
     finaldf = pd.DataFrame()
     used_entities = []
-
+    cohort_list = [cohort, f"{cohort}2"]
     for _, df in datasets:
         # Get synapse id
         synid = df["id"].unique()[0]
@@ -87,7 +87,7 @@ def get_file_data(
             cols.append("path_proc_number")
         # Only get specific cohort and subset cols
         tabledf = pd.read_csv(table.path, low_memory=False)
-        tabledf = tabledf[tabledf["cohort"] == cohort]
+        tabledf = tabledf[tabledf["cohort"].isin(cohort_list)]
         tabledf = tabledf[cols]
         # Append to final dataframe if empty
         if finaldf.empty:
@@ -336,7 +336,8 @@ def create_regimens(
     regimen_ent = syn.get(regimen_synid)
     regimendf = pd.read_csv(regimen_ent.path, low_memory=False)
     # Get only NSCLC cohort
-    regimendf = regimendf[regimendf["cohort"] == cohort]
+    cohort_list = [cohort, f"{cohort}2"]
+    regimendf = regimendf[regimendf["cohort"].isin(cohort_list)]
     # Use redcap_ca_index == Yes
     regimendf = regimendf[regimendf["redcap_ca_index"] == "Yes"]
     # Exclude regimens
@@ -869,8 +870,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         ent = self.syn.get(synid)
         used_entity = f"{synid}.{ent.versionNumber}"
         timelinedf = pd.read_csv(ent.path, low_memory=False)
+        cohort_list = [self._SPONSORED_PROJECT, f"{self._SPONSORED_PROJECT}2"]
         # Only take lung cohort
-        timelinedf = timelinedf[timelinedf["cohort"] == self._SPONSORED_PROJECT]
+        timelinedf = timelinedf[timelinedf["cohort"].isin(cohort_list)]
         # Only take samples where redcap_ca_index is Yes
         timelinedf = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
         # Flatten multiple columns values into multiple rows
