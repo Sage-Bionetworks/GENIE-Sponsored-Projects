@@ -1962,7 +1962,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.get_timeline_treatment(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
-        if self._SPONSORED_PROJECT not in ["BrCa", "NSCLC"]:
+        if self._SPONSORED_PROJECT not in ["BrCa"]:
             logging.info("writing TIMELINE-TREATMENT-RT...")
             rad_df = self.get_timeline_treatment_rad(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
