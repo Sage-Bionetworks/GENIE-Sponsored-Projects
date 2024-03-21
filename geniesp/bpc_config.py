@@ -15,7 +15,7 @@ class Crc(BpcProjectRunner):
 
     # Sponsored project name
     _SPONSORED_PROJECT = "CRC"
-    _exclude_files = ["data_timeline_performance_status.txt"]
+    #_exclude_files = ["data_timeline_performance_status.txt"]
 
 
 class Nsclc(BpcProjectRunner):
@@ -23,7 +23,7 @@ class Nsclc(BpcProjectRunner):
 
     # Sponsored project name
     _SPONSORED_PROJECT = "NSCLC"
-    _exclude_files = ["data_timeline_labtest.txt", "data_timeline_performance_status.txt"]
+    _exclude_files = ["data_timeline_labtest.txt"]
 
 
 # class Nsclc2(BpcProjectRunner):

@@ -2058,7 +2058,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             logging.info("skipping TIMELINE-LABTEST...")
 
         logging.info("writing TIMELINE-PERFORMANCE...")
-        if self._SPONSORED_PROJECT in ["BLADDER"]:
+        if self._SPONSORED_PROJECT in ["BLADDER", "NSCLC", "CRC"]:
             performance_data = self.get_timeline_performance(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
             )
