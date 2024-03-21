@@ -87,7 +87,7 @@ def get_file_data(
             cols.append("path_proc_number")
         # Only get specific cohort and subset cols
         tabledf = pd.read_csv(table.path, low_memory=False)
-        tabledf = tabledf[tabledf["cohort"] == cohort]
+        tabledf = tabledf[tabledf["cohort_internal"] == cohort]
         tabledf = tabledf[cols]
         # Append to final dataframe if empty
         if finaldf.empty:
@@ -129,6 +129,7 @@ def get_synid_data(
     Returns:
         List: List of used synapse ids
     """
+    # cohort = cohort.replace("2", "")
     datasets = df_map[(df_map["sampleType"].isin(sampletype)) & (df_map[cohort])][
         "dataset"
     ].unique()
@@ -335,7 +336,7 @@ def create_regimens(
     regimen_ent = syn.get(regimen_synid)
     regimendf = pd.read_csv(regimen_ent.path, low_memory=False)
     # Get only NSCLC cohort
-    regimendf = regimendf[regimendf["cohort"] == cohort]
+    regimendf = regimendf[regimendf["cohort_internal"] == cohort]
     # Use redcap_ca_index == Yes
     regimendf = regimendf[regimendf["redcap_ca_index"] == "Yes"]
     # Exclude regimens
@@ -406,6 +407,7 @@ def get_bpc_to_cbio_mapping_df(
     Returns:
         pd.DataFrame: data frame of all mapping columns for released variables
     """
+    # cohort = cohort.replace("2", "")
     redcap_to_cbiomapping = syn.tableQuery(
         f"SELECT * FROM {synid_table_cbio} where "
         f"{cohort} is true AND sampleType <> 'TIMELINE-STATUS'"
@@ -868,7 +870,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         used_entity = f"{synid}.{ent.versionNumber}"
         timelinedf = pd.read_csv(ent.path, low_memory=False)
         # Only take lung cohort
-        timelinedf = timelinedf[timelinedf["cohort"] == self._SPONSORED_PROJECT]
+        timelinedf = timelinedf[timelinedf["cohort_internal"] == self._SPONSORED_PROJECT]
         # Only take samples where redcap_ca_index is Yes
         timelinedf = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
         # Flatten multiple columns values into multiple rows
@@ -1962,7 +1964,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.get_timeline_treatment(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
-        if self._SPONSORED_PROJECT not in ["BrCa"]:
+        if self._SPONSORED_PROJECT not in ["BrCa", "NSCLC", "NSCLC2"]:
             logging.info("writing TIMELINE-TREATMENT-RT...")
             rad_df = self.get_timeline_treatment_rad(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf

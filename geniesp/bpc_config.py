@@ -26,6 +26,14 @@ class Nsclc(BpcProjectRunner):
     _exclude_files = ["data_timeline_labtest.txt", "data_timeline_performance_status.txt"]
 
 
+# class Nsclc2(BpcProjectRunner):
+#     """NSCLC2 BPC sponsored project"""
+
+#     # Sponsored project name
+#     _SPONSORED_PROJECT = "NSCLC2"
+#     _exclude_files = ["data_timeline_labtest.txt", "data_timeline_performance_status.txt"]
+
+
 class Panc(BpcProjectRunner):
     """PANC BPC sponsored project"""
 
