@@ -607,13 +607,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         bpc_temp_patient_retraction_db = self.syn.tableQuery(
             f"select patient_id from {self._temporary_patient_retraction_synid} where "
-            f"cohort = '{self._SPONSORED_PROJECT}'"
+            f"cohort like '{self._SPONSORED_PROJECT}%'"
         )
         bpc_temp_patient_retraction_df = bpc_temp_patient_retraction_db.asDataFrame()
 
         retraction_at_release = self.syn.tableQuery(
             f"select patient_id from {self._retraction_at_release_synid} where "
-            f"cohort = '{self._SPONSORED_PROJECT}'"
+            f"cohort like '{self._SPONSORED_PROJECT}%'"
         )
         retraction_at_release_df = retraction_at_release.asDataFrame()
         # Retract samples from sample retraction db
@@ -1964,7 +1964,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         treatment_data = self.get_timeline_treatment(
             df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
         )
-        if self._SPONSORED_PROJECT not in ["BrCa", "NSCLC", "NSCLC2"]:
+        if self._SPONSORED_PROJECT not in ["BrCa"]:
             logging.info("writing TIMELINE-TREATMENT-RT...")
             rad_df = self.get_timeline_treatment_rad(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
