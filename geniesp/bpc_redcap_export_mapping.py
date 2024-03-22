@@ -593,12 +593,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
             genie_clinicaldf['SAMPLE_CLASS'] != "cfDNA"
         ]
         # BPC retraction database
+        # HACK These tables don't query the phase 2 cohorts
         bpc_sample_retraction_db = self.syn.tableQuery(
             f"select SAMPLE_ID from {self._sample_retraction_synid} where "
             f"{self._SPONSORED_PROJECT} is true"
         )
         bpc_sample_retractiondf = bpc_sample_retraction_db.asDataFrame()
-
+        # HACK These tables don't query the phase 2 cohorts
         bpc_patient_retraction_db = self.syn.tableQuery(
             f"select record_id from {self._patient_retraction_synid} where "
             f"{self._SPONSORED_PROJECT} is true"
