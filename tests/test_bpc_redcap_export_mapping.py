@@ -3,6 +3,7 @@ import pytest
 from unittest import mock
 
 import pandas as pd
+from pandas.testing import assert_frame_equal
 import synapseclient
 
 from geniesp import bpc_redcap_export_mapping as bpc_export
@@ -164,3 +165,72 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
         "There are invalid values in ONCOTREE_CODE column in the clinical df"
         not in caplog.text
     )
+
+
+@pytest.mark.parametrize(
+    "input, clinical, expected",
+    [
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-3"],
+                    "SEQ_DATE": ["Jul-2017", "Jun-2018"],
+                    "SEQ_YEAR": ["2017", "2018"]
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-3"],
+                    "SEQ_DATE": ["Jul-2017", "Jun-2018"],
+                    "SEQ_YEAR": ["2017", "2018"]
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2017", "Jun-2015"],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "SEQ_DATE": ["Jul-2017", "Jun-2018"],
+                    "SEQ_YEAR": ["2017", "2018"]
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2017", "Jun-2018"],
+                }
+            )),
+        ],
+    ids = ["none_replaced", "some_replacef", "all_replaced"]
+)
+def test_that_replace_cpt_seq_date_replaces_correctly(input, clinical, expected):
+    output = bpc_export.replace_cpt_seq_date(input_data = input, replacement_data= clinical)
+    assert_frame_equal(output, expected)
+    

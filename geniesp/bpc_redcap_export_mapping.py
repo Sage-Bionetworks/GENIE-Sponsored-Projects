@@ -579,6 +579,30 @@ def check_oncotree_codes(
             f"There are invalid values in ONCOTREE_CODE column in the clinical df: {invalid_codes}")
 
 
+def replace_cpt_seq_date(input_data : pd.DataFrame, replacement_data : pd.DataFrame) -> pd.DataFrame:
+    """Replaces CPT_SEQ_DATE in input BPC file with main genie
+        consortium release's SEQ_DATE because the values in CPT_SEQ_DATE
+        are incorrect.
+
+    Args:
+        input_data (pd.DataFrame): input data with CPT_SEQ_DATE values to be replaced
+        replacement_data (pd.DataFrame): the data with SEQ_DATE to use as replacement
+
+    Returns:
+        pd.DataFrame: input data with replaced CPT_SEQ_DATE values
+    """
+    # Remove CPT_SEQ_DATE because the values are incorrect
+    del input_data["CPT_SEQ_DATE"]
+    # Obtain this information from the main GENIE cohort
+    input_data = input_data.merge(
+        replacement_data[["SAMPLE_ID", "SEQ_DATE"]],
+        on="SAMPLE_ID",
+        how="left",
+    )
+    input_data.rename(columns={"SEQ_DATE": "CPT_SEQ_DATE"}, inplace=True)
+    return input_data
+
+
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
     
@@ -603,7 +627,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         "staging": "syn64018293"
     }
     # main GENIE release folder
-    # NOTE: Must use consortium release, because SEQ_YEAR is used
+    # NOTE: Must use consortium release, because SEQ_DATE is used
     # NOTE: Must match release tracking sheet and release table info
     # for the given cohort
     _MG_RELEASE_SYNID = "syn63602196"
@@ -663,7 +687,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # This is due to the most recent releases potentially having
         # samples retracted. The consortium release matched with the
         # public release (14.7-consortium <-> 14.0-public) must be used
-        # due to SEQ_YEAR being used through the code.
+        # due to SEQ_DATE being used through the code.
         sample_synid = self.get_mg_synid(
             self._MG_RELEASE_SYNID, "data_clinical_sample.txt"
         )
@@ -1867,7 +1891,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return df_patient_subset[cols_to_order]
 
     def get_sample(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
-        """SAMPLE data file
+        """Gets the SAMPLE clinical data file by 
 
         Args:
             df_map (pd.DataFrame): variable to cBioPortal mapping info
@@ -1906,20 +1930,14 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_sample_subset["AGE_AT_SEQUENCING"] = df_sample_subset[
             "AGE_AT_SEQUENCING"
         ].apply(np.floor)
-        # Remove CPT_SEQ_DATE because the values are incorrect
-        del df_sample_subset["CPT_SEQ_DATE"]
-        # Obtain this information from the main GENIE cohort
-        df_sample_subset = df_sample_subset.merge(
-            self.genie_clinicaldf[["SAMPLE_ID", "SEQ_YEAR"]],
-            on="SAMPLE_ID",
-            how="left",
-        )
-        df_sample_subset.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
+        
+        df_sample_subset = self.replace_cpt_seq_date(input_data = df_sample_subset, replacement_data = self.genie_clinicaldf)
         df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
         df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
 
         return df_sample_subset
-    
+        
+
     def create_and_write_case_lists(
         self, subset_sampledf: pd.DataFrame, subset_patientdf: pd.DataFrame, used: list
     ) -> None:
