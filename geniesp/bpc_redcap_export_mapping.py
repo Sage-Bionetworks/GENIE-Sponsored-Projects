@@ -1931,7 +1931,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "AGE_AT_SEQUENCING"
         ].apply(np.floor)
         
-        df_sample_subset = self.replace_cpt_seq_date(input_data = df_sample_subset, replacement_data = self.genie_clinicaldf)
+        df_sample_subset = replace_cpt_seq_date(input_data = df_sample_subset, replacement_data = self.genie_clinicaldf)
         df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
         df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
 
