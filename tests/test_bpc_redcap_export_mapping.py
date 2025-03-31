@@ -132,7 +132,7 @@ def test_that_parse_drug_mappings(input_mapping, var_names, output_mapping):
                 "RCC": {"CANCER_TYPE": "Renal Cell Carcinoma"},
                 "OVARY": {"CANCER_TYPE": "Ovarian Cancer"},
             },
-            "There are invalid values in ONCOTREE_CODE column in the clinical df: ['Renal Cell Carcinoma', 'Renal Clear Cell Carcinoma']",
+            "There are invalid values in ONCOTREE_CODE column in the clinical df: ['Renal Clear Cell Carcinoma', 'Renal Cell Carcinoma']",
         ),
         (
             pd.DataFrame(dict(ONCOTREE_CODE=["Renal Cell Carcinoma", "RCC"])),
@@ -178,7 +178,7 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
             ),
          pd.DataFrame(
                 {
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-3"],
+                    "SAMPLE_ID": ["GENIE-1-3", "GENIE-1-4"],
                     "SEQ_DATE": ["Jul-2017", "Jun-2018"],
                     "SEQ_YEAR": ["2017", "2018"]
                 }
@@ -186,7 +186,7 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
          pd.DataFrame(
                 {
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                    "CPT_SEQ_DATE": [None, None],
                 }
             )),
         (pd.DataFrame(
@@ -205,7 +205,7 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
          pd.DataFrame(
                 {
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2017", "Jun-2015"],
+                    "CPT_SEQ_DATE": ["Jul-2017", None],
                 }
             )),
         (pd.DataFrame(
@@ -227,8 +227,27 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
                     "CPT_SEQ_DATE": ["Jul-2017", "Jun-2018"],
                 }
             )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                    "SEQ_YEAR": ["2017", "2018"]
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                }
+            ))
         ],
-    ids = ["none_replaced", "some_replacef", "all_replaced"]
+    ids = ["none_replaced", "some_replaced", "all_replaced", "the_same"]
 )
 def test_that_replace_cpt_seq_date_replaces_correctly(input, clinical, expected):
     output = bpc_export.replace_cpt_seq_date(input_data = input, replacement_data= clinical)
