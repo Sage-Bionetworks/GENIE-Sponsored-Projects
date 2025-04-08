@@ -494,7 +494,7 @@ def get_derived_variable_file(syn: Synapse, derived_var_synid : str, cohort : st
         pd.DataFrame: derived variable file for the specific cohort
     """
     df = pd.read_csv(syn.get(derived_var_synid).path, low_memory = True)
-    df = df.query(f"cohort == {cohort}")
+    df = df.query(f"cohort == '{cohort}'")
     return df
 
 
