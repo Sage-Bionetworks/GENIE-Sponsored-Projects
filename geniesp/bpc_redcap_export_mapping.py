@@ -617,16 +617,23 @@ def replace_cpt_seq_date(
     replacement_data = replacement_data[
         ["cpt_genie_sample_id", "record_id", "cpt_seq_date"]
     ].drop_duplicates()
+    
+    # rename to match input data
+    replacement_data.rename(columns = {
+        "cpt_genie_sample_id" : "SAMPLE_ID", 
+        "record_id": "PATIENT_ID",
+        "cpt_seq_date" : "CPT_SEQ_DATE"
+        }, inplace = True)
+    
     # Remove CPT_SEQ_DATE because the values are incorrect
     del input_data["CPT_SEQ_DATE"]
-    # Obtain this information from the main GENIE cohort
+    
+    # Replace with derived variable's seq date variable
     input_data = input_data.merge(
         replacement_data,
-        left_on = ["SAMPLE_ID", "PATIENT_ID"],
-        right_on=["cpt_genie_sample_id", "record_id"],
+        on = ["SAMPLE_ID", "PATIENT_ID"],
         how="left",
     )
-    input_data.rename(columns={"cpt_seq_date": "CPT_SEQ_DATE"}, inplace=True)
     return input_data
 
 
