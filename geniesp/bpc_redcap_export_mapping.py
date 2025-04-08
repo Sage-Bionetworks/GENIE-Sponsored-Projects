@@ -481,6 +481,24 @@ def get_data_file_synapse_id_df(syn: Synapse, synid_table_files: str) -> pd.Data
     return data_tablesdf
 
 
+def get_derived_variable_file(syn: Synapse, derived_var_synid : str, cohort : str) -> pd.DataFrame:
+    """Gets the cancer panel test derived variable file used for
+        replacing the cpt_seq_date values in the input BPC clinical files
+
+    Args:
+        syn (Synapse): Synapse connection
+        derived_var_synid (str): synapse id for derived variable file
+        cohort (str): name of the cohort to filter on
+
+    Returns:
+        pd.DataFrame: derived variable file for the specific cohort
+    """
+    df = pd.read_csv(syn.get(derived_var_synid).path, low_memory = True)
+    df = df.query(f"cohort == {cohort}")
+    return df
+
+
+
 def create_release_folders(cohort: str) -> None:
     """Create local folders for release folders.
 
@@ -579,33 +597,46 @@ def check_oncotree_codes(
             f"There are invalid values in ONCOTREE_CODE column in the clinical df: {invalid_codes}")
 
 
-def replace_cpt_seq_date(input_data : pd.DataFrame, replacement_data : pd.DataFrame) -> pd.DataFrame:
-    """Replaces CPT_SEQ_DATE in input BPC file with main genie
-        consortium release's SEQ_DATE because the values in CPT_SEQ_DATE
+def replace_cpt_seq_date(
+    input_data : pd.DataFrame, 
+    replacement_data : pd.DataFrame
+    ) -> pd.DataFrame:
+    """Replaces CPT_SEQ_DATE in input BPC file with derived variable's 
+        CPT_SEQ_DATE because the values in CPT_SEQ_DATE
         are incorrect.
 
     Args:
         input_data (pd.DataFrame): input data with CPT_SEQ_DATE values to be replaced
-        replacement_data (pd.DataFrame): the data with SEQ_DATE to use as replacement
+        replacement_data (pd.DataFrame): the derived variable data with CPT_SEQ_DATE values to 
+            use as replacement
 
     Returns:
         pd.DataFrame: input data with replaced CPT_SEQ_DATE values
     """
+    # there should only be a unique seq_date per patient id and sample id
+    replacement_data = replacement_data[
+        ["cpt_genie_sample_id", "record_id", "cpt_seq_date"]
+    ].drop_duplicates()
     # Remove CPT_SEQ_DATE because the values are incorrect
     del input_data["CPT_SEQ_DATE"]
     # Obtain this information from the main GENIE cohort
     input_data = input_data.merge(
-        replacement_data[["SAMPLE_ID", "SEQ_DATE"]],
-        on="SAMPLE_ID",
+        replacement_data,
+        left_on = ["SAMPLE_ID", "PATIENT_ID"],
+        right_on=["cpt_genie_sample_id", "record_id"],
         how="left",
     )
-    input_data.rename(columns={"SEQ_DATE": "CPT_SEQ_DATE"}, inplace=True)
+    input_data.rename(columns={"cpt_seq_date": "CPT_SEQ_DATE"}, inplace=True)
     return input_data
 
 
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
     
+    # synapse_id of derived variable file with cpt_seq_date
+    # to use as replacement for CPT_SEQ_DATE in input cbio files
+    # instead of using main genie clinical file
+    _DERIVED_VARIABLE_SYNID = "syn22296823"
     _STAGING_RELEASES_FOLDER = {
         "production": "syn50876969",
         "staging":"syn64018253"
@@ -1931,7 +1962,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "AGE_AT_SEQUENCING"
         ].apply(np.floor)
         
-        df_sample_subset = replace_cpt_seq_date(input_data = df_sample_subset, replacement_data = self.genie_clinicaldf)
+        derived_df = get_derived_variable_file(
+            syn = self.syn, 
+            derived_var_synid = self._DERIVED_VARIABLE_SYNID, 
+            cohort = self._SPONSORED_PROJECT
+        )
+        df_sample_subset = replace_cpt_seq_date(
+            input_data = df_sample_subset, 
+            replacement_data = derived_df
+        )
         df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
         df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
 

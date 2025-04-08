@@ -167,83 +167,117 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
     )
 
 
+def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
+    test_df = pd.DataFrame(
+        dict(
+            cohort = ["BLADDER", "BrCa", "BLADDER"],
+            record_id = ["GENIE-SAGE-1", "GENIE-SAGE-2", "GENIE-SAGE-3"]
+            )
+    )
+    with mock.patch.object(mock_syn, "get") as mock_syn_get, mock.patch.object(
+        pd, "read_csv", return_value = test_df
+        ) as mock_read_csv:
+            output = bpc_export.get_derived_variable_file(
+                mock_syn, 
+                derived_var_synid = "synZZZZ", 
+                cohort = "BLADDER"
+                )
+            assert_frame_equal(
+                output, pd.DataFrame(
+                    dict(
+                        cohort = ["BLADDER", "BLADDER"],
+                        record_id = ["GENIE-SAGE-1", "GENIE-SAGE-3"]
+                        )
+                )
+            )
+
+    
+
 @pytest.mark.parametrize(
     "input, clinical, expected",
     [
         (pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
                 {
-                    "SAMPLE_ID": ["GENIE-1-3", "GENIE-1-4"],
-                    "SEQ_DATE": ["Jul-2017", "Jun-2018"],
-                    "SEQ_YEAR": ["2017", "2018"]
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-3", "GENIE-1-4"],
+                    "cpt_seq_date": ["2017", "2018"],
                 }
             ),
          pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": [None, None],
                 }
             )),
         (pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
                 {
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-3"],
-                    "SEQ_DATE": ["Jul-2017", "Jun-2018"],
-                    "SEQ_YEAR": ["2017", "2018"]
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-3"],
+                    "cpt_seq_date": ["2017", "2018"],
                 }
             ),
          pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2017", None],
+                    "CPT_SEQ_DATE": ["2017", None],
                 }
             )),
         (pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
                 {
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "SEQ_DATE": ["Jul-2017", "Jun-2018"],
-                    "SEQ_YEAR": ["2017", "2018"]
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
+                    "cpt_seq_date": ["2017", "2018"],
                 }
             ),
          pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2017", "Jun-2018"],
+                    "CPT_SEQ_DATE": ["2017", "2018"],
                 }
             )),
         (pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
                 {
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "SEQ_DATE": ["Jul-2014", "Jun-2015"],
-                    "SEQ_YEAR": ["2017", "2018"]
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
+                    "cpt_seq_date": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["Jul-2014", "Jun-2015"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             ))
         ],
