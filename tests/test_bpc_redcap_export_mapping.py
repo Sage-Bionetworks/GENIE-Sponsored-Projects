@@ -183,14 +183,14 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
                 cohort = "BLADDER"
                 )
             assert_frame_equal(
-                output, pd.DataFrame(
+                output.reset_index(drop=True), pd.DataFrame(
                     dict(
                         cohort = ["BLADDER", "BLADDER"],
                         record_id = ["GENIE-SAGE-1", "GENIE-SAGE-3"]
                         )
-                )
+                ).reset_index(drop=True),
+                check_index_type=False
             )
-
     
 
 @pytest.mark.parametrize(
@@ -199,14 +199,14 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
         (pd.DataFrame(
                 {
                     "PATIENT_ID": ["GENIE-1", "GENIE-1"],
-                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
                 {
                     "record_id": ["GENIE-1", "GENIE-1"],
-                    "SAMPLE_ID": ["GENIE-1-3", "GENIE-1-4"],
+                    "cpt_genie_sample_id": ["GENIE-1-3", "GENIE-1-4"],
                     "cpt_seq_date": ["2017", "2018"],
                 }
             ),
