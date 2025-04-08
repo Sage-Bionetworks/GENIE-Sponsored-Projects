@@ -199,15 +199,15 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
         (pd.DataFrame(
                 {
                     "PATIENT_ID": ["GENIE-1", "GENIE-1"],
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
+                    "record_id": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-3", "GENIE-1-4"],
-                    "CPT_SEQ_DATE": ["2017", "2018"],
+                    "cpt_seq_date": ["2017", "2018"],
                 }
             ),
          pd.DataFrame(
@@ -226,9 +226,9 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-3"],
-                    "CPT_SEQ_DATE": ["2017", "2018"],
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-3"],
+                    "cpt_seq_date": ["2017", "2018"],
                 }
             ),
          pd.DataFrame(
@@ -247,9 +247,9 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["2017", "2018"],
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
+                    "cpt_seq_date": ["2017", "2018"],
                 }
             ),
          pd.DataFrame(
@@ -268,9 +268,9 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
-                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
-                    "CPT_SEQ_DATE": ["2014", "2015"],
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
+                    "cpt_seq_date": ["2014", "2015"],
                 }
             ),
          pd.DataFrame(
