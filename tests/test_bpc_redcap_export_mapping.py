@@ -405,3 +405,19 @@ def test_that_replace_cpt_seq_date_replaces_correctly_with_main_genie_replacemen
         )
     assert_frame_equal(output, expected)
     
+    
+def test_that_replace_cpt_seq_date_raises_value_error():
+    with pytest.raises(
+        ValueError, 
+        match = "cpt_seq_date_replacement_type: invalid_cpt_seq_date_replacement_type invalid!"
+        ):
+        output = bpc_export.replace_cpt_seq_date(
+            input_data = pd.DataFrame(
+                    {
+                        "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                        "CPT_SEQ_DATE": ["2014", "2015"],
+                    }
+                ), 
+            replacement_data= pd.DataFrame(), 
+            cpt_seq_date_replacement_type = "invalid_cpt_seq_date_replacement_type"
+            )

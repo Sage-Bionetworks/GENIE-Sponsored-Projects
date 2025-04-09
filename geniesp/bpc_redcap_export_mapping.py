@@ -647,7 +647,7 @@ def replace_cpt_seq_date(
             }, inplace = True)
         merge_cols = ["SAMPLE_ID", "PATIENT_ID"]
     else:
-        raise ValueError(f"cpt_seq_date_replacement_type: {self.cpt_seq_date_replacement_type} invalid!")
+        raise ValueError(f"cpt_seq_date_replacement_type: {cpt_seq_date_replacement_type} invalid!")
 
     # Replace with replacement data's seq date variable
     input_data = input_data.merge(
