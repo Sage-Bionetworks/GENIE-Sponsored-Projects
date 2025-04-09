@@ -62,7 +62,7 @@ optional arguments:
   --production                      Whether to run in production mode or not. Default: false
   --use-grs                         Whether to use grs or use dd as primary mapping. Default: false
   --cpt_seq_date_replacement_type   The replacement data type to use for the cpt_seq_date value replacement.
-                                     Default: derived_variable
+                                     Default: derived_variable, Options: ["derived_variable", "main_genie"]
 ```
 
 Example command line:
