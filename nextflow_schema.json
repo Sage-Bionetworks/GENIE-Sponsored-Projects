@@ -56,7 +56,7 @@
                 "cpt_seq_date_replacement_type": {
                     "type": "string",
                     "default": "derived_variable",
-                    "description": "Replacement data type to be used for cpt_seq_data.",
+                    "description": "Replacement data type to be used for cpt_seq_date.",
                     "enum": [
                         "derived_variable",
                         "main_genie"

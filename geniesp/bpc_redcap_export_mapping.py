@@ -1960,7 +1960,12 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return df_patient_subset[cols_to_order]
 
     def get_sample(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
-        """Gets the SAMPLE clinical data file
+        """Gets the SAMPLE clinical data file and runs through some
+            transformations, notably:
+                - subsets input on main genie samples
+                - converts variables(days) to variables(years)
+                - replaces CPT_SEQ_DATE values
+                - sorts on PDL1_POSITIVE_ANY values
 
         Args:
             df_map (pd.DataFrame): variable to cBioPortal mapping info
