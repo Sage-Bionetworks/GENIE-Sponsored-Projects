@@ -53,6 +53,15 @@
                         false
                     ]
                 },
+                "cpt_seq_date_replacement_type": {
+                    "type": "string",
+                    "default": "derived_variable",
+                    "description": "Replacement data type to be used for cpt_seq_data.",
+                    "enum": [
+                        "derived_variable",
+                        "main_genie"
+                    ]
+                },
                 "geniesp_docker":{
                     "type": "string",
                     "description": "Name of docker to use for release process in geniesp"

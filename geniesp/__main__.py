@@ -75,6 +75,13 @@ def main():
         action="store_true",
         help="Whether to use grs or use dd as primary mapping.",
     )
+    parser.add_argument(
+        "--cpt_seq_date_replacement_type",
+        type=str,
+        help="What data replacement type to use for cpt_seq_date",
+        default="derived_variable",
+        choices = ["main_genie", "derived_variable"]
+    )
     args = parser.parse_args()
 
     numeric_level = getattr(logging, args.log.upper(), None)
@@ -96,6 +103,7 @@ def main():
         upload=args.upload,
         production=args.production,
         use_grs=args.use_grs,
+        cpt_seq_date_replacement_type = args.cpt_seq_date_replacement_type,
     ).run()
 
 

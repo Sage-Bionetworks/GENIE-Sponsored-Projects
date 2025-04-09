@@ -54,26 +54,30 @@ positional arguments:
   release               Specify bpc release (e.g. 1.1-consortium)
 
 optional arguments:
-  -h, --help            Show this help message and exit
-  --upload              Upload files into Synapse BPC staging directory. Default: false
+  -h, --help                        Show this help message and exit
+  --upload                          Upload files into Synapse BPC staging directory. Default: false
   --cbioportal {synapseID}
-                        Optional parameter to specify cbioportal folder
-                        location
-  --production          Whether to run in production mode or not. Default: false
-  --use-grs             Whether to use grs or use dd as primary mapping. Default: false
+                                    Optional parameter to specify cbioportal folder
+                                    location
+  --production                      Whether to run in production mode or not. Default: false
+  --use-grs                         Whether to use grs or use dd as primary mapping. Default: false
+  --cpt_seq_date_replacement_type   The replacement data type to use for the cpt_seq_date value replacement.
+                                     Default: derived_variable
 ```
 
 Example command line:
 
-This runs the release pipeline for BLADDER 1.1 in non-production mode (staging) with GRS enabled.
+This runs the release pipeline for BLADDER 1.1 in non-production mode (staging) with GRS enabled using
+main genie clinical data to do the cpt_seq_date replacement
 
 ```
-geniesp BLADDER 1.1-consortium --upload --use-grs
+geniesp BLADDER 1.1-consortium --upload --use-grs --cpt_seq_date_replacement_type main_genie
 ```
 
 Example command using docker:
 
-This runs the release pipeline for PANC 1.1 in non-production mode (staging).
+This runs the release pipeline for PANC 1.1 in non-production mode (staging) using derived variable data to
+do the cpt_seq_date replacement
 ```
 docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp geniesp PANC 1.1-consortium --upload
 ```

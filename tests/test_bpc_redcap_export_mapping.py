@@ -279,11 +279,129 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
+            )),
+        (pd.DataFrame(
+                {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2012", "2013"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "record_id": ["GENIE-1", "GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2", "GENIE-1-2"],
+                    "cpt_seq_date": ["2014", "2015", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ))
+        ],
+    ids = [
+        "none_replaced", 
+        "some_replaced", 
+        "all_replaced", 
+        "the_same", 
+        "replacement_has_dups"
+        ]
+)
+def test_that_replace_cpt_seq_date_replaces_correctly_with_derived_variable_replacement_type(input, clinical, expected):
+    output = bpc_export.replace_cpt_seq_date(
+        input_data = input, 
+        replacement_data= clinical,
+        cpt_seq_date_replacement_type = "derived_variable"
+        )
+    assert_frame_equal(output, expected)
+
+
+@pytest.mark.parametrize(
+    "input, clinical, expected",
+    [
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-3", "GENIE-1-4"],
+                    "SEQ_YEAR": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": [None, None],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-3"],
+                    "SEQ_YEAR": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2017", None],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "SEQ_YEAR": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2017", "2018"],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "SEQ_YEAR": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
             ))
         ],
     ids = ["none_replaced", "some_replaced", "all_replaced", "the_same"]
 )
-def test_that_replace_cpt_seq_date_replaces_correctly(input, clinical, expected):
-    output = bpc_export.replace_cpt_seq_date(input_data = input, replacement_data= clinical)
+def test_that_replace_cpt_seq_date_replaces_correctly_with_main_genie_replacement_type(input, clinical, expected):
+    output = bpc_export.replace_cpt_seq_date(
+        input_data = input, 
+        replacement_data= clinical, 
+        cpt_seq_date_replacement_type = "main_genie"
+        )
     assert_frame_equal(output, expected)
     

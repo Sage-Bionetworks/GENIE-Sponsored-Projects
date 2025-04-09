@@ -13,6 +13,7 @@ process cBioPortalExport {
    val release
    val production
    val use_grs
+   val cpt_seq_date_replacement_type
 
    output:
    stdout
@@ -24,27 +25,31 @@ process cBioPortalExport {
          --upload \
          --cbioportal /usr/src/cbioportal \
          --production \
-         --use-grs
+         --use-grs \
+         --cpt_seq_date_replacement_type $cpt_seq_date_replacement_type
       """
    } else if (production && !use_grs){
       """
       geniesp $cohort $release \
          --upload \
          --cbioportal /usr/src/cbioportal \
-         --production
+         --production \
+         --cpt_seq_date_replacement_type $cpt_seq_date_replacement_type
       """
    } else if (!production && use_grs){
       """
       geniesp $cohort $release \
          --upload \
          --cbioportal /usr/src/cbioportal \
-         --use-grs
+         --use-grs \
+         --cpt_seq_date_replacement_type $cpt_seq_date_replacement_type
       """
    } else {
       """
       geniesp $cohort $release \
          --upload \
          --cbioportal /usr/src/cbioportal \
+         --cpt_seq_date_replacement_type $cpt_seq_date_replacement_type
       """
    }
 }
@@ -54,6 +59,7 @@ workflow {
    params.release = '1.1-consortium'  // Default
    params.production = false
    params.use_grs = false
+   params.cpt_seq_date_replacement_type = 'derived_variable'
 
    // Check if cohort is part of allowed cohort list
    def allowed_cohorts = ["BLADDER", "BrCa", "CRC", "ESOPHAGO", "MELANOMA", "NSCLC", "OVARIAN", "PANC", "Prostate", "RENAL"]
@@ -63,6 +69,7 @@ workflow {
    ch_release = Channel.value(params.release)
    ch_production = Channel.value(params.production)
    ch_use_grs = Channel.value(params.use_grs)
+   ch_cpt_seq_date_replacement_type = Channel.value(params.cpt_seq_date_replacement_type)
 
-   cBioPortalExport(ch_cohort, ch_release, ch_production, ch_use_grs)
+   cBioPortalExport(ch_cohort, ch_release, ch_production, ch_use_grs, ch_cpt_seq_date_replacement_type)
 }

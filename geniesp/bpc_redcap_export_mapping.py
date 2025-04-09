@@ -599,39 +599,60 @@ def check_oncotree_codes(
 
 def replace_cpt_seq_date(
     input_data : pd.DataFrame, 
-    replacement_data : pd.DataFrame
+    replacement_data : pd.DataFrame,
+    cpt_seq_date_replacement_type : str
     ) -> pd.DataFrame:
-    """Replaces CPT_SEQ_DATE in input BPC file with derived variable's 
-        CPT_SEQ_DATE because the values in CPT_SEQ_DATE
-        are incorrect.
+    """ Replaces CPT_SEQ_DATE in input BPC file with specified replacement data's 
+        CPT_SEQ_DATE because the values in CPT_SEQ_DATE are incorrect.
+        
+        Current available cpt_seq_date_replacement_type values are ["main_genie", "derived_variable"]
+            - main_genie - uses the main genie consortium release's sample file and 
+            - derived_variable - uses the stats team's provided derived variable file
+                after BPC processing is complete and tables are provided
 
     Args:
         input_data (pd.DataFrame): input data with CPT_SEQ_DATE values to be replaced
         replacement_data (pd.DataFrame): the derived variable data with CPT_SEQ_DATE values to 
             use as replacement
-
+        cpt_seq_date_replacement_type (str): the type of replacement used, (e.g: main genie, derived variable)
+    
+    Raises:
+        ValueError: thrown when cpt_seq_date_replacement_type is not one of the valid
+            allowed values
+    
     Returns:
         pd.DataFrame: input data with replaced CPT_SEQ_DATE values
     """
-    # there should only be a unique seq_date per patient id and sample id
-    replacement_data = replacement_data[
-        ["cpt_genie_sample_id", "record_id", "cpt_seq_date"]
-    ].drop_duplicates()
-    
-    # rename to match input data
-    replacement_data.rename(columns = {
-        "cpt_genie_sample_id" : "SAMPLE_ID", 
-        "record_id": "PATIENT_ID",
-        "cpt_seq_date" : "CPT_SEQ_DATE"
-        }, inplace = True)
-    
     # Remove CPT_SEQ_DATE because the values are incorrect
     del input_data["CPT_SEQ_DATE"]
-    
-    # Replace with derived variable's seq date variable
+    logging.info(f"Replacing CPT_SEQ_DATE values with {cpt_seq_date_replacement_type} values ...")
+    if cpt_seq_date_replacement_type == "main_genie":
+        
+        # main genie clinical is just sample data
+        replacement_data = replacement_data[["SAMPLE_ID", "SEQ_YEAR"]]
+        replacement_data.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
+        merge_cols = ["SAMPLE_ID"]
+        
+    elif cpt_seq_date_replacement_type == "derived_variable":
+        # there should only be a unique seq_date per patient id and sample id
+        replacement_data = replacement_data[
+            ["cpt_genie_sample_id", "record_id", "cpt_seq_date"]
+        ].drop_duplicates()
+        
+        # rename to match input data
+        replacement_data.rename(columns = {
+            "cpt_genie_sample_id" : "SAMPLE_ID", 
+            "record_id": "PATIENT_ID",
+            "cpt_seq_date" : "CPT_SEQ_DATE"
+            }, inplace = True)
+        merge_cols = ["SAMPLE_ID", "PATIENT_ID"]
+    else:
+        raise ValueError(f"cpt_seq_date_replacement_type: {self.cpt_seq_date_replacement_type} invalid!")
+
+    # Replace with replacement data's seq date variable
     input_data = input_data.merge(
         replacement_data,
-        on = ["SAMPLE_ID", "PATIENT_ID"],
+        on = merge_cols,
         how="left",
     )
     return input_data
@@ -691,7 +712,16 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # cohort-generic link to documentation for cBio files
     _url_cbio = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
 
-    def __init__(self, syn, cbiopath, release, upload=False, production=False, use_grs=False):
+    def __init__(
+        self, 
+        syn, 
+        cbiopath, 
+        release, 
+        upload=False, 
+        production=False, 
+        use_grs=False, 
+        cpt_seq_date_replacement_type = "derived_variable"
+        ):
         if not os.path.exists(cbiopath):
             raise ValueError("cbiopath doesn't exist")
         if self._SPONSORED_PROJECT == "":
@@ -704,6 +734,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         self.production = production
         self.environment = "production" if self.production else "staging"
         self.use_grs = use_grs
+        self.cpt_seq_date_replacement_type = cpt_seq_date_replacement_type
 
     @cached_property
     def genie_clinicaldf(self) -> pd.DataFrame:
@@ -1929,11 +1960,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return df_patient_subset[cols_to_order]
 
     def get_sample(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> pd.DataFrame:
-        """Gets the SAMPLE clinical data file by 
+        """Gets the SAMPLE clinical data file
 
         Args:
             df_map (pd.DataFrame): variable to cBioPortal mapping info
             df_file (pd.DataFrame): data file to Synapse ID mapping
+            
+        Raises:
+            ValueError: thrown when cpt_seq_date_replacement_type is not one of the valid
+            allowed values
 
         Returns:
             pd.DataFrame: SAMPLE data
@@ -1969,15 +2004,26 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "AGE_AT_SEQUENCING"
         ].apply(np.floor)
         
-        derived_df = get_derived_variable_file(
-            syn = self.syn, 
-            derived_var_synid = self._DERIVED_VARIABLE_SYNID, 
-            cohort = self._SPONSORED_PROJECT
-        )
-        df_sample_subset = replace_cpt_seq_date(
-            input_data = df_sample_subset, 
-            replacement_data = derived_df
-        )
+        if self.cpt_seq_date_replacement_type == "derived_variable":
+            derived_df = get_derived_variable_file(
+                syn = self.syn, 
+                derived_var_synid = self._DERIVED_VARIABLE_SYNID, 
+                cohort = self._SPONSORED_PROJECT
+            )
+            df_sample_subset = replace_cpt_seq_date(
+                input_data = df_sample_subset, 
+                replacement_data = derived_df,
+                cpt_seq_date_replacement_type = self.cpt_seq_date_replacement_type
+            )
+        elif self.cpt_seq_date_replacement_type == "main_genie":
+            df_sample_subset = replace_cpt_seq_date(
+                input_data = df_sample_subset, 
+                replacement_data = self.genie_clinicaldf,
+                cpt_seq_date_replacement_type = self.cpt_seq_date_replacement_type
+            )
+        else:
+            raise ValueError(f"cpt_seq_date_replacement_type: {self.cpt_seq_date_replacement_type} invalid!")
+            
         df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
         df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
 
