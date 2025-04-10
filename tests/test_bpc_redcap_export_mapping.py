@@ -3,6 +3,7 @@ import pytest
 from unittest import mock
 
 import pandas as pd
+from pandas.testing import assert_frame_equal
 import synapseclient
 
 from geniesp import bpc_redcap_export_mapping as bpc_export
@@ -131,7 +132,7 @@ def test_that_parse_drug_mappings(input_mapping, var_names, output_mapping):
                 "RCC": {"CANCER_TYPE": "Renal Cell Carcinoma"},
                 "OVARY": {"CANCER_TYPE": "Ovarian Cancer"},
             },
-            "There are invalid values in ONCOTREE_CODE column in the clinical df: ['Renal Cell Carcinoma', 'Renal Clear Cell Carcinoma']",
+            "There are invalid values in ONCOTREE_CODE column in the clinical df: ['Renal Clear Cell Carcinoma', 'Renal Cell Carcinoma']",
         ),
         (
             pd.DataFrame(dict(ONCOTREE_CODE=["Renal Cell Carcinoma", "RCC"])),
@@ -164,3 +165,250 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
         "There are invalid values in ONCOTREE_CODE column in the clinical df"
         not in caplog.text
     )
+
+
+def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
+    test_df = pd.DataFrame(
+        dict(
+            cohort = ["BLADDER", "BrCa", "BLADDER"],
+            record_id = ["GENIE-SAGE-1", "GENIE-SAGE-2", "GENIE-SAGE-3"]
+            )
+    )
+    with mock.patch.object(mock_syn, "get") as mock_syn_get, mock.patch.object(
+        pd, "read_csv", return_value = test_df
+        ) as mock_read_csv:
+            output = bpc_export.get_derived_variable_file(
+                mock_syn, 
+                derived_var_synid = "synZZZZ", 
+                cohort = "BLADDER"
+                )
+            assert_frame_equal(
+                output.reset_index(drop=True), pd.DataFrame(
+                    dict(
+                        cohort = ["BLADDER", "BLADDER"],
+                        record_id = ["GENIE-SAGE-1", "GENIE-SAGE-3"]
+                        )
+                ).reset_index(drop=True),
+                check_index_type=False
+            )
+    
+
+@pytest.mark.parametrize(
+    "input, clinical, expected",
+    [
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-3", "GENIE-1-4"],
+                    "cpt_seq_date": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": [None, None],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-3"],
+                    "cpt_seq_date": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2017", None],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
+                    "cpt_seq_date": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2017", "2018"],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "record_id": ["GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2"],
+                    "cpt_seq_date": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2012", "2013"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "record_id": ["GENIE-1", "GENIE-1", "GENIE-1"],
+                    "cpt_genie_sample_id": ["GENIE-1-1", "GENIE-1-2", "GENIE-1-2"],
+                    "cpt_seq_date": ["2014", "2015", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ))
+        ],
+    ids = [
+        "none_replaced", 
+        "some_replaced", 
+        "all_replaced", 
+        "the_same", 
+        "replacement_has_dups"
+        ]
+)
+def test_that_replace_cpt_seq_date_replaces_correctly_with_derived_variable_replacement_type(input, clinical, expected):
+    output = bpc_export.replace_cpt_seq_date(
+        input_data = input, 
+        replacement_data= clinical,
+        cpt_seq_date_replacement_type = "derived_variable"
+        )
+    assert_frame_equal(output, expected)
+
+
+@pytest.mark.parametrize(
+    "input, clinical, expected",
+    [
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
+                    "SAMPLE_ID": ["GENIE-1-3", "GENIE-1-4"],
+                    "SEQ_YEAR": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": [None, None],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-3"],
+                    "SEQ_YEAR": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2017", None],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "SEQ_YEAR": ["2017", "2018"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2017", "2018"],
+                }
+            )),
+        (pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "SEQ_YEAR": ["2014", "2015"],
+                }
+            ),
+         pd.DataFrame(
+                {
+                    "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                    "CPT_SEQ_DATE": ["2014", "2015"],
+                }
+            ))
+        ],
+    ids = ["none_replaced_with_extra_cols", "some_replaced", "all_replaced", "the_same"]
+)
+def test_that_replace_cpt_seq_date_replaces_correctly_with_main_genie_replacement_type(input, clinical, expected):
+    output = bpc_export.replace_cpt_seq_date(
+        input_data = input, 
+        replacement_data= clinical, 
+        cpt_seq_date_replacement_type = "main_genie"
+        )
+    assert_frame_equal(output, expected)
+    
+    
+def test_that_replace_cpt_seq_date_raises_value_error():
+    with pytest.raises(
+        ValueError, 
+        match = "cpt_seq_date_replacement_type: invalid_cpt_seq_date_replacement_type invalid!"
+        ):
+        output = bpc_export.replace_cpt_seq_date(
+            input_data = pd.DataFrame(
+                    {
+                        "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
+                        "CPT_SEQ_DATE": ["2014", "2015"],
+                    }
+                ), 
+            replacement_data= pd.DataFrame(), 
+            cpt_seq_date_replacement_type = "invalid_cpt_seq_date_replacement_type"
+            )
