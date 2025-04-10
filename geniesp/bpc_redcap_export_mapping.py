@@ -634,18 +634,18 @@ def replace_cpt_seq_date(
         merge_cols = ["SAMPLE_ID"]
         
     elif cpt_seq_date_replacement_type == "derived_variable":
-        # there should only be a unique seq_date per patient id and sample id
+        # there should only be a unique seq_date per sample id as 
+        # cpt_seq_date is unique field to clinical sample data
         replacement_data = replacement_data[
-            ["cpt_genie_sample_id", "record_id", "cpt_seq_date"]
+            ["cpt_genie_sample_id", "cpt_seq_date"]
         ].drop_duplicates()
         
         # rename to match input data
         replacement_data.rename(columns = {
             "cpt_genie_sample_id" : "SAMPLE_ID", 
-            "record_id": "PATIENT_ID",
             "cpt_seq_date" : "CPT_SEQ_DATE"
             }, inplace = True)
-        merge_cols = ["SAMPLE_ID", "PATIENT_ID"]
+        merge_cols = ["SAMPLE_ID"]
     else:
         raise ValueError(f"cpt_seq_date_replacement_type: {cpt_seq_date_replacement_type} invalid!")
 

@@ -198,7 +198,6 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
     [
         (pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
@@ -212,14 +211,12 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": [None, None],
                 }
             )),
         (pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
@@ -233,14 +230,12 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2017", None],
                 }
             )),
         (pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
@@ -254,14 +249,12 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2017", "2018"],
                 }
             )),
         (pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
@@ -275,14 +268,12 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
             )),
         (pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2012", "2013"],
                 }
@@ -296,7 +287,6 @@ def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
             ),
          pd.DataFrame(
                 {
-                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-1", "GENIE-1-2"],
                     "CPT_SEQ_DATE": ["2014", "2015"],
                 }
@@ -330,6 +320,7 @@ def test_that_replace_cpt_seq_date_replaces_correctly_with_derived_variable_repl
             ),
          pd.DataFrame(
                 {
+                    "PATIENT_ID": ["GENIE-1", "GENIE-1"],
                     "SAMPLE_ID": ["GENIE-1-3", "GENIE-1-4"],
                     "SEQ_YEAR": ["2017", "2018"],
                 }
@@ -395,7 +386,7 @@ def test_that_replace_cpt_seq_date_replaces_correctly_with_derived_variable_repl
                 }
             ))
         ],
-    ids = ["none_replaced", "some_replaced", "all_replaced", "the_same"]
+    ids = ["none_replaced_with_extra_cols", "some_replaced", "all_replaced", "the_same"]
 )
 def test_that_replace_cpt_seq_date_replaces_correctly_with_main_genie_replacement_type(input, clinical, expected):
     output = bpc_export.replace_cpt_seq_date(
