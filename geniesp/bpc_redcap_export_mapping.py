@@ -674,7 +674,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38, 42 were last stable version(s)
     # NOTE: Should be pointed towards latest version of table
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.56"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.60"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -689,7 +689,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # NOTE: Must use consortium release, because SEQ_DATE is used
     # NOTE: Must match release tracking sheet and release table info
     # for the given cohort
-    _MG_RELEASE_SYNID = "syn63602196"
+    _MG_RELEASE_SYNID = "syn51719445"
     # PRISSMM documentation table
     _PRISSMM_SYNID = "syn22684834"
     # REDCap global response set
