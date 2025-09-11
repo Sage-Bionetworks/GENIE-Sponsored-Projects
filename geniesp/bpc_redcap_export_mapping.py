@@ -674,7 +674,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38, 42 were last stable version(s)
     # NOTE: Should be pointed towards latest version of table
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.61"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.60"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
@@ -2248,7 +2248,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=sequence_data["used"],
         )
 
-        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
+        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER", "RENAL"]:
             logging.info("writing TIMELINE-LABTEST...")
             lab_data = self.get_timeline_lab(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
