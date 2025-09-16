@@ -426,7 +426,7 @@ def create_regimens(
             value.format(regimen=regimen) for value in regimen_infodf["description"]
         ]
         regimen_drug_info["priority"] = [
-            int(value) if not np.isnan(value) else value for value in regimen_infodf["priority"]
+            int(value) for value in regimen_infodf["priority"]
         ]
         new_regimen_info = pd.concat([new_regimen_info, regimen_drug_info])
 
