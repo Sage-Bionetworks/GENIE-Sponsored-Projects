@@ -7,6 +7,7 @@
   Add headers
   REMOVE PATIENTS/SAMPLES THAT DON'T HAVE GENIE SAMPLE IDS
 """
+
 from abc import ABCMeta
 from datetime import date
 from functools import cached_property
@@ -45,6 +46,7 @@ CBIO_FILEFORMATS_ALL = [
     "data_sv.txt",
     "data_CNA.txt",
 ]
+
 
 def get_file_data(
     syn: Synapse, mappingdf: pd.DataFrame, sampletype: str, cohort: str = "NSCLC"
@@ -223,11 +225,8 @@ def _get_synid_dd(syn: Synapse, cohort: str, synid_table_prissmm: str) -> str:
 
 
 def get_mapping_data(
-    syn : Synapse, 
-    synid_file_grs: str, 
-    synid_file_dd: str, 
-    use_grs : bool
-    ) -> pd.DataFrame:
+    syn: Synapse, synid_file_grs: str, synid_file_dd: str, use_grs: bool
+) -> pd.DataFrame:
     """Reads in the global response set (grs) or data dictionary (dd) depending
     on if we are using GRS or not
 
@@ -247,7 +246,7 @@ def get_mapping_data(
     else:
         mapping = pd.read_csv(
             syn.get(synid_file_dd).path, encoding="unicode_escape", low_memory=False
-            )
+        )
     return mapping
 
 
@@ -266,10 +265,10 @@ def get_drug_variable_names() -> List[str]:
 
 def parse_drug_mappings(mapping: pd.DataFrame, var_names: List[str]) -> Dict[str, str]:
     """Parses the mapping (grs or dd) data, and builds a reference map of
-        the mapping between drug names and their unique codes. 
+        the mapping between drug names and their unique codes.
         Drug fields are parsed, and a list of drug names (labels) are extracted and
         matched to their corresponding unique identifiers (NCIT drug code) which are also
-        extracted 
+        extracted
 
     Args:
         mapping (pd.DataFrame): the grs or dd mapping
@@ -282,7 +281,9 @@ def parse_drug_mappings(mapping: pd.DataFrame, var_names: List[str]) -> Dict[str
     mappings = {}
     # dd has more than 2 columns and not all columns start with these two.
     # going to just subset to the required columns.
-    mapping = mapping[["Variable / Field Name", "Choices, Calculations, OR Slider Labels"]]
+    mapping = mapping[
+        ["Variable / Field Name", "Choices, Calculations, OR Slider Labels"]
+    ]
 
     for var_name in var_names:
         if var_name in mapping["Variable / Field Name"].unique():
@@ -297,12 +298,16 @@ def parse_drug_mappings(mapping: pd.DataFrame, var_names: List[str]) -> Dict[str
                     value = pair.split(",")[1].strip()
                     label = value.split("(")[0].strip()
                     mappings[label] = code
-                    
+
     return mappings
 
 
 def get_drug_mapping(
-    syn: Synapse, cohort: str, synid_file_grs: str, synid_table_prissmm: str, use_grs : bool
+    syn: Synapse,
+    cohort: str,
+    synid_file_grs: str,
+    synid_table_prissmm: str,
+    use_grs: bool,
 ) -> Dict[str, str]:
     """Gets a mapping between drug short names and NCIT code from BPC data dictionary
     and BPC global response set for a given BPC cohort.
@@ -321,10 +326,10 @@ def get_drug_mapping(
     """
     synid_file_dd = _get_synid_dd(syn, cohort, synid_table_prissmm)
     mapping = get_mapping_data(
-        syn=syn, 
+        syn=syn,
         synid_file_grs=synid_file_grs,
         synid_file_dd=synid_file_dd,
-        use_grs=use_grs
+        use_grs=use_grs,
     )
     var_names = get_drug_variable_names()
     mappings = parse_drug_mappings(mapping=mapping, var_names=var_names)
@@ -481,7 +486,9 @@ def get_data_file_synapse_id_df(syn: Synapse, synid_table_files: str) -> pd.Data
     return data_tablesdf
 
 
-def get_derived_variable_file(syn: Synapse, derived_var_synid : str, cohort : str) -> pd.DataFrame:
+def get_derived_variable_file(
+    syn: Synapse, derived_var_synid: str, cohort: str
+) -> pd.DataFrame:
     """Gets the cancer panel test derived variable file used for
         replacing the cpt_seq_date values in the input BPC clinical files
 
@@ -493,10 +500,9 @@ def get_derived_variable_file(syn: Synapse, derived_var_synid : str, cohort : st
     Returns:
         pd.DataFrame: derived variable file for the specific cohort
     """
-    df = pd.read_csv(syn.get(derived_var_synid).path, low_memory = True)
+    df = pd.read_csv(syn.get(derived_var_synid).path, low_memory=True)
     df = df.query(f"cohort == '{cohort}'")
     return df
-
 
 
 def create_release_folders(cohort: str) -> None:
@@ -553,9 +559,11 @@ def remap_os_values(df: pd.DataFrame):
     0 -> 0:LIVING
     1 -> 1:DECEASED
     """
-    remap_values = {col: {0: "0:LIVING", 1: "1:DECEASED"}
-                    for col in df.columns
-                    if col.startswith('OS') and col.endswith("STATUS")}
+    remap_values = {
+        col: {0: "0:LIVING", 1: "1:DECEASED"}
+        for col in df.columns
+        if col.startswith("OS") and col.endswith("STATUS")
+    }
     return df.replace(remap_values)
 
 
@@ -564,9 +572,11 @@ def remap_pfs_values(df: pd.DataFrame):
     0 -> 0:CENSORED
     1 -> 1:PROGRESSED
     """
-    remap_values = {col: {0: "0:CENSORED", 1: "1:PROGRESSED OR DIED"}
-                    for col in df.columns
-                    if col.startswith('PFS') and col.endswith("STATUS")}
+    remap_values = {
+        col: {0: "0:CENSORED", 1: "1:PROGRESSED OR DIED"}
+        for col in df.columns
+        if col.startswith("PFS") and col.endswith("STATUS")
+    }
     return df.replace(remap_values)
 
 
@@ -575,16 +585,15 @@ def _convert_to_int(value):
     try:
         return int(value)
     except ValueError:
-        return float('nan')
+        return float("nan")
 
 
 def check_oncotree_codes(
-    df : pd.DataFrame, 
-    oncotree_dict : Dict[str, Dict[str, str]]
-    ) -> None:
-    """Check that the oncotree codes in input data 
+    df: pd.DataFrame, oncotree_dict: Dict[str, Dict[str, str]]
+) -> None:
+    """Check that the oncotree codes in input data
         matches oncotree codes in official oncotree mappings
-        and logs a warning if the oncotree codes don't match and 
+        and logs a warning if the oncotree codes don't match and
         which ones are not found in the input data.
     Args:
         df (pd.DataFrame): input data
@@ -594,65 +603,73 @@ def check_oncotree_codes(
     invalid_codes = list(set(codes_in_df) - set(list(oncotree_dict.keys())))
     if invalid_codes:
         logging.warning(
-            f"There are invalid values in ONCOTREE_CODE column in the clinical df: {invalid_codes}")
+            f"There are invalid values in ONCOTREE_CODE column in the clinical df: {invalid_codes}"
+        )
 
 
 def replace_cpt_seq_date(
-    input_data : pd.DataFrame, 
-    replacement_data : pd.DataFrame,
-    cpt_seq_date_replacement_type : str
-    ) -> pd.DataFrame:
-    """ Replaces CPT_SEQ_DATE in input BPC file with specified replacement data's 
+    input_data: pd.DataFrame,
+    replacement_data: pd.DataFrame,
+    cpt_seq_date_replacement_type: str,
+) -> pd.DataFrame:
+    """Replaces CPT_SEQ_DATE in input BPC file with specified replacement data's
         CPT_SEQ_DATE because the values in CPT_SEQ_DATE are incorrect.
-        
+
         Current available cpt_seq_date_replacement_type values are ["main_genie", "derived_variable"]
-            - main_genie - uses the main genie consortium release's sample file and 
+            - main_genie - uses the main genie consortium release's sample file and
             - derived_variable - uses the stats team's provided derived variable file
                 after BPC processing is complete and tables are provided
 
     Args:
         input_data (pd.DataFrame): input data with CPT_SEQ_DATE values to be replaced
-        replacement_data (pd.DataFrame): the derived variable data with CPT_SEQ_DATE values to 
+        replacement_data (pd.DataFrame): the derived variable data with CPT_SEQ_DATE values to
             use as replacement
         cpt_seq_date_replacement_type (str): the type of replacement used, (e.g: main genie, derived variable)
-    
+
     Raises:
         ValueError: thrown when cpt_seq_date_replacement_type is not one of the valid
             allowed values
-    
+
     Returns:
         pd.DataFrame: input data with replaced CPT_SEQ_DATE values
     """
     # Remove CPT_SEQ_DATE because the values are incorrect
     del input_data["CPT_SEQ_DATE"]
-    logging.info(f"Replacing CPT_SEQ_DATE values with {cpt_seq_date_replacement_type} values ...")
+    logging.info(
+        f"Replacing CPT_SEQ_DATE values with {cpt_seq_date_replacement_type} values ..."
+    )
     if cpt_seq_date_replacement_type == "main_genie":
-        
+
         # main genie clinical is just sample data
         replacement_data = replacement_data[["SAMPLE_ID", "SEQ_YEAR"]]
         replacement_data.rename(columns={"SEQ_YEAR": "CPT_SEQ_DATE"}, inplace=True)
         merge_cols = ["SAMPLE_ID"]
-        
+
     elif cpt_seq_date_replacement_type == "derived_variable":
-        # there should only be a unique seq_date per sample id as 
+        # there should only be a unique seq_date per sample id as
         # cpt_seq_date is unique field to clinical sample data
         replacement_data = replacement_data[
             ["cpt_genie_sample_id", "cpt_seq_date"]
         ].drop_duplicates()
-        
+
         # rename to match input data
-        replacement_data.rename(columns = {
-            "cpt_genie_sample_id" : "SAMPLE_ID", 
-            "cpt_seq_date" : "CPT_SEQ_DATE"
-            }, inplace = True)
+        replacement_data.rename(
+            columns={
+                "cpt_genie_sample_id": "SAMPLE_ID",
+                "cpt_seq_date": "CPT_SEQ_DATE",
+            },
+            inplace=True,
+        )
         merge_cols = ["SAMPLE_ID"]
     else:
-        raise ValueError(f"cpt_seq_date_replacement_type: {cpt_seq_date_replacement_type} invalid!")
+        raise ValueError(
+            f"cpt_seq_date_replacement_type: {cpt_seq_date_replacement_type} invalid!"
+        )
 
     # Replace with replacement data's seq date variable
     input_data = input_data.merge(
         replacement_data,
-        on = merge_cols,
+        on=merge_cols,
         how="left",
     )
     return input_data
@@ -660,31 +677,25 @@ def replace_cpt_seq_date(
 
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
-    
+
     # synapse_id of derived variable file with cpt_seq_date
     # to use as replacement for CPT_SEQ_DATE in input cbio files
     # instead of using main genie clinical file
     _DERIVED_VARIABLE_SYNID = "syn22296823"
-    _STAGING_RELEASES_FOLDER = {
-        "production": "syn50876969",
-        "staging":"syn64018253"
-    }
+    _STAGING_RELEASES_FOLDER = {"production": "syn50876969", "staging": "syn64018253"}
     # Sponsored project name
     _SPONSORED_PROJECT = ""
     # Redcap codes to cbioportal mapping synid and form key is in
     # version 38, 42 were last stable version(s)
     # NOTE: Should be pointed towards latest version of table
-    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.60"
+    _REDCAP_TO_CBIOMAPPING_SYNID = "syn25712693.63"
     # Run `git rev-parse HEAD` in Genie_processing directory to obtain shadigest
     _GITHUB_REPO = None
     # Mapping from Synapse Table to derived variables
     # TODO: Make versioned
     _DATA_TABLE_IDS = "syn22296821"
     # Storage of not found samples
-    _SP_REDCAP_EXPORTS_SYNID = {
-        "production":"syn21446571",
-        "staging": "syn64018293"
-    }
+    _SP_REDCAP_EXPORTS_SYNID = {"production": "syn21446571", "staging": "syn64018293"}
     # main GENIE release folder
     # NOTE: Must use consortium release, because SEQ_DATE is used
     # NOTE: Must match release tracking sheet and release table info
@@ -713,15 +724,15 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _url_cbio = "https://docs.google.com/document/d/1IBVF-FLecUG8Od6mSEhYfWH3wATLNMnZcBw2_G0jSAo/edit"
 
     def __init__(
-        self, 
-        syn, 
-        cbiopath, 
-        release, 
-        upload=False, 
-        production=False, 
-        use_grs=False, 
-        cpt_seq_date_replacement_type = "derived_variable"
-        ):
+        self,
+        syn,
+        cbiopath,
+        release,
+        upload=False,
+        production=False,
+        use_grs=False,
+        cpt_seq_date_replacement_type="derived_variable",
+    ):
         if not os.path.exists(cbiopath):
             raise ValueError("cbiopath doesn't exist")
         if self._SPONSORED_PROJECT == "":
@@ -764,9 +775,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             self.syn.get(sample_synid, followLink=True).path, sep="\t", comment="#"
         )
         # Filter out cfDNA samples
-        genie_clinicaldf = genie_clinicaldf[
-            genie_clinicaldf['SAMPLE_CLASS'] != "cfDNA"
-        ]
+        genie_clinicaldf = genie_clinicaldf[genie_clinicaldf["SAMPLE_CLASS"] != "cfDNA"]
         # BPC retraction database
         # HACK These don't query the phase 2 cohorts
         bpc_sample_retraction_db = self.syn.tableQuery(
@@ -821,7 +830,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             sp_data_folder = self.syn.store(
                 Folder(
                     self._SPONSORED_PROJECT,
-                    parentId=self._STAGING_RELEASES_FOLDER[self.environment]
+                    parentId=self._STAGING_RELEASES_FOLDER[self.environment],
                 )
             )
             release_folder = self.syn.store(Folder(self.release, parent=sp_data_folder))
@@ -1049,7 +1058,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         used_entity = f"{synid}.{ent.versionNumber}"
         timelinedf = pd.read_csv(ent.path, low_memory=False)
         # Only take lung cohort
-        timelinedf = timelinedf[timelinedf["cohort_internal"] == self._SPONSORED_PROJECT]
+        timelinedf = timelinedf[
+            timelinedf["cohort_internal"] == self._SPONSORED_PROJECT
+        ]
         # Only take samples where redcap_ca_index is Yes
         timelinedf = timelinedf[timelinedf["redcap_ca_index"] == "Yes"]
         # Flatten multiple columns values into multiple rows
@@ -1197,7 +1208,6 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         timelinedf = timeline_data["df"]
         used_entities = timeline_data["used"]
-
         timelinedf["EVENT_TYPE"] = portal_value
         mapping = subset_infodf["cbio"].to_dict()
         # Must add in PATIENT_ID
@@ -1385,11 +1395,13 @@ class BpcProjectRunner(metaclass=ABCMeta):
             genomic_infodf["SEQ_ASSAY_ID"].isin(keep_seq_assay_ids)
         ]
         if genomic_info_synid is not None:
-            genomic_path = os.path.join(self._SPONSORED_PROJECT, "genomic_information.txt")
+            genomic_path = os.path.join(
+                self._SPONSORED_PROJECT, "genomic_information.txt"
+            )
             self.write_and_storedf(
                 df=subset_genomic_infodf,
                 filepath=genomic_path,
-                used_entities=[genomic_info_synid]
+                used_entities=[genomic_info_synid],
             )
 
         genomic_infodf = genomic_infodf[
@@ -1467,21 +1479,24 @@ class BpcProjectRunner(metaclass=ABCMeta):
         timeline_infodf.index = timeline_infodf["code"]
         data = self.create_fixed_timeline_files(timeline_infodf, "TIMELINE-PERFORMANCE")
         # HACK: Due to remapping logic, we will re-create RESULT column with correct
-        has_md_karnof = ~data['df']['MD_KARNOF'].fillna('Not').str.startswith(("Not" ,"not"))
-        has_md_ecog = ~data['df']['MD_ECOG'].fillna('Not').str.startswith(("Not" ,"not"))
+        has_md_karnof = (
+            ~data["df"]["MD_KARNOF"].fillna("Not").str.startswith(("Not", "not"))
+        )
+        has_md_ecog = (
+            ~data["df"]["MD_ECOG"].fillna("Not").str.startswith(("Not", "not"))
+        )
         # Only add in values for SCORE_TYPE and RESULT when MD_KARNOF
         # and ECOG are present
-        data['df']['SCORE_TYPE'] = ""
-        data['df']['SCORE_TYPE'][has_md_karnof] = "KARNOFSKY"
-        data['df']['SCORE_TYPE'][has_md_ecog] = "ECOG"
-        data['df']['RESULT'] = ""
-        data['df']['RESULT'][has_md_karnof] = data['df']['MD_KARNOF'][has_md_karnof]
-        data['df']['RESULT'][has_md_ecog] = data['df']['MD_ECOG'][has_md_ecog]
+        data["df"]["SCORE_TYPE"] = ""
+        data["df"]["SCORE_TYPE"][has_md_karnof] = "KARNOFSKY"
+        data["df"]["SCORE_TYPE"][has_md_ecog] = "ECOG"
+        data["df"]["RESULT"] = ""
+        data["df"]["RESULT"][has_md_karnof] = data["df"]["MD_KARNOF"][has_md_karnof]
+        data["df"]["RESULT"][has_md_ecog] = data["df"]["MD_ECOG"][has_md_ecog]
         # CbioPortal doesn't want any rows without MD_KARNOF or MD_ECOG
-        data['df'] = data['df'][data['df']['RESULT'] != ""]
-        data['df']['RESULT'] = [
-            _convert_to_int(val.split(":")[0])
-            for val in data['df']['RESULT']
+        data["df"] = data["df"][data["df"]["RESULT"] != ""]
+        data["df"]["RESULT"] = [
+            _convert_to_int(val.split(":")[0]) for val in data["df"]["RESULT"]
         ]
         return data
 
@@ -1848,7 +1863,9 @@ class BpcProjectRunner(metaclass=ABCMeta):
         return {"df": subset_survivaldf[cols_to_order], "survival_info": survival_info}
 
     def get_survival_treatment(
-        self, df_map: pd.DataFrame, df_file: pd.DataFrame,
+        self,
+        df_map: pd.DataFrame,
+        df_file: pd.DataFrame,
     ) -> pd.DataFrame:
         """Get SURVIVAL and REGIMEN file data.
 
@@ -1970,7 +1987,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
         Args:
             df_map (pd.DataFrame): variable to cBioPortal mapping info
             df_file (pd.DataFrame): data file to Synapse ID mapping
-            
+
         Raises:
             ValueError: thrown when cpt_seq_date_replacement_type is not one of the valid
             allowed values
@@ -2008,32 +2025,33 @@ class BpcProjectRunner(metaclass=ABCMeta):
         df_sample_subset["AGE_AT_SEQUENCING"] = df_sample_subset[
             "AGE_AT_SEQUENCING"
         ].apply(np.floor)
-        
+
         if self.cpt_seq_date_replacement_type == "derived_variable":
             derived_df = get_derived_variable_file(
-                syn = self.syn, 
-                derived_var_synid = self._DERIVED_VARIABLE_SYNID, 
-                cohort = self._SPONSORED_PROJECT
+                syn=self.syn,
+                derived_var_synid=self._DERIVED_VARIABLE_SYNID,
+                cohort=self._SPONSORED_PROJECT,
             )
             df_sample_subset = replace_cpt_seq_date(
-                input_data = df_sample_subset, 
-                replacement_data = derived_df,
-                cpt_seq_date_replacement_type = self.cpt_seq_date_replacement_type
+                input_data=df_sample_subset,
+                replacement_data=derived_df,
+                cpt_seq_date_replacement_type=self.cpt_seq_date_replacement_type,
             )
         elif self.cpt_seq_date_replacement_type == "main_genie":
             df_sample_subset = replace_cpt_seq_date(
-                input_data = df_sample_subset, 
-                replacement_data = self.genie_clinicaldf,
-                cpt_seq_date_replacement_type = self.cpt_seq_date_replacement_type
+                input_data=df_sample_subset,
+                replacement_data=self.genie_clinicaldf,
+                cpt_seq_date_replacement_type=self.cpt_seq_date_replacement_type,
             )
         else:
-            raise ValueError(f"cpt_seq_date_replacement_type: {self.cpt_seq_date_replacement_type} invalid!")
-            
+            raise ValueError(
+                f"cpt_seq_date_replacement_type: {self.cpt_seq_date_replacement_type} invalid!"
+            )
+
         df_sample_subset.sort_values("PDL1_POSITIVE_ANY", ascending=False, inplace=True)
         df_sample_subset.drop_duplicates("SAMPLE_ID", inplace=True)
 
         return df_sample_subset
-        
 
     def create_and_write_case_lists(
         self, subset_sampledf: pd.DataFrame, subset_patientdf: pd.DataFrame, used: list
@@ -2074,7 +2092,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
                     self.syn.store(
                         File(
                             "notfoundsamples.csv",
-                            parent=self._SP_REDCAP_EXPORTS_SYNID[self.environment]
+                            parent=self._SP_REDCAP_EXPORTS_SYNID[self.environment],
                         )
                     )
         # Hard coded most up to date oncotree version
@@ -2085,8 +2103,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
             "http://oncotree.mskcc.org/api/tumorTypes/tree?version=oncotree_2018_06_01"
         )
         oncotree_dict = process_functions.get_oncotree_code_mappings(oncotreelink)
-        check_oncotree_codes(df = merged_clinicaldf, oncotree_dict = oncotree_dict)
-        
+        check_oncotree_codes(df=merged_clinicaldf, oncotree_dict=oncotree_dict)
+
         # Map cancer type and cancer type detailed
         # This is to create case list files
         merged_clinicaldf["CANCER_TYPE"] = [
@@ -2248,7 +2266,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             used_entities=sequence_data["used"],
         )
 
-        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER"]:
+        if self._SPONSORED_PROJECT not in ["NSCLC", "BLADDER", "RENAL"]:
             logging.info("writing TIMELINE-LABTEST...")
             lab_data = self.get_timeline_lab(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
@@ -2264,7 +2282,7 @@ class BpcProjectRunner(metaclass=ABCMeta):
             logging.info("skipping TIMELINE-LABTEST...")
 
         logging.info("writing TIMELINE-PERFORMANCE...")
-        if self._SPONSORED_PROJECT in ["BLADDER", "NSCLC", "CRC"]:
+        if self._SPONSORED_PROJECT in ["BLADDER", "NSCLC", "CRC", "RENAL"]:
             performance_data = self.get_timeline_performance(
                 df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf
             )
@@ -2303,7 +2321,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
 
         logging.info("writing CLINICAL-SURVIVAL-TREATMENT...")
         df_survival_treatment = self.get_survival_treatment(
-            df_map=redcap_to_cbiomappingdf, df_file=data_tablesdf,
+            df_map=redcap_to_cbiomappingdf,
+            df_file=data_tablesdf,
         )
         surv_treatment_path = self.write_clinical_file(
             df_survival_treatment,
