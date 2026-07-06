@@ -1644,6 +1644,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         dict_medonc = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-MEDONC"
         )
+        # fix event type to MedOnc for cBioPortal
+        dict_medonc["df"]["EVENT_TYPE"] = "MedOnc"
         return dict_medonc
 
     def get_timeline_imaging(self, df_map: pd.DataFrame, df_file: pd.DataFrame) -> dict:
@@ -1663,6 +1665,8 @@ class BpcProjectRunner(metaclass=ABCMeta):
         dict_data = self.create_fixed_timeline_files(
             timeline_infodf, "TIMELINE-IMAGING"
         )
+        # fix event type to Imaging for cBioPortal
+        dict_data["df"]["EVENT_TYPE"] = "Imaging"
         return dict_data
 
     def get_timeline_sequence(
