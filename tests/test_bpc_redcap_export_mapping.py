@@ -132,7 +132,7 @@ def test_that_parse_drug_mappings(input_mapping, var_names, output_mapping):
                 "RCC": {"CANCER_TYPE": "Renal Cell Carcinoma"},
                 "OVARY": {"CANCER_TYPE": "Ovarian Cancer"},
             },
-            "There are invalid values in ONCOTREE_CODE column in the clinical df: ['Renal Clear Cell Carcinoma', 'Renal Cell Carcinoma']",
+            "There are invalid values in ONCOTREE_CODE column in the clinical df: ['Renal Cell Carcinoma', 'Renal Clear Cell Carcinoma']",
         ),
         (
             pd.DataFrame(dict(ONCOTREE_CODE=["Renal Cell Carcinoma", "RCC"])),
@@ -412,3 +412,99 @@ def test_that_replace_cpt_seq_date_raises_value_error():
             replacement_data= pd.DataFrame(), 
             cpt_seq_date_replacement_type = "invalid_cpt_seq_date_replacement_type"
             )
+
+
+def test_get_timeline_medonc_sets_event_type(mock_syn):
+    runner = mock.Mock(spec=bpc_export.BpcProjectRunner)
+    runner._SPONSORED_PROJECT = "NSCLC"
+
+    input_df = pd.DataFrame(
+        {
+            "PATIENT_ID": ["GENIE-1", "GENIE-2"],
+            "START_DATE": [10, 20],
+            "STOP_DATE": ["", ""],
+            "EVENT_TYPE": ["OldValue", "OldValue"],
+        }
+    )
+
+    runner.create_fixed_timeline_files.return_value = {
+        "df": input_df.copy(),
+        "used": ["syn123.1"],
+    }
+
+    df_map = pd.DataFrame(
+        {
+            "sampleType": ["TIMELINE-MEDONC"],
+            "dataset": ["Medical Oncology dataset"],
+            "code": ["medonc_start_int"],
+            "cbio": ["START_DATE"],
+        }
+    )
+
+    df_file = pd.DataFrame(
+        {
+            "dataset": ["Medical Oncology dataset"],
+            "id": ["syn123"],
+        }
+    )
+
+    result = bpc_export.BpcProjectRunner.get_timeline_medonc(
+        runner,
+        df_map=df_map,
+        df_file=df_file,
+    )
+
+    assert result["used"] == ["syn123.1"]
+    assert result["df"]["EVENT_TYPE"].tolist() == ["MedOnc", "MedOnc"]
+
+    runner.create_fixed_timeline_files.assert_called_once()
+    called_timeline_type = runner.create_fixed_timeline_files.call_args.args[1]
+    assert called_timeline_type == "TIMELINE-MEDONC"
+
+
+def test_get_timeline_imaging_sets_event_type(mock_syn):
+    runner = mock.Mock(spec=bpc_export.BpcProjectRunner)
+    runner._SPONSORED_PROJECT = "NSCLC"
+
+    input_df = pd.DataFrame(
+        {
+            "PATIENT_ID": ["GENIE-1", "GENIE-2"],
+            "START_DATE": [10, 20],
+            "STOP_DATE": ["", ""],
+            "EVENT_TYPE": ["OldValue", "OldValue"],
+        }
+    )
+
+    runner.create_fixed_timeline_files.return_value = {
+        "df": input_df.copy(),
+        "used": ["syn456.1"],
+    }
+
+    df_map = pd.DataFrame(
+        {
+            "sampleType": ["TIMELINE-IMAGING"],
+            "dataset": ["Imaging dataset"],
+            "code": ["imaging_start_int"],
+            "cbio": ["START_DATE"],
+        }
+    )
+
+    df_file = pd.DataFrame(
+        {
+            "dataset": ["Imaging dataset"],
+            "id": ["syn456"],
+        }
+    )
+
+    result = bpc_export.BpcProjectRunner.get_timeline_imaging(
+        runner,
+        df_map=df_map,
+        df_file=df_file,
+    )
+
+    assert result["used"] == ["syn456.1"]
+    assert result["df"]["EVENT_TYPE"].tolist() == ["Imaging", "Imaging"]
+
+    runner.create_fixed_timeline_files.assert_called_once()
+    called_timeline_type = runner.create_fixed_timeline_files.call_args.args[1]
+    assert called_timeline_type == "TIMELINE-IMAGING"
