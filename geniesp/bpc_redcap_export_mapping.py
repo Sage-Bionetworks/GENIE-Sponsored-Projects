@@ -606,15 +606,21 @@ def check_oncotree_codes(
             f"There are invalid values in ONCOTREE_CODE column in the clinical df: {invalid_codes}"
         )
 
+
 def check_seq_date_replacement(input_data: pd.DataFrame) -> None:
-    """Check that the replacement data's CPT_SEQ_DATE is not all missing after
+    """Check that the replacement data's CPT_SEQ_DATE is not largely missing after
         doing the replacement.
-        
+
     Args:
         input_data (pd.DataFrame): input data after replacement
     """
-    if input_data["CPT_SEQ_DATE"].isna().all():
-        logging.warning("All CPT_SEQ_DATE values in the data are missing after replacement.")
+    missing_threshold = 0.15
+    missing_proportion = input_data["CPT_SEQ_DATE"].isna().mean()
+    if missing_proportion > missing_threshold:
+        logging.warning(
+            f"{missing_proportion:.1%} of CPT_SEQ_DATE values in the data are missing "
+            f"after replacement, which exceeds the {missing_threshold:.0%} threshold."
+        )
 
 
 def replace_cpt_seq_date(

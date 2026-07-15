@@ -82,6 +82,48 @@ do the cpt_seq_date replacement
 docker run --rm -e SYNAPSE_AUTH_TOKEN=$SYNAPSE_AUTH_TOKEN geniesp geniesp PANC 1.1-consortium --upload
 ```
 
+> **Note:** The positional cohort argument runs for the *entire* sponsored project subset,
+> including any expansion versions. For example, running for `CRC` processes **both** `CRC`
+> and `CRC2` samples (and running for `NSCLC` processes both `NSCLC` and `NSCLC2`). There is
+> no separate command to run only the expansion. See
+> [Cohort subsetting: `cohort` vs `cohort_internal`](#cohort-subsetting-cohort-vs-cohort_internal)
+> below for details.
+
+## Cohort subsetting: `cohort` vs `cohort_internal`
+
+Some BPC cohorts have expansion releases that are curated as a separate version but
+released together under the same sponsored project. For example, `CRC` and `CRC2`, and
+`NSCLC` and `NSCLC2`, are distinct curated versions that belong to the **same** sponsored
+project subset (`CRC` and `NSCLC` respectively).
+
+The derived variable file (used to replace `CPT_SEQ_DATE`) encodes this
+distinction with two columns:
+
+- `cohort` — the version-specific label. This differentiates the expansion, e.g.
+  `NSCLC` vs `NSCLC2`.
+- `cohort_internal` — the umbrella label for the whole sponsored project. Both `NSCLC`
+  and `NSCLC2` rows share `cohort_internal == "NSCLC"`.
+
+| SAMPLE_ID           | `cohort` | `cohort_internal` |
+| ------------------- | -------- | ----------------- |
+| GENIE-SAGE-1 (CRC)  | `CRC`    | `CRC`             |
+| GENIE-SAGE-2 (CRC2) | `CRC2`   | `CRC`             |
+
+**Why the pipeline filters on `cohort_internal`:** when running the pipeline for a
+sponsored project (e.g. `NSCLC`), the clinical sample data being released includes samples
+from *both* the original and the expansion version (`NSCLC` and `NSCLC2`). To replace
+`CPT_SEQ_DATE` for all of those samples, the derived variable file must be subset to
+include both versions — which only `cohort_internal == "NSCLC"` does.
+
+If we filtered on `cohort == "NSCLC"` instead, the `NSCLC2` rows would be dropped from the
+replacement data. During the left merge on `SAMPLE_ID` in `replace_cpt_seq_date`, every
+`NSCLC2` sample would then fail to find a match and receive a missing (`NaN`)
+`CPT_SEQ_DATE`. For this reason the pipeline subsets the derived variable file using
+`cohort_internal` (see `get_derived_variable_file` in
+[geniesp/bpc_redcap_export_mapping.py](geniesp/bpc_redcap_export_mapping.py)), and
+`check_seq_date_replacement` warns if a good chunk of `CPT_SEQ_DATE` values are missing after the
+replacement.
+
 ## Scripts
 
 To validate a cBioPortal mapping file stored on synapse:
