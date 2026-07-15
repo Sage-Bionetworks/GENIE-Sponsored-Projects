@@ -170,23 +170,25 @@ def test_that_check_oncotree_codes_gives_no_warning_when_all_codes_valid(caplog)
 def test_that_get_derived_variable_file_gets_file_correctly(mock_syn):
     test_df = pd.DataFrame(
         dict(
-            cohort = ["BLADDER", "BrCa", "BLADDER"],
+            cohort_internal = ["BLADDER", "CRC", "CRC"],
+            cohort = ["BLADDER", "CRC", "CRC2"],
             record_id = ["GENIE-SAGE-1", "GENIE-SAGE-2", "GENIE-SAGE-3"]
-            )
+        )
     )
-    with mock.patch.object(mock_syn, "get") as mock_syn_get, mock.patch.object(
+    with mock.patch.object(mock_syn, "get"), mock.patch.object(
         pd, "read_csv", return_value = test_df
-        ) as mock_read_csv:
+        ):
             output = bpc_export.get_derived_variable_file(
                 mock_syn, 
                 derived_var_synid = "synZZZZ", 
-                cohort = "BLADDER"
+                cohort = "CRC",
                 )
             assert_frame_equal(
                 output.reset_index(drop=True), pd.DataFrame(
                     dict(
-                        cohort = ["BLADDER", "BLADDER"],
-                        record_id = ["GENIE-SAGE-1", "GENIE-SAGE-3"]
+                        cohort_internal = ["CRC", "CRC"],
+                        cohort = ["CRC", "CRC2"],
+                        record_id = ["GENIE-SAGE-2", "GENIE-SAGE-3"]
                         )
                 ).reset_index(drop=True),
                 check_index_type=False
@@ -508,3 +510,28 @@ def test_get_timeline_imaging_sets_event_type(mock_syn):
     runner.create_fixed_timeline_files.assert_called_once()
     called_timeline_type = runner.create_fixed_timeline_files.call_args.args[1]
     assert called_timeline_type == "TIMELINE-IMAGING"
+    
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        [2020, None, 2022],
+        [2020, 2021, 2022],
+    ],
+)
+def test_check_seq_date_replacement_no_warning(values, caplog):
+    df = pd.DataFrame({"CPT_SEQ_DATE": values})
+
+    with caplog.at_level(logging.WARNING):
+        bpc_export.check_seq_date_replacement(df)
+
+    assert "All CPT_SEQ_DATE values in the data are missing after replacement." not in caplog.text
+
+
+def test_check_seq_date_replacement_all_missing_warns(caplog):
+    df = pd.DataFrame({"CPT_SEQ_DATE": [None, None, None]})
+
+    with caplog.at_level(logging.WARNING):
+        bpc_export.check_seq_date_replacement(df)
+
+    assert "All CPT_SEQ_DATE values in the data are missing after replacement." in caplog.text

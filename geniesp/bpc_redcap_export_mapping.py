@@ -501,7 +501,7 @@ def get_derived_variable_file(
         pd.DataFrame: derived variable file for the specific cohort
     """
     df = pd.read_csv(syn.get(derived_var_synid).path, low_memory=True)
-    df = df.query(f"cohort == '{cohort}'")
+    df = df.query(f"cohort_internal == '{cohort}'")
     return df
 
 
@@ -606,6 +606,16 @@ def check_oncotree_codes(
             f"There are invalid values in ONCOTREE_CODE column in the clinical df: {invalid_codes}"
         )
 
+def check_seq_date_replacement(input_data: pd.DataFrame) -> None:
+    """Check that the replacement data's CPT_SEQ_DATE is not all missing after
+        doing the replacement.
+        
+    Args:
+        input_data (pd.DataFrame): input data after replacement
+    """
+    if input_data["CPT_SEQ_DATE"].isna().all():
+        logging.warning("All CPT_SEQ_DATE values in the data are missing after replacement.")
+
 
 def replace_cpt_seq_date(
     input_data: pd.DataFrame,
@@ -672,6 +682,7 @@ def replace_cpt_seq_date(
         on=merge_cols,
         how="left",
     )
+    check_seq_date_replacement(input_data)
     return input_data
 
 
