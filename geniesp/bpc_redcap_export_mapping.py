@@ -501,7 +501,7 @@ def get_derived_variable_file(
         pd.DataFrame: derived variable file for the specific cohort
     """
     df = pd.read_csv(syn.get(derived_var_synid).path, low_memory=True)
-    df = df.query(f"cohort == '{cohort}'")
+    df = df.query(f"cohort_internal == '{cohort}'")
     return df
 
 
@@ -607,6 +607,22 @@ def check_oncotree_codes(
         )
 
 
+def check_seq_date_replacement(input_data: pd.DataFrame) -> None:
+    """Check that the replacement data's CPT_SEQ_DATE is not largely missing after
+        doing the replacement.
+
+    Args:
+        input_data (pd.DataFrame): input data after replacement
+    """
+    missing_threshold = 0.15
+    missing_proportion = input_data["CPT_SEQ_DATE"].isna().mean()
+    if missing_proportion > missing_threshold:
+        logging.warning(
+            f"{missing_proportion:.1%} of CPT_SEQ_DATE values in the data are missing "
+            f"after replacement, which exceeds the {missing_threshold:.0%} threshold."
+        )
+
+
 def replace_cpt_seq_date(
     input_data: pd.DataFrame,
     replacement_data: pd.DataFrame,
@@ -672,6 +688,7 @@ def replace_cpt_seq_date(
         on=merge_cols,
         how="left",
     )
+    check_seq_date_replacement(input_data)
     return input_data
 
 
