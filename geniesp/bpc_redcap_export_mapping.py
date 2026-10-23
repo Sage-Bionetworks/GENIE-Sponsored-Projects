@@ -211,7 +211,7 @@ def _get_synid_dd(syn: Synapse, cohort: str, synid_table_prissmm: str) -> str:
         str: Synapse ID of cohort PRISSMM data dictionary
     """
 
-    query = f"SELECT id FROM {synid_table_prissmm} WHERE cohort = '{cohort}' ORDER BY name DESC LIMIT 1"
+    query = f"SELECT id FROM {synid_table_prissmm} WHERE \"cohort\" = '{cohort}' ORDER BY name DESC LIMIT 1"
     query_results = syn.tableQuery(query)
 
     synid_folder_prissmm = query_results.asDataFrame()["id"][0]
