@@ -675,6 +675,16 @@ def replace_cpt_seq_date(
     return input_data
 
 
+def normalize_retraction_ids(retraction_ids: pd.Series) -> pd.Series:
+    """Drop missing, blank, and whitespace-only retraction IDs."""
+    return (
+        retraction_ids.replace(r"^\s*$", pd.NA, regex=True)
+        .dropna()
+        .astype(str)
+        .str.strip()
+    )
+
+
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
 
@@ -784,8 +794,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
             f"cohort like '{self._SPONSORED_PROJECT}%'"
         )
         retraction_at_release_df = retraction_at_release.asDataFrame()
-        sample_retractions = retraction_at_release_df["sample_id"].dropna().astype(str)
-        patient_retractions = retraction_at_release_df["patient_id"].dropna().astype(str)
+        sample_retractions = normalize_retraction_ids(retraction_at_release_df["sample_id"])
+        patient_retractions = normalize_retraction_ids(
+            retraction_at_release_df["patient_id"]
+        )
 
         # Retract samples and patients listed in the retraction for release table.
         keep_clinicaldf = genie_clinicaldf[
