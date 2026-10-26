@@ -781,11 +781,23 @@ class BpcProjectRunner(metaclass=ABCMeta):
         # table used for public GENIE data.
         retraction_at_release = self.syn.tableQuery(
             f"select patient_id, sample_id from {self._retraction_at_release_synid} where "
-            f"cohort like '{self._SPONSORED_PROJECT}%'"
+            f"\"cohort\" like '{self._SPONSORED_PROJECT}%'"
         )
         retraction_at_release_df = retraction_at_release.asDataFrame()
-        sample_retractions = retraction_at_release_df["sample_id"].dropna().astype(str)
-        patient_retractions = retraction_at_release_df["patient_id"].dropna().astype(str)
+        sample_retractions = (
+            retraction_at_release_df["sample_id"]
+            .replace(r"^\s*$", pd.NA, regex=True)
+            .dropna()
+            .astype(str)
+            .str.strip()
+        )
+        patient_retractions = (
+            retraction_at_release_df["patient_id"]
+            .replace(r"^\s*$", pd.NA, regex=True)
+            .dropna()
+            .astype(str)
+            .str.strip()
+        )
 
         # Retract samples and patients listed in the retraction for release table.
         keep_clinicaldf = genie_clinicaldf[
