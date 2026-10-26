@@ -692,6 +692,16 @@ def replace_cpt_seq_date(
     return input_data
 
 
+def normalize_retraction_ids(retraction_ids: pd.Series) -> pd.Series:
+    """Drop missing, blank, and whitespace-only retraction IDs."""
+    return (
+        retraction_ids.replace(r"^\s*$", pd.NA, regex=True)
+        .dropna()
+        .astype(str)
+        .str.strip()
+    )
+
+
 class BpcProjectRunner(metaclass=ABCMeta):
     """BPC redcap to cbioportal export"""
 
@@ -724,11 +734,10 @@ class BpcProjectRunner(metaclass=ABCMeta):
     _GRS_SYNID = "syn24184523"
     # main GENIE sample clinical database
     # _CLINICAL_SYNID = "syn7517674"
-    # BPC sample retraction table
-    _sample_retraction_synid = "syn25779833"
-    _patient_retraction_synid = "syn25998970"
+    # BPC retraction for relewase table used for release-time exclusions.
+    # This should be the only source for patient and sample retractions; the
+    # site-submitted retraction forms are intentionally not used here.
     _retraction_at_release_synid = "syn52915299"
-    # _temporary_patient_retraction_synid = "syn29266682"
     # main GENIE assay information table
     _ASSAY_SYNID = "syn17009222"
     # exclude files to be created for cbioportal
@@ -793,49 +802,27 @@ class BpcProjectRunner(metaclass=ABCMeta):
         )
         # Filter out cfDNA samples
         genie_clinicaldf = genie_clinicaldf[genie_clinicaldf["SAMPLE_CLASS"] != "cfDNA"]
-        # BPC retraction database
-        # HACK These don't query the phase 2 cohorts
-        bpc_sample_retraction_db = self.syn.tableQuery(
-            f"select SAMPLE_ID from {self._sample_retraction_synid} where "
-            f"{self._SPONSORED_PROJECT} is true"
-        )
-        bpc_sample_retractiondf = bpc_sample_retraction_db.asDataFrame()
-        # HACK These don't query the phase 2 cohorts
-        bpc_patient_retraction_db = self.syn.tableQuery(
-            f"select record_id from {self._patient_retraction_synid} where "
-            f"{self._SPONSORED_PROJECT} is true"
-        )
-        bpc_patient_retraction_df = bpc_patient_retraction_db.asDataFrame()
-
-        # bpc_temp_patient_retraction_db = self.syn.tableQuery(
-        #     f"select patient_id from {self._temporary_patient_retraction_synid} where "
-        #     f"cohort like '{self._SPONSORED_PROJECT}%'"
-        # )
-        # bpc_temp_patient_retraction_df = bpc_temp_patient_retraction_db.asDataFrame()
-
+        # Use the retraction for release table for both patient and
+        # sample exclusions. This avoids dependence on the 
+        # retraction forms and keeps the exported data aligned with the release
+        # table used for public GENIE data.
         retraction_at_release = self.syn.tableQuery(
-            f"select patient_id from {self._retraction_at_release_synid} where "
+            f"select patient_id, sample_id from {self._retraction_at_release_synid} where "
             f"cohort like '{self._SPONSORED_PROJECT}%'"
         )
         retraction_at_release_df = retraction_at_release.asDataFrame()
-        # Retract samples from sample retraction db
+        sample_retractions = normalize_retraction_ids(retraction_at_release_df["sample_id"])
+        patient_retractions = normalize_retraction_ids(
+            retraction_at_release_df["patient_id"]
+        )
+
+        # Retract samples and patients listed in the retraction for release table.
         keep_clinicaldf = genie_clinicaldf[
-            ~genie_clinicaldf["SAMPLE_ID"].isin(bpc_sample_retractiondf["SAMPLE_ID"])
+            ~genie_clinicaldf["SAMPLE_ID"].astype(str).isin(sample_retractions)
         ]
-        # Retract patients from patient retraction db
         keep_clinicaldf = keep_clinicaldf[
-            ~keep_clinicaldf["PATIENT_ID"].isin(bpc_patient_retraction_df["record_id"])
+            ~keep_clinicaldf["PATIENT_ID"].astype(str).isin(patient_retractions)
         ]
-        # Retract patients for at release retraction table
-        keep_clinicaldf = keep_clinicaldf[
-            ~keep_clinicaldf["PATIENT_ID"].isin(retraction_at_release_df["patient_id"])
-        ]
-        # # Retract patients from temporary patient retraction db
-        # keep_clinicaldf = keep_clinicaldf[
-        #     ~keep_clinicaldf["PATIENT_ID"].isin(
-        #         bpc_temp_patient_retraction_df["patient_id"]
-        #     )
-        # ]
         return keep_clinicaldf
 
     @cached_property
