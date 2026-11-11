@@ -90,6 +90,8 @@ def main():
     logging.basicConfig(level=numeric_level)
 
     syn = synapseclient.login()
+    # synapseclient 2.7.2's multi-threaded downloader fails on the large MAF (syn9734426)
+    syn.multi_threaded = False
 
     if args.cbioportal is None:
         cbiopath = "../cbioportal"
